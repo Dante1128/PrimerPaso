@@ -1,5 +1,6 @@
-//! Pruebas unitarias del contrato de préstamo y garantía.
+//! Pruebas del contrato de préstamo, integradas con `history`.
 #![cfg(test)]
+extern crate std;
 
 use super::*;
 use soroban_sdk::{
@@ -7,23 +8,42 @@ use soroban_sdk::{
     token::{StellarAssetClient, TokenClient},
     Address, Env,
 };
+use std::vec::Vec;
 
-/// Marca de tiempo inicial (un instante realista cualquiera).
 const T0: u64 = 1_700_000_000;
+/// Periodo mensual (30 días).
+const MES: u64 = 2_592_000;
 
-/// Convierte una cantidad de USDC a su unidad mínima (7 decimales).
+/// Unidad mínima de USDC (7 decimales).
 fn usdc(n: i128) -> i128 {
     n * 10_000_000
 }
 
-/// Contexto de prueba con el contrato de préstamo listo y liquidez cargada.
+/// Parámetros de producción del modelo de negocio.
+fn params() -> LoanParams {
+    LoanParams {
+        max_ltv_bps: 8_000,
+        rate_bps: 800,
+        origination_fee_bps: 100,
+        late_fee_bps: 200,
+        yield_share_platform_bps: 2_500,
+        grace_seconds: MES,
+        min_principal: usdc(100),
+        max_principal: usdc(3_000),
+        max_installments: 12,
+    }
+}
+
 struct Ctx<'a> {
     env: Env,
     loan: LoanContractClient<'a>,
+    history: history::HistoryContractClient<'a>,
     token: TokenClient<'a>,
     token_admin: StellarAssetClient<'a>,
-    loan_id: Address,
+    loan_addr: Address,
     admin: Address,
+    operator: Address,
+    treasury: Address,
 }
 
 fn setup() -> Ctx<'static> {
@@ -32,246 +52,494 @@ fn setup() -> Ctx<'static> {
     env.ledger().set_timestamp(T0);
 
     let admin = Address::generate(&env);
+    let operator = Address::generate(&env);
+    let treasury = Address::generate(&env);
 
-    // Token USDC de prueba (Stellar Asset Contract).
-    let sac = env.register_stellar_asset_contract_v2(admin.clone());
-    let token_id = sac.address();
-    let token = TokenClient::new(&env, &token_id);
-    let token_admin = StellarAssetClient::new(&env, &token_id);
+    let usdc_addr = env.register_stellar_asset_contract_v2(admin.clone()).address();
+    let token = TokenClient::new(&env, &usdc_addr);
+    let token_admin = StellarAssetClient::new(&env, &usdc_addr);
 
-    // Contrato de préstamo.
-    let loan_id = env.register(LoanContract, ());
-    let loan = LoanContractClient::new(&env, &loan_id);
-    loan.init(&admin, &token_id);
+    let history_addr = env.register(history::HistoryContract, ());
+    let loan_addr = env.register(LoanContract, ());
+    let history = history::HistoryContractClient::new(&env, &history_addr);
+    let loan = LoanContractClient::new(&env, &loan_addr);
 
-    // Liquidez para desembolsos.
-    token_admin.mint(&loan_id, &usdc(5_000));
+    history.initialize(&admin, &loan_addr);
+    loan.initialize(&admin, &treasury, &history_addr, &usdc_addr, &params());
+    loan.set_operator(&operator, &true);
+
+    // Pool: la treasury tiene 100.000 USDC y autoriza al contrato a desembolsar.
+    token_admin.mint(&treasury, &usdc(100_000));
+    token.approve(
+        &treasury,
+        &loan_addr,
+        &usdc(100_000),
+        &(env.ledger().sequence() + 100_000),
+    );
 
     Ctx {
         env,
         loan,
+        history,
         token,
         token_admin,
-        loan_id,
+        loan_addr,
         admin,
+        operator,
+        treasury,
     }
 }
 
-/// Registra y conecta un contrato de historial al contrato de préstamo.
-fn with_history(ctx: &Ctx) -> history::HistoryContractClient<'static> {
-    let history_id = ctx.env.register(history::HistoryContract, ());
-    let history = history::HistoryContractClient::new(&ctx.env, &history_id);
-    history.init(&ctx.admin, &ctx.loan_id);
-    ctx.loan.set_history(&history_id);
-    history
+impl Ctx<'_> {
+    /// Cuenta nueva con saldo de USDC.
+    fn cuenta(&self, saldo: i128) -> Address {
+        let a = Address::generate(&self.env);
+        if saldo > 0 {
+            self.token_admin.mint(&a, &saldo);
+        }
+        a
+    }
+
+    /// Abre un préstamo mensual con la primera cuota en un mes.
+    fn abrir(&self, posicion: u64, capital: i128, cuotas: u32) -> u64 {
+        self.loan
+            .open_loan(&self.operator, &posicion, &capital, &cuotas, &(T0 + MES), &MES)
+    }
+
+    /// Paga la próxima cuota completa (interés pendiente + capital de la cuota).
+    fn pagar_cuota(&self, pagador: &Address, loan_id: u64) -> PaymentQuote {
+        let q = self.loan.quote_next_payment(&loan_id);
+        self.loan
+            .repay(pagador, &loan_id, &q.next_installment_principal, &q.interest_due);
+        q
+    }
+
+    fn ir_a(&self, ts: u64) {
+        self.env.ledger().set_timestamp(ts);
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Pruebas obligatorias
+// ---------------------------------------------------------------------------
+
+/// Garantía 1.250, préstamo 1.000, 10 cuotas de 100 de capital:
+/// interés total 36,67; comisión 10; cada pago libera 125.
+#[test]
+fn ejemplo_de_referencia_exacto() {
+    let ctx = setup();
+    let estudiante = ctx.cuenta(usdc(1_250));
+    let pos = ctx
+        .loan
+        .deposit_collateral(&estudiante, &estudiante, &usdc(1_250));
+    let id = ctx.abrir(pos, usdc(1_000), 10);
+
+    // Pide 1.000 y recibe 990; la comisión de 10 se queda en la treasury.
+    assert_eq!(ctx.token.balance(&estudiante), usdc(990));
+    assert_eq!(ctx.token.balance(&ctx.treasury), usdc(100_000) - usdc(990));
+    let l = ctx.loan.get_loan(&id).unwrap();
+    assert_eq!((l.origination_fee, l.disbursed), (usdc(10), usdc(990)));
+
+    // El estudiante necesita USDC para los intereses (36,67 en total).
+    ctx.token_admin.mint(&estudiante, &usdc(100));
+    let antes = ctx.token.balance(&estudiante);
+
+    let mut interes_total = 0;
+    for k in 0..10u64 {
+        // Cada cuota se paga dentro de su periodo (a tiempo).
+        ctx.ir_a(T0 + k * MES + 1);
+        let q = ctx.pagar_cuota(&estudiante, id);
+        assert_eq!(q.next_installment_principal, usdc(100));
+        interes_total += q.interest_due;
+
+        let l = ctx.loan.get_loan(&id).unwrap();
+        // Cada pago de 100 de capital libera exactamente 125.
+        assert_eq!(l.collateral_released, usdc(125) * (k as i128 + 1));
+    }
+
+    // Interés: 8% anual / 12 sobre saldos 1.000, 900, …, 100 = 36,6666663.
+    assert_eq!(interes_total, 366_666_663);
+    // Pagó 1.000 de capital + interés y recuperó los 1.250 de garantía.
+    assert_eq!(
+        ctx.token.balance(&estudiante),
+        antes - usdc(1_000) - interes_total + usdc(1_250)
+    );
+    // La treasury recuperó lo desembolsado + comisión + interés.
+    assert_eq!(
+        ctx.token.balance(&ctx.treasury),
+        usdc(100_000) + usdc(10) + interes_total
+    );
+    let l = ctx.loan.get_loan(&id).unwrap();
+    assert_eq!(l.status, LoanStatus::Repaid);
+    assert_eq!(ctx.token.balance(&ctx.loan_addr), 0);
+
+    // Saldado con 10 cuotas a tiempo: credencial y puntaje 700.
+    assert!(ctx.history.verify(&estudiante));
+    assert_eq!(ctx.history.get_score(&estudiante), 700);
 }
 
 #[test]
-fn flujo_pago_normal_recupera_toda_la_garantia() {
+fn el_ultimo_pago_libera_el_remanente() {
     let ctx = setup();
-    let estudiante = Address::generate(&ctx.env);
-    ctx.token_admin.mint(&estudiante, &usdc(1_100)); // 1000 garantía + 80 interés
+    let estudiante = ctx.cuenta(usdc(2_000));
+    // Garantía "impar" para forzar redondeo.
+    let garantia = usdc(1_000) + 7;
+    let pos = ctx.loan.deposit_collateral(&estudiante, &estudiante, &garantia);
+    let capital = usdc(800);
+    let id = ctx.abrir(pos, capital, 3);
+    let por_cuota = capital / 3;
 
-    // Deposita 1000 de garantía (lo firma el propio estudiante).
-    ctx.loan
-        .deposit_collateral(&estudiante, &estudiante, &usdc(1_000));
-    assert!(ctx
+    ctx.pagar_cuota(&estudiante, id);
+    let l = ctx.loan.get_loan(&id).unwrap();
+    assert_eq!(l.collateral_released, por_cuota * garantia / capital);
+
+    ctx.ir_a(T0 + MES + 1);
+    ctx.pagar_cuota(&estudiante, id);
+    let l = ctx.loan.get_loan(&id).unwrap();
+    // Acumulado, sin deriva por redondeos sucesivos.
+    assert_eq!(l.collateral_released, 2 * por_cuota * garantia / capital);
+
+    ctx.ir_a(T0 + 2 * MES + 1);
+    let q = ctx.pagar_cuota(&estudiante, id);
+    assert_eq!(q.next_installment_principal, capital - 2 * por_cuota);
+    let l = ctx.loan.get_loan(&id).unwrap();
+    assert_eq!(l.collateral_released, garantia);
+    assert_eq!(ctx.token.balance(&ctx.loan_addr), 0);
+    assert_eq!(ctx.loan.get_position(&pos).unwrap().status, PositionStatus::Closed);
+}
+
+#[test]
+fn rechaza_ltv_mayor_al_80_por_ciento() {
+    let ctx = setup();
+    let estudiante = ctx.cuenta(usdc(1_250));
+    let pos = ctx
+        .loan
+        .deposit_collateral(&estudiante, &estudiante, &usdc(1_250));
+
+    let res = ctx
+        .loan
+        .try_open_loan(&ctx.operator, &pos, &(usdc(1_000) + 1), &10, &(T0 + MES), &MES);
+    assert_eq!(res, Err(Ok(Error::ExcedeLtv.into())));
+    // Exactamente el 80% sí se permite.
+    ctx.abrir(pos, usdc(1_000), 10);
+}
+
+#[test]
+fn rechaza_montos_y_cuotas_fuera_de_limites() {
+    let ctx = setup();
+    let estudiante = ctx.cuenta(usdc(5_000));
+    let pos = ctx
+        .loan
+        .deposit_collateral(&estudiante, &estudiante, &usdc(5_000));
+    let fuera = Some(Ok(Error::FueraDeLimites.into()));
+    let abrir = |capital: i128, cuotas: u32| {
+        ctx.loan
+            .try_open_loan(&ctx.operator, &pos, &capital, &cuotas, &(T0 + MES), &MES)
+            .err()
+    };
+
+    assert_eq!(abrir(usdc(100) - 1, 1), fuera); // menos de 100
+    assert_eq!(abrir(usdc(3_000) + 1, 12), fuera); // más de 3.000
+    assert_eq!(abrir(usdc(1_000), 13), fuera); // más de 12 cuotas
+    assert_eq!(abrir(usdc(1_000), 0), fuera);
+    // Los extremos son válidos.
+    assert_eq!(abrir(usdc(3_000), 12), None);
+}
+
+#[test]
+fn la_comision_se_descuenta_del_desembolso() {
+    let ctx = setup();
+    let estudiante = ctx.cuenta(usdc(500));
+    let pos = ctx.loan.deposit_collateral(&estudiante, &estudiante, &usdc(500));
+    let id = ctx.abrir(pos, usdc(400), 4);
+
+    // 1% de 400 = 4: recibe 396 y la treasury solo entrega 396.
+    assert_eq!(ctx.token.balance(&estudiante), usdc(396));
+    assert_eq!(ctx.token.balance(&ctx.treasury), usdc(100_000) - usdc(396));
+    // Pero adeuda los 400 completos.
+    assert_eq!(
+        ctx.loan.quote_next_payment(&id).principal_outstanding,
+        usdc(400)
+    );
+}
+
+#[test]
+fn solo_acepta_usdc_como_garantia() {
+    let ctx = setup();
+    // Otro token cualquiera.
+    let otro = ctx
         .env
-        .auths()
-        .iter()
-        .any(|(addr, _)| addr == &estudiante));
+        .register_stellar_asset_contract_v2(Address::generate(&ctx.env))
+        .address();
+    let depositante = Address::generate(&ctx.env);
+    StellarAssetClient::new(&ctx.env, &otro).mint(&depositante, &usdc(1_000));
 
-    // El estudiante abre su propio préstamo: 800 (80%), 10% interés, 4 cuotas.
-    ctx.loan.open_loan(&estudiante, &usdc(800), &4, &1_000);
-    // Control de acceso: abrir el préstamo exige la firma del prestatario.
-    assert!(ctx.env.auths().iter().any(|(addr, _)| addr == &estudiante));
+    // deposit_collateral no recibe activo: siempre mueve el USDC configurado.
+    // Sin USDC, el depósito falla aunque tenga otro token.
+    assert!(ctx
+        .loan
+        .try_deposit_collateral(&depositante, &depositante, &usdc(1_000))
+        .is_err());
 
-    let prestamo = ctx.loan.get_loan(&estudiante).unwrap();
-    assert_eq!(prestamo.principal, usdc(800));
-    assert_eq!(prestamo.total_due, usdc(880)); // 800 + 10%
-    assert_eq!(prestamo.installment_amount, usdc(220));
-    assert_eq!(prestamo.status, LoanStatus::Active);
-    // El estudiante recibió el principal.
-    assert_eq!(ctx.token.balance(&estudiante), usdc(900)); // 100 + 800
-
-    // Paga las 4 cuotas de 220.
-    for _ in 0..4 {
-        ctx.loan.repay(&estudiante, &usdc(220));
-    }
-
-    let prestamo = ctx.loan.get_loan(&estudiante).unwrap();
-    assert_eq!(prestamo.status, LoanStatus::Completed);
-    assert_eq!(prestamo.total_repaid, usdc(880));
-    assert_eq!(prestamo.collateral_released, usdc(1_000));
-    // Recuperó toda la garantía; solo perdió los 80 de interés.
-    assert_eq!(ctx.token.balance(&estudiante), usdc(1_020));
+    // Enviar otro token directamente al contrato no crea garantía.
+    TokenClient::new(&ctx.env, &otro).transfer(&depositante, &ctx.loan_addr, &usdc(1_000));
+    assert_eq!(ctx.loan.get_position(&1), None);
+    assert_eq!(ctx.loan.get_usdc(), ctx.token.address);
 }
 
 #[test]
-fn pago_parcial_libera_garantia_proporcional() {
+fn liquidacion_falla_antes_de_la_gracia_y_funciona_despues() {
     let ctx = setup();
-    let estudiante = Address::generate(&ctx.env);
-    ctx.token_admin.mint(&estudiante, &usdc(1_100));
+    let estudiante = ctx.cuenta(usdc(1_250));
+    let pos = ctx
+        .loan
+        .deposit_collateral(&estudiante, &estudiante, &usdc(1_250));
+    let id = ctx.abrir(pos, usdc(1_000), 10);
+    let tesoreria_antes = ctx.token.balance(&ctx.treasury);
 
-    ctx.loan
-        .deposit_collateral(&estudiante, &estudiante, &usdc(1_000));
-    ctx.loan.open_loan(&estudiante, &usdc(800), &4, &1_000);
+    // Antes del vencimiento.
+    let res = ctx.loan.try_liquidate(&ctx.operator, &id);
+    assert_eq!(res, Err(Ok(Error::SinMora.into())));
+    // Vencida pero en el último segundo de la gracia.
+    ctx.ir_a(T0 + MES + MES);
+    assert!(ctx.loan.is_overdue(&id));
+    let res = ctx.loan.try_liquidate(&ctx.operator, &id);
+    assert_eq!(res, Err(Ok(Error::SinMora.into())));
+    // Pasada la gracia, un tercero igual no puede liquidar.
+    ctx.ir_a(T0 + MES + MES + 1);
+    let res = ctx.loan.try_liquidate(&estudiante, &id);
+    assert_eq!(res, Err(Ok(Error::NoAutorizado.into())));
 
-    // Paga la mitad de la deuda (440 de 880).
-    ctx.loan.repay(&estudiante, &usdc(440));
+    let q = ctx.loan.quote_next_payment(&id);
+    assert!(q.liquidatable);
+    ctx.loan.liquidate(&ctx.admin, &id);
 
-    let prestamo = ctx.loan.get_loan(&estudiante).unwrap();
-    assert_eq!(prestamo.status, LoanStatus::Active);
-    assert_eq!(prestamo.total_repaid, usdc(440));
-    assert_eq!(prestamo.paid_installments, 2);
-    // Garantía liberada = 1000 * 440/880 = 500.
-    assert_eq!(prestamo.collateral_released, usdc(500));
+    // 3 periodos devengados sobre 1.000 (al abrir, al vencer la cuota 1 y la 2).
+    let interes = 3 * (usdc(1_000) * 800 / 10_000 / 12);
+    // Vencidas las cuotas 1 y 2: recargo del 2% sobre 200 de capital + interés.
+    let recargo = (usdc(200) + interes) * 200 / 10_000;
+    assert_eq!(q.late_fee, recargo);
+    let adeudado = usdc(1_000) + interes + recargo;
+    assert_eq!(ctx.token.balance(&ctx.treasury), tesoreria_antes + adeudado);
+    assert_eq!(ctx.token.balance(&estudiante), usdc(990) + usdc(1_250) - adeudado);
+    assert_eq!(ctx.token.balance(&ctx.loan_addr), 0);
+    assert_eq!(ctx.loan.get_loan(&id).unwrap().status, LoanStatus::Liquidated);
+    assert_eq!(ctx.history.get_record(&estudiante).defaults, 1);
+}
+
+#[test]
+fn liquidacion_devuelve_el_remanente_al_garante() {
+    let ctx = setup();
+    // Demo de testnet: gracia de 120 s y periodos de 60 s.
+    let mut p = params();
+    p.grace_seconds = 120;
+    ctx.loan.set_params(&p);
+
+    let estudiante = ctx.cuenta(0);
+    let garante = ctx.cuenta(usdc(1_250));
+    let pos = ctx.loan.deposit_collateral(&garante, &estudiante, &usdc(1_250));
+    let id = ctx
+        .loan
+        .open_loan(&ctx.operator, &pos, &usdc(1_000), &10, &(T0 + 60), &60);
+    let tesoreria_antes = ctx.token.balance(&ctx.treasury);
+
+    ctx.ir_a(T0 + 60 + 121);
+    ctx.loan.liquidate(&ctx.operator, &id);
+
+    let tomado = ctx.token.balance(&ctx.treasury) - tesoreria_antes;
+    assert!(tomado > usdc(1_000));
+    // El remanente vuelve a quien depositó (el garante), no al estudiante.
+    assert_eq!(ctx.token.balance(&garante), usdc(1_250) - tomado);
+    assert_eq!(ctx.token.balance(&estudiante), usdc(990));
+}
+
+#[test]
+fn la_pausa_global_bloquea_las_operaciones() {
+    let ctx = setup();
+    let estudiante = ctx.cuenta(usdc(2_500));
+    let pos = ctx
+        .loan
+        .deposit_collateral(&estudiante, &estudiante, &usdc(1_250));
+    let id = ctx.abrir(pos, usdc(1_000), 10);
+    let q = ctx.loan.quote_next_payment(&id);
+
+    ctx.loan.pause();
+    let pausado = Some(Ok(Error::Pausado.into()));
+    assert_eq!(
+        ctx.loan
+            .try_deposit_collateral(&estudiante, &estudiante, &usdc(10))
+            .err(),
+        pausado
+    );
+    assert_eq!(
+        ctx.loan
+            .try_repay(&estudiante, &id, &q.next_installment_principal, &q.interest_due)
+            .err(),
+        pausado
+    );
+    assert_eq!(ctx.loan.try_liquidate(&ctx.admin, &id).err(), pausado);
+
+    ctx.loan.unpause();
+    ctx.pagar_cuota(&estudiante, id);
+}
+
+// ---------------------------------------------------------------------------
+// Pruebas adicionales
+// ---------------------------------------------------------------------------
+
+#[test]
+fn abrir_exige_operator_y_firma_del_prestatario() {
+    let ctx = setup();
+    let estudiante = ctx.cuenta(usdc(1_250));
+    let pos = ctx
+        .loan
+        .deposit_collateral(&estudiante, &estudiante, &usdc(1_250));
+
+    let intruso = Address::generate(&ctx.env);
+    let res = ctx
+        .loan
+        .try_open_loan(&intruso, &pos, &usdc(500), &5, &(T0 + MES), &MES);
+    assert_eq!(res, Err(Ok(Error::NoAutorizado.into())));
+
+    ctx.abrir(pos, usdc(500), 5);
+    let firmantes: Vec<Address> = ctx.env.auths().iter().map(|(a, _)| a.clone()).collect();
+    assert!(firmantes.contains(&ctx.operator));
+    assert!(firmantes.contains(&estudiante));
+
+    // Un operator deshabilitado ya no lo es.
+    ctx.loan.set_operator(&ctx.operator, &false);
+    assert!(!ctx.loan.is_operator(&ctx.operator));
+}
+
+#[test]
+fn el_interes_se_paga_antes_que_el_capital() {
+    let ctx = setup();
+    let estudiante = ctx.cuenta(usdc(1_250));
+    let pos = ctx
+        .loan
+        .deposit_collateral(&estudiante, &estudiante, &usdc(1_250));
+    let id = ctx.abrir(pos, usdc(1_000), 10);
+
+    let res = ctx.loan.try_repay(&estudiante, &id, &usdc(100), &0);
+    assert_eq!(res, Err(Ok(Error::InteresPendiente.into())));
+
+    // Pagar solo interés es válido y no libera garantía.
+    let q = ctx.loan.quote_next_payment(&id);
+    ctx.loan.repay(&estudiante, &id, &0, &q.interest_due);
+    assert_eq!(ctx.loan.get_loan(&id).unwrap().collateral_released, 0);
+    assert_eq!(ctx.loan.quote_next_payment(&id).interest_due, 0);
+}
+
+#[test]
+fn no_se_puede_pagar_de_mas() {
+    let ctx = setup();
+    let estudiante = ctx.cuenta(usdc(2_500));
+    let pos = ctx
+        .loan
+        .deposit_collateral(&estudiante, &estudiante, &usdc(1_250));
+    let id = ctx.abrir(pos, usdc(1_000), 10);
+    let q = ctx.loan.quote_next_payment(&id);
+
+    let res = ctx
+        .loan
+        .try_repay(&estudiante, &id, &(usdc(1_000) + 1), &q.interest_due);
+    assert_eq!(res, Err(Ok(Error::ExcedeDeuda.into())));
+    let res = ctx.loan.try_repay(&estudiante, &id, &0, &(q.interest_due + 1));
+    assert_eq!(res, Err(Ok(Error::ExcedeDeuda.into())));
 }
 
 #[test]
 fn pago_atrasado_se_registra_en_el_historial() {
     let ctx = setup();
-    let history = with_history(&ctx);
-    let estudiante = Address::generate(&ctx.env);
-    ctx.token_admin.mint(&estudiante, &usdc(1_100));
+    let estudiante = ctx.cuenta(usdc(1_400));
+    let pos = ctx
+        .loan
+        .deposit_collateral(&estudiante, &estudiante, &usdc(1_250));
+    let id = ctx.abrir(pos, usdc(1_000), 10);
 
-    ctx.loan
-        .deposit_collateral(&estudiante, &estudiante, &usdc(1_000));
-    ctx.loan.open_loan(&estudiante, &usdc(800), &4, &1_000);
-
-    // Avanzamos el tiempo más allá del vencimiento de la primera cuota.
-    ctx.env
-        .ledger()
-        .set_timestamp(T0 + SECONDS_PER_MONTH + 1);
-
-    // Paga la primera cuota, pero tarde.
-    ctx.loan.repay(&estudiante, &usdc(220));
-
-    let record = history.get_record(&estudiante);
-    assert_eq!(record.on_time, 0);
-    assert_eq!(record.late, 1);
-    // Puntaje: 500 - 40 = 460.
-    assert_eq!(history.score(&estudiante), 460);
+    ctx.ir_a(T0 + MES + 10);
+    ctx.pagar_cuota(&estudiante, id);
+    let r = ctx.history.get_record(&estudiante);
+    assert_eq!((r.on_time, r.late), (0, 1));
 }
 
 #[test]
-fn pago_a_tiempo_emite_credencial() {
+fn retiro_de_garantia_sin_usar() {
     let ctx = setup();
-    let history = with_history(&ctx);
-    let estudiante = Address::generate(&ctx.env);
-    ctx.token_admin.mint(&estudiante, &usdc(1_100));
+    let garante = ctx.cuenta(usdc(1_250));
+    let estudiante = ctx.cuenta(0);
+    let pos = ctx.loan.deposit_collateral(&garante, &estudiante, &usdc(625));
 
-    ctx.loan
-        .deposit_collateral(&estudiante, &estudiante, &usdc(1_000));
-    ctx.loan.open_loan(&estudiante, &usdc(800), &4, &1_000);
+    // Solo el depositante puede retirar.
+    let res = ctx.loan.try_withdraw_unused(&estudiante, &pos);
+    assert_eq!(res, Err(Ok(Error::NoAutorizado.into())));
+    ctx.loan.withdraw_unused(&garante, &pos);
+    assert_eq!(ctx.token.balance(&garante), usdc(1_250));
 
-    // Paga todo de una, dentro de plazo (no avanzamos el tiempo).
-    ctx.loan.repay(&estudiante, &usdc(880));
-
-    let record = history.get_record(&estudiante);
-    assert_eq!(record.on_time, 4);
-    assert_eq!(record.late, 0);
-
-    assert!(history.has_credential(&estudiante));
-    let credencial = history.get_credential(&estudiante).unwrap();
-    assert_eq!(credencial.borrower, estudiante);
-    assert_eq!(credencial.total_installments, 4);
-    assert_eq!(credencial.on_time, 4);
+    // Con el préstamo abierto, ya no se puede retirar.
+    let pos2 = ctx.loan.deposit_collateral(&garante, &estudiante, &usdc(625));
+    ctx.abrir(pos2, usdc(500), 5);
+    let res = ctx.loan.try_withdraw_unused(&garante, &pos2);
+    assert_eq!(res, Err(Ok(Error::EstadoInvalido.into())));
 }
 
 #[test]
-fn liquidacion_toma_solo_lo_adeudado_y_devuelve_el_resto() {
+fn los_parametros_nuevos_no_cambian_prestamos_abiertos() {
     let ctx = setup();
-    let history = with_history(&ctx);
-    let estudiante = Address::generate(&ctx.env);
-    ctx.token_admin.mint(&estudiante, &usdc(1_000)); // solo para la garantía
+    let estudiante = ctx.cuenta(usdc(1_250));
+    let pos = ctx
+        .loan
+        .deposit_collateral(&estudiante, &estudiante, &usdc(1_250));
+    let id = ctx.abrir(pos, usdc(1_000), 10);
 
-    ctx.loan
-        .deposit_collateral(&estudiante, &estudiante, &usdc(1_000));
-    ctx.loan.open_loan(&estudiante, &usdc(800), &4, &1_000);
-    // El estudiante tiene 800 (el principal) y nunca paga.
-    assert_eq!(ctx.token.balance(&estudiante), usdc(800));
+    let mut p = params();
+    p.rate_bps = 2_000;
+    ctx.loan.set_params(&p);
+    assert_eq!(ctx.loan.get_params().rate_bps, 2_000);
+    assert_eq!(ctx.loan.get_loan(&id).unwrap().terms.rate_bps, 800);
 
-    // Pasa el vencimiento de la primera cuota sin pagar: cae en mora.
-    ctx.env
-        .ledger()
-        .set_timestamp(T0 + SECONDS_PER_MONTH + 1);
-
-    ctx.loan.liquidate(&estudiante);
-    // Control de acceso: liquidar exige la firma del admin.
-    assert!(ctx.env.auths().iter().any(|(addr, _)| addr == &ctx.admin));
-
-    let prestamo = ctx.loan.get_loan(&estudiante).unwrap();
-    assert_eq!(prestamo.status, LoanStatus::Liquidated);
-
-    // El admin recupera lo adeudado (880) de la garantía.
-    assert_eq!(ctx.token.balance(&ctx.admin), usdc(880));
-    // El estudiante conserva el principal (800) + el resto de la garantía
-    // (1000 - 880 = 120) = 920.
-    assert_eq!(ctx.token.balance(&estudiante), usdc(920));
-
-    // Las 4 cuotas impagas quedan como atrasadas en el historial.
-    let record = history.get_record(&estudiante);
-    assert_eq!(record.late, 4);
+    // Parámetros inválidos se rechazan.
+    p.min_principal = usdc(5_000);
+    assert_eq!(
+        ctx.loan.try_set_params(&p),
+        Err(Ok(Error::ParametrosInvalidos.into()))
+    );
 }
 
 #[test]
-#[should_panic]
-fn no_se_puede_liquidar_sin_mora() {
-    let ctx = setup();
-    let estudiante = Address::generate(&ctx.env);
-    ctx.token_admin.mint(&estudiante, &usdc(1_000));
-
-    ctx.loan
-        .deposit_collateral(&estudiante, &estudiante, &usdc(1_000));
-    ctx.loan.open_loan(&estudiante, &usdc(800), &4, &1_000);
-
-    // Sin avanzar el tiempo: la primera cuota aún no vence. Debe fallar.
-    ctx.loan.liquidate(&estudiante);
+fn solo_el_admin_configura() {
+    let env = Env::default();
+    let admin = Address::generate(&env);
+    let loan_addr = env.register(LoanContract, ());
+    let loan = LoanContractClient::new(&env, &loan_addr);
+    loan.initialize(
+        &admin,
+        &Address::generate(&env),
+        &Address::generate(&env),
+        &Address::generate(&env),
+        &params(),
+    );
+    // Sin firmas simuladas, ningún cambio de configuración pasa.
+    assert!(loan.try_pause().is_err());
+    assert!(loan.try_set_params(&params()).is_err());
+    assert!(loan
+        .try_set_operator(&Address::generate(&env), &true)
+        .is_err());
 }
 
 #[test]
-#[should_panic]
-fn principal_no_puede_superar_el_80_por_ciento() {
+fn sin_liquidez_en_el_pool_no_se_abre() {
     let ctx = setup();
-    let estudiante = Address::generate(&ctx.env);
-    ctx.token_admin.mint(&estudiante, &usdc(1_000));
+    // La treasury retira su allowance: el pool queda sin capacidad.
+    ctx.token.approve(&ctx.treasury, &ctx.loan_addr, &0, &0);
+    assert_eq!(ctx.loan.pool_available(), 0);
 
-    ctx.loan
-        .deposit_collateral(&estudiante, &estudiante, &usdc(1_000));
-    // 900 > 80% de 1000: debe fallar (PrincipalExcedeLimite).
-    ctx.loan.open_loan(&estudiante, &usdc(900), &4, &1_000);
-}
-
-#[test]
-#[should_panic]
-fn no_se_puede_pagar_de_mas() {
-    let ctx = setup();
-    let estudiante = Address::generate(&ctx.env);
-    ctx.token_admin.mint(&estudiante, &usdc(2_000));
-
-    ctx.loan
-        .deposit_collateral(&estudiante, &estudiante, &usdc(1_000));
-    ctx.loan.open_loan(&estudiante, &usdc(800), &4, &1_000);
-    // La deuda es 880; pagar 900 debe fallar (ExcedeDeuda).
-    ctx.loan.repay(&estudiante, &usdc(900));
-}
-
-#[test]
-fn el_pago_exige_la_firma_del_estudiante() {
-    let ctx = setup();
-    let estudiante = Address::generate(&ctx.env);
-    ctx.token_admin.mint(&estudiante, &usdc(1_100));
-
-    ctx.loan
-        .deposit_collateral(&estudiante, &estudiante, &usdc(1_000));
-    ctx.loan.open_loan(&estudiante, &usdc(800), &4, &1_000);
-
-    ctx.loan.repay(&estudiante, &usdc(220));
-    // Control de acceso: el pago lo firma el estudiante, no el admin.
-    assert!(ctx
-        .env
-        .auths()
-        .iter()
-        .any(|(addr, _)| addr == &estudiante));
+    let estudiante = ctx.cuenta(usdc(1_250));
+    let pos = ctx
+        .loan
+        .deposit_collateral(&estudiante, &estudiante, &usdc(1_250));
+    let res = ctx
+        .loan
+        .try_open_loan(&ctx.operator, &pos, &usdc(1_000), &10, &(T0 + MES), &MES);
+    assert_eq!(res, Err(Ok(Error::PoolInsuficiente.into())));
 }
