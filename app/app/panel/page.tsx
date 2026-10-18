@@ -1,8 +1,10 @@
 import { redirect } from "next/navigation";
-import { getSessionUser } from "@/lib/auth";
+import { connection } from "next/server";
+import { getSessionUser, pasoPendiente } from "@/lib/auth";
 import TopBar from "@/components/panel/TopBar";
 import PanelEstudiante from "@/components/panel/PanelEstudiante";
 import PanelGarante from "@/components/panel/PanelGarante";
+import PanelOperador from "@/components/panel/PanelOperador";
 import PanelAdmin from "@/components/panel/PanelAdmin";
 
 export const metadata = { title: "Mi panel · PrimerPaso" };
@@ -11,20 +13,21 @@ export const metadata = { title: "Mi panel · PrimerPaso" };
 export const instant = false;
 
 export default async function PanelPage() {
+  await connection();
   const user = await getSessionUser();
   if (!user) redirect("/ingresar");
   // Onboarding incompleto: lo retoma el flujo de registro.
-  if (!user.emailVerified || !user.role || !user.walletAddress) {
-    redirect("/registro");
-  }
+  if (pasoPendiente(user)) redirect("/registro");
+  const nombre = user.fullName ?? user.email;
 
   return (
     <main className="min-h-screen bg-slate-50">
-      <TopBar nombre={user.fullName} rol={user.role} wallet={user.walletAddress} />
-      <div className="mx-auto max-w-5xl px-4 py-8 sm:px-6">
-        {user.role === "ESTUDIANTE" && <PanelEstudiante />}
-        {user.role === "GARANTE" && <PanelGarante />}
-        {user.role === "ADMIN" && <PanelAdmin />}
+      <TopBar nombre={nombre} rol={user.role} wallet={user.wallet} />
+      <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
+        {user.role === "student" && <PanelEstudiante user={user} />}
+        {user.role === "guarantor" && <PanelGarante user={user} />}
+        {user.role === "operator" && <PanelOperador nombre={nombre} />}
+        {user.role === "admin" && <PanelAdmin nombre={nombre} />}
       </div>
     </main>
   );

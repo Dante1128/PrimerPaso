@@ -1,78 +1,51 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Boton, Alerta, Spinner, Campo, inputClase } from "@/components/ui";
-import { firmarXdr } from "@/lib/wallet";
-import { fmtUsdc, stroopsAUsdc } from "@/lib/format";
+import { api, firmarYEnviar } from "@/lib/cliente";
+import { Alerta, Boton, Campo, Spinner, inputClase } from "@/components/ui";
+import SimuladorPrestamo from "@/components/SimuladorPrestamo";
+import DetallePrestamo from "@/components/panel/DetallePrestamo";
+import TarjetaCredito, { type Credito } from "@/components/panel/TarjetaCredito";
+import { Estado, PROPOSITOS, Tarjeta, fecha, usdc } from "@/components/panel/comunes";
+import type { Usuario } from "@/lib/auth";
 
-const HISTORY_ID = process.env.NEXT_PUBLIC_HISTORY_CONTRACT_ID ?? "";
-const EXPERT = "https://stellar.expert/explorer/testnet";
-
-type Prestamo = {
-  collateral: string;
-  principal: string;
-  totalDue: string;
-  totalRepaid: string;
-  collateralReleased: string;
+export type Solicitud = {
+  id: string;
+  purpose: string;
+  purpose_detail: string | null;
+  amount_usd: number;
+  collateral_amount: number;
   installments: number;
-  installmentAmount: string;
-  paidInstallments: number;
-  interestRate: number;
-  openedAt: number;
-  period: number;
+  rate_bps: number;
   status: string;
-} | null;
-
-type Estado = {
-  wallet: string;
-  prestamo: Prestamo;
-  puntaje: number;
-  registro: { onTime: number; late: number };
-  credencial: {
-    totalInstallments: number;
-    onTime: number;
-    late: number;
-    issuedAt: number;
-  } | null;
-  usdcBalance: string;
+  rejection_reason: string | null;
+  created_at: string;
+  student?: { full_name: string | null } | null;
+  guarantor?: { full_name: string | null } | null;
+  garantiaDepositada?: boolean;
 };
 
-type TxLocal = { kind: string; hash: string; amount: number; ts: number };
+type Prestamo = { id: string; onchain_loan_id: number; status: string; principal: number; opened_at: string; closed_at: string | null };
+type Invitacion = { code: string; guarantor_email: string; status: string; expires_at: string; guarantor: { full_name: string | null } | null };
 
-async function api(url: string, body?: unknown, method = "POST") {
-  const res = await fetch(url, {
-    method,
-    headers: { "Content-Type": "application/json" },
-    body: body ? JSON.stringify(body) : undefined,
-  });
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(data.error ?? "Ocurrió un error");
-  return data;
-}
-
-export default function PanelEstudiante() {
-  const [estado, setEstado] = useState<Estado | null>(null);
-  const [cargando, setCargando] = useState(true);
+export default function PanelEstudiante({ user }: { user: Usuario }) {
+  const [solicitudes, setSolicitudes] = useState<Solicitud[] | null>(null);
+  const [prestamos, setPrestamos] = useState<Prestamo[]>([]);
+  const [credito, setCredito] = useState<Credito | null>(null);
   const [error, setError] = useState("");
-  const [txs, setTxs] = useState<TxLocal[]>([]);
-  const [accion, setAccion] = useState<string>("");
-  const [aviso, setAviso] = useState<{ tipo: "success" | "info"; txt: string } | null>(
-    null,
-  );
 
   const cargar = useCallback(async () => {
-    setError("");
     try {
-      const d = (await api("/api/loan/state", undefined, "GET")) as Estado;
-      setEstado(d);
-      try {
-        const guardados = localStorage.getItem(`pp_txs_${d.wallet}`);
-        if (guardados) setTxs(JSON.parse(guardados));
-      } catch {}
+      const [s, p, c] = await Promise.all([
+        api<{ solicitudes: Solicitud[] }>("/api/applications"),
+        api<{ prestamos: Prestamo[] }>("/api/loans/status"),
+        api<Credito>("/api/credit").catch(() => null),
+      ]);
+      setSolicitudes(s.solicitudes);
+      setPrestamos(p.prestamos);
+      setCredito(c);
     } catch (e) {
       setError((e as Error).message);
-    } finally {
-      setCargando(false);
     }
   }, []);
 
@@ -80,486 +53,346 @@ export default function PanelEstudiante() {
     cargar();
   }, [cargar]);
 
-  const guardarTx = useCallback(
-    (wallet: string, tx: TxLocal) => {
-      setTxs((prev) => {
-        const next = [tx, ...prev].slice(0, 30);
-        try {
-          localStorage.setItem(`pp_txs_${wallet}`, JSON.stringify(next));
-        } catch {}
-        return next;
-      });
-    },
-    [],
-  );
-
-  /** prepara → firma → envía una invocación del contrato. */
-  const ejecutar = useCallback(
-    async (action: string, params: Record<string, unknown>, kind: string, amount: number) => {
-      if (!estado) return;
-      const { xdr } = await api("/api/loan/prepare", { action, ...params });
-      const signed = await firmarXdr(xdr, estado.wallet);
-      const res = await api("/api/loan/submit", { xdr: signed });
-      if (res.hash) guardarTx(estado.wallet, { kind, hash: res.hash, amount, ts: Date.now() });
-      return res;
-    },
-    [estado, guardarTx],
-  );
-
-  if (cargando) {
-    return (
-      <div className="grid place-items-center py-24 text-slate-400">
-        <Spinner className="h-7 w-7 text-teal-500" />
-      </div>
-    );
+  if (!solicitudes) {
+    return error ? <Alerta tipo="error">{error}</Alerta> : <Spinner className="h-6 w-6 text-teal-500" />;
   }
 
-  if (error || !estado) {
-    return (
-      <div className="mx-auto max-w-md py-16">
-        <Alerta tipo="error">{error || "No se pudo cargar el panel"}</Alerta>
-        <div className="mt-4 text-center">
-          <Boton onClick={cargar} variant="secondary">
-            Reintentar
-          </Boton>
-        </div>
-      </div>
-    );
-  }
-
-  const p = estado.prestamo;
-  const activo = p && p.status === "Active";
-  const completado = p && p.status === "Completed";
-  const liquidado = p && p.status === "Liquidated";
-
-  // Métricas derivadas.
-  const bloqueada = p
-    ? BigInt(p.collateral) - BigInt(p.collateralReleased)
-    : BigInt(0);
-  const progreso =
-    p && BigInt(p.collateral) > BigInt(0)
-      ? Number((BigInt(p.collateralReleased) * BigInt(100)) / BigInt(p.collateral))
-      : 0;
-  const pendiente = p ? BigInt(p.totalDue) - BigInt(p.totalRepaid) : BigInt(0);
-  const proximaCuota =
-    p && activo
-      ? BigInt(p.installmentAmount) < pendiente
-        ? BigInt(p.installmentAmount)
-        : pendiente
-      : BigInt(0);
-  const proximoVenc =
-    p && activo
-      ? new Date((p.openedAt + (p.paidInstallments + 1) * p.period) * 1000)
-      : null;
+  const activos = prestamos.filter((p) => p.status === "active");
+  const cerrados = prestamos.filter((p) => p.status !== "active");
+  const enCurso = solicitudes.find((s) => ["submitted", "approved"].includes(s.status));
+  const ultimaRechazada = solicitudes.find((s) => s.status === "rejected");
 
   return (
     <div className="space-y-6">
-      {aviso && <Alerta tipo={aviso.tipo}>{aviso.txt}</Alerta>}
+      <Encabezado user={user} />
 
-      {/* Tarjetas de resumen */}
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <Tarjeta
-          etiqueta="Saldo USDC"
-          valor={`${fmtUsdc(estado.usdcBalance)}`}
-          sufijo="USDC"
-        />
-        <Tarjeta
-          etiqueta="Garantía bloqueada"
-          valor={fmtUsdc(bloqueada.toString())}
-          sufijo="USDC"
-          acento="teal"
-        />
-        <Tarjeta
-          etiqueta="Préstamo activo"
-          valor={activo ? fmtUsdc(p!.principal) : "0"}
-          sufijo="USDC"
-          acento="sky"
-        />
-        <Tarjeta etiqueta="Puntaje crediticio" valor={String(estado.puntaje)} />
+      <div className="grid gap-4 lg:grid-cols-3">
+        <div className="lg:col-span-2">
+          <TarjetaCredito credito={credito} wallet={user.wallet!} />
+        </div>
+        <InvitarGarante />
       </div>
 
-      {/* Zona principal según estado del préstamo */}
-      {!p || (!activo && !completado && !liquidado) ? (
-        <SolicitarCredito
-          balance={stroopsAUsdc(estado.usdcBalance)}
-          onSolicitar={async (garantia, meses) => {
-            setAccion("solicitar");
-            setAviso(null);
-            try {
-              const principal = Math.floor(garantia * 0.8 * 100) / 100;
-              const interestRate = meses * 100; // 1% mensual (bps)
-              setAviso({ tipo: "info", txt: "1/2 — Firma el depósito de garantía en tu wallet…" });
-              await ejecutar("deposit", { amount: garantia }, "Depósito de garantía", garantia);
-              setAviso({ tipo: "info", txt: "2/2 — Firma la apertura del crédito en tu wallet…" });
-              await ejecutar(
-                "open",
-                { principal, installments: meses, interestRate },
-                "Apertura de crédito",
-                principal,
-              );
-              setAviso({ tipo: "success", txt: "¡Crédito abierto! Tu préstamo ya está activo." });
-              await cargar();
-            } catch (e) {
-              setAviso(null);
-              setError((e as Error).message);
-            } finally {
-              setAccion("");
-            }
-          }}
-          trabajando={accion === "solicitar"}
-        />
-      ) : (
-        <>
-          {/* Progreso de liberación */}
-          <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-            <div className="flex items-center justify-between">
-              <h2 className="text-lg font-semibold text-slate-900">
-                Liberación de tu garantía
-              </h2>
-              <span className="text-sm font-semibold text-emerald-600">
-                {progreso}%
-              </span>
-            </div>
-            <div className="mt-3 h-3 w-full overflow-hidden rounded-full bg-slate-100">
-              <div
-                className="h-full rounded-full bg-gradient-to-r from-teal-500 to-emerald-500 transition-all"
-                style={{ width: `${progreso}%` }}
-              />
-            </div>
-            <div className="mt-4 grid grid-cols-2 gap-4 text-sm sm:grid-cols-4">
-              <Mini k="Garantía total" v={`${fmtUsdc(p!.collateral)} USDC`} />
-              <Mini k="Liberado" v={`${fmtUsdc(p!.collateralReleased)} USDC`} />
-              <Mini k="Deuda pendiente" v={`${fmtUsdc(pendiente.toString())} USDC`} />
-              <Mini
-                k="Cuotas"
-                v={`${p!.paidInstallments} / ${p!.installments}`}
-              />
-            </div>
-          </div>
+      {activos.map((p) => (
+        <DetallePrestamo key={p.id} loanId={p.onchain_loan_id} wallet={user.wallet!} onCambio={cargar} />
+      ))}
 
-          {/* Pagar cuota */}
-          {activo && (
-            <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-              <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                  <h2 className="text-lg font-semibold text-slate-900">
-                    Próxima cuota
-                  </h2>
-                  <p className="mt-1 text-sm text-slate-500">
-                    {proximoVenc
-                      ? `Vence el ${proximoVenc.toLocaleDateString("es-BO")}`
-                      : ""}
-                  </p>
-                </div>
-                <div className="text-right">
-                  <p className="text-2xl font-bold text-slate-900">
-                    {fmtUsdc(proximaCuota.toString())}{" "}
-                    <span className="text-base font-medium text-slate-400">
-                      USDC
-                    </span>
-                  </p>
-                </div>
+      {activos.length === 0 && enCurso && <SolicitudEnCurso s={enCurso} wallet={user.wallet!} onCambio={cargar} />}
+
+      {activos.length === 0 && !enCurso && (
+        <NuevaSolicitud kycStatus={user.kycStatus} rechazada={ultimaRechazada} onCreada={cargar} />
+      )}
+
+      {cerrados.length > 0 && (
+        <Tarjeta titulo="Historial de préstamos">
+          <ul className="divide-y divide-slate-100 text-sm">
+            {cerrados.map((p) => (
+              <li key={p.id} className="flex items-center justify-between gap-3 py-2.5">
+                <span className="text-slate-700">
+                  Préstamo #{p.onchain_loan_id} · {usdc(p.principal)} · {fecha(p.opened_at)}
+                </span>
+                <Estado status={p.status} />
+              </li>
+            ))}
+          </ul>
+        </Tarjeta>
+      )}
+    </div>
+  );
+}
+
+function Encabezado({ user }: { user: Usuario }) {
+  return (
+    <div className="flex flex-wrap items-end justify-between gap-3">
+      <div>
+        <h1 className="text-2xl font-bold text-slate-900">Hola, {user.fullName?.split(" ")[0] ?? "estudiante"}</h1>
+        <p className="mt-1 text-sm text-slate-500">
+          {user.estudiante?.university_name} · {user.estudiante?.career}
+          {user.estudiante?.semester ? ` · ${user.estudiante.semester}º semestre` : ""}
+        </p>
+      </div>
+      {user.kycStatus !== "approved" && (
+        <span className="rounded-full bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-700">
+          {user.kycStatus === "rejected" ? "Identidad rechazada" : "Identidad en revisión"}
+        </span>
+      )}
+    </div>
+  );
+}
+
+/* -------- Nueva solicitud: simulador + datos -------- */
+function NuevaSolicitud({
+  kycStatus,
+  rechazada,
+  onCreada,
+}: {
+  kycStatus: string | null;
+  rechazada?: Solicitud;
+  onCreada: () => void;
+}) {
+  const [elegido, setElegido] = useState<{ monto: number; cuotas: number } | null>(null);
+  const [purpose, setPurpose] = useState("tuition");
+  const [detalle, setDetalle] = useState("");
+  const [error, setError] = useState("");
+  const [enviando, setEnviando] = useState(false);
+
+  async function enviar(e: React.FormEvent) {
+    e.preventDefault();
+    if (!elegido) return;
+    setError("");
+    setEnviando(true);
+    try {
+      await api("/api/applications", {
+        amountUsd: elegido.monto,
+        installments: elegido.cuotas,
+        purpose,
+        purposeDetail: detalle || undefined,
+      });
+      onCreada();
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setEnviando(false);
+    }
+  }
+
+  return (
+    <div className="space-y-4">
+      {rechazada && (
+        <Alerta tipo="info">
+          Tu solicitud anterior fue rechazada{rechazada.rejection_reason ? `: ${rechazada.rejection_reason}` : "."} Puedes
+          enviar una nueva.
+        </Alerta>
+      )}
+      {kycStatus === "pending" && (
+        <Alerta tipo="info">Puedes enviar tu solicitud; se aprobará cuando un operador verifique tu identidad.</Alerta>
+      )}
+
+      <Tarjeta titulo="Simula y solicita tu préstamo">
+        <SimuladorPrestamo onUsar={(monto, cuotas) => setElegido({ monto, cuotas })} textoUsar="Quiero este préstamo" />
+      </Tarjeta>
+
+      {elegido && (
+        <Tarjeta titulo={`Solicitud: ${usdc(elegido.monto)} en ${elegido.cuotas} cuotas`}>
+          <form onSubmit={enviar} className="grid gap-4 sm:grid-cols-2">
+            <Campo label="¿Para qué es?" htmlFor="purpose">
+              <select id="purpose" className={inputClase} value={purpose} onChange={(e) => setPurpose(e.target.value)}>
+                {Object.entries(PROPOSITOS).map(([k, v]) => (
+                  <option key={k} value={k}>
+                    {v}
+                  </option>
+                ))}
+              </select>
+            </Campo>
+            <Campo label="Detalle (opcional)" htmlFor="detalle">
+              <input id="detalle" className={inputClase} value={detalle} onChange={(e) => setDetalle(e.target.value)} maxLength={300} />
+            </Campo>
+            {error && (
+              <div className="sm:col-span-2">
+                <Alerta tipo="error">{error}</Alerta>
               </div>
-              <Boton
-                className="mt-4 w-full"
-                disabled={accion === "pagar"}
-                onClick={async () => {
-                  setAccion("pagar");
-                  setAviso(null);
-                  setError("");
-                  const antes = BigInt(p!.collateralReleased);
-                  try {
-                    const monto = stroopsAUsdc(proximaCuota.toString());
-                    await ejecutar("repay", { amount: monto }, "Pago de cuota", monto);
-                    const d = (await api("/api/loan/state", undefined, "GET")) as Estado;
-                    const liberado = d.prestamo
-                      ? BigInt(d.prestamo.collateralReleased) - antes
-                      : BigInt(0);
-                    setEstado(d);
-                    setAviso({
-                      tipo: "success",
-                      txt: `¡Pago realizado! Se liberó ${fmtUsdc(liberado.toString())} USDC de tu garantía.`,
-                    });
-                  } catch (e) {
-                    setError((e as Error).message);
-                  } finally {
-                    setAccion("");
-                  }
-                }}
-              >
-                {accion === "pagar" && <Spinner />} Pagar cuota y liberar garantía
+            )}
+            <div className="flex gap-2 sm:col-span-2">
+              <Boton type="submit" disabled={enviando}>
+                {enviando && <Spinner />} Enviar solicitud
+              </Boton>
+              <Boton type="button" variant="secondary" onClick={() => setElegido(null)}>
+                Cambiar monto
               </Boton>
             </div>
-          )}
+          </form>
+        </Tarjeta>
+      )}
+    </div>
+  );
+}
 
-          {completado && (
-            <Alerta tipo="success">
-              🎉 ¡Felicidades! Pagaste todo tu préstamo y recuperaste el 100% de
-              tu garantía.
-            </Alerta>
-          )}
-          {liquidado && (
-            <Alerta tipo="info">
-              Este préstamo fue liquidado. El contrato tomó solo lo adeudado y te
-              devolvió el resto de tu garantía.
-            </Alerta>
-          )}
-        </>
+/* -------- Solicitud en revisión / aprobada (depósito y firma) -------- */
+export function SolicitudEnCurso({
+  s,
+  wallet,
+  onCambio,
+  soloDeposito,
+}: {
+  s: Solicitud;
+  wallet: string;
+  onCambio: () => void;
+  soloDeposito?: boolean;
+}) {
+  const [cargando, setCargando] = useState<"" | "deposit" | "open">("");
+  const [error, setError] = useState("");
+  const [link, setLink] = useState("");
+
+  async function paso(step: "deposit" | "open") {
+    setError("");
+    setLink("");
+    setCargando(step);
+    try {
+      const r = await firmarYEnviar(wallet, "/api/loans/prepare", "/api/loans/submit", { applicationId: s.id, step });
+      setLink(String(r.link ?? ""));
+      onCambio();
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setCargando("");
+    }
+  }
+
+  return (
+    <Tarjeta
+      titulo={`${soloDeposito ? `${s.student?.full_name ?? "Estudiante"}: ` : ""}${usdc(s.amount_usd)} en ${s.installments} cuotas · ${PROPOSITOS[s.purpose] ?? s.purpose}`}
+      accion={<Estado status={s.status} />}
+    >
+      {s.status === "submitted" && (
+        <p className="text-sm text-slate-600">
+          Un operador está revisando la solicitud. Garantía necesaria: <strong>{usdc(s.collateral_amount)}</strong>
+          {s.guarantor?.full_name ? `, que puede aportar ${s.guarantor.full_name} (garante)` : ""}.
+        </p>
       )}
 
-      {/* Credencial de buen pagador */}
-      {estado.credencial && <Credencial cred={estado.credencial} wallet={estado.wallet} />}
+      {s.status === "approved" && (
+        <ol className="space-y-3">
+          <Paso
+            n={1}
+            hecho={!!s.garantiaDepositada}
+            titulo={`Bloquear la garantía: ${usdc(s.collateral_amount)}`}
+            desc={
+              soloDeposito
+                ? "La bloqueas tú desde tu wallet. Se te devuelve a medida que el estudiante paga."
+                : s.guarantor?.full_name
+                  ? `La puedes bloquear tú o ${s.guarantor.full_name} desde su panel de garante.`
+                  : "Se bloquea en el contrato y se te devuelve a medida que pagas."
+            }
+          >
+            {!s.garantiaDepositada && (
+              <Boton onClick={() => paso("deposit")} disabled={!!cargando}>
+                {cargando === "deposit" && <Spinner />} Bloquear con Freighter
+              </Boton>
+            )}
+          </Paso>
+          {!soloDeposito && (
+            <Paso
+              n={2}
+              hecho={false}
+              titulo="Firmar el préstamo y recibir el dinero"
+              desc={`Recibes ${usdc(Number(s.amount_usd) * 0.99)} (monto menos la comisión del 1%). PrimerPaso co-firma la apertura.`}
+            >
+              <Boton onClick={() => paso("open")} disabled={!s.garantiaDepositada || !!cargando}>
+                {cargando === "open" && <Spinner />} Firmar y recibir
+              </Boton>
+            </Paso>
+          )}
+        </ol>
+      )}
 
-      {/* Historial */}
-      <Historial
-        txs={txs}
-        registro={estado.registro}
-        wallet={estado.wallet}
-      />
-    </div>
+      {error && <div className="mt-4"><Alerta tipo="error">{error}</Alerta></div>}
+      {link && (
+        <div className="mt-4">
+          <Alerta tipo="success">
+            Listo, registrado on-chain.{" "}
+            <a href={link} target="_blank" rel="noreferrer" className="font-semibold underline">
+              Ver en stellar.expert
+            </a>
+          </Alerta>
+        </div>
+      )}
+    </Tarjeta>
   );
 }
 
-/* ---------- subcomponentes ---------- */
-
-function Tarjeta({
-  etiqueta,
-  valor,
-  sufijo,
-  acento,
-}: {
-  etiqueta: string;
-  valor: string;
-  sufijo?: string;
-  acento?: "teal" | "sky";
-}) {
-  const color =
-    acento === "teal"
-      ? "text-teal-600"
-      : acento === "sky"
-        ? "text-sky-600"
-        : "text-slate-900";
+function Paso({ n, hecho, titulo, desc, children }: { n: number; hecho: boolean; titulo: string; desc: string; children?: React.ReactNode }) {
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-      <p className="text-xs text-slate-400">{etiqueta}</p>
-      <p className={`mt-1 text-xl font-bold ${color}`}>
-        {valor}
-        {sufijo && (
-          <span className="ml-1 text-xs font-medium text-slate-400">{sufijo}</span>
-        )}
-      </p>
-    </div>
-  );
-}
-
-function Mini({ k, v }: { k: string; v: string }) {
-  return (
-    <div className="rounded-xl bg-slate-50 px-3 py-2">
-      <p className="text-xs text-slate-400">{k}</p>
-      <p className="font-semibold text-slate-800">{v}</p>
-    </div>
-  );
-}
-
-function SolicitarCredito({
-  balance,
-  onSolicitar,
-  trabajando,
-}: {
-  balance: number;
-  onSolicitar: (garantia: number, meses: number) => void;
-  trabajando: boolean;
-}) {
-  const [garantia, setGarantia] = useState(Math.min(500, Math.floor(balance)) || 100);
-  const [meses, setMeses] = useState(6);
-  const prestamo = garantia * 0.8;
-  const interes = prestamo * 0.01 * meses;
-  const total = prestamo + interes;
-  const cuota = total / meses;
-  const excede = garantia > balance;
-
-  return (
-    <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-      <h2 className="text-lg font-semibold text-slate-900">Solicitar crédito</h2>
-      <p className="mt-1 text-sm text-slate-500">
-        Bloquea una garantía y recibe el 80% como préstamo. Tu saldo:{" "}
-        <strong>{balance.toFixed(2)} USDC</strong>.
-      </p>
-
-      <div className="mt-5 grid gap-5 sm:grid-cols-2">
-        <div className="space-y-4">
-          <Campo label="Monto de garantía (USDC)" error={excede ? "Supera tu saldo" : undefined}>
-            <input
-              type="number"
-              min={10}
-              step={10}
-              className={inputClase}
-              value={garantia}
-              onChange={(e) => setGarantia(Math.max(0, Number(e.target.value)))}
-            />
-          </Campo>
-          <Campo label="Plazo">
-            <div className="grid grid-cols-3 gap-2">
-              {[3, 6, 12].map((m) => (
-                <button
-                  key={m}
-                  type="button"
-                  onClick={() => setMeses(m)}
-                  className={`rounded-xl border px-3 py-2 text-sm font-semibold transition ${
-                    meses === m
-                      ? "border-teal-600 bg-teal-50 text-teal-700"
-                      : "border-slate-300 text-slate-600 hover:border-teal-300"
-                  }`}
-                >
-                  {m} meses
-                </button>
-              ))}
-            </div>
-          </Campo>
-        </div>
-
-        <div className="rounded-2xl bg-slate-50 p-4">
-          <dl className="space-y-2.5 text-sm">
-            <Fila k="Préstamo (80%)" v={`${prestamo.toFixed(2)} USDC`} fuerte />
-            <Fila k="Cuota mensual" v={`${cuota.toFixed(2)} USDC`} />
-            <Fila k="Interés total" v={`${interes.toFixed(2)} USDC`} />
-            <Fila k="Total a pagar" v={`${total.toFixed(2)} USDC`} />
-          </dl>
-        </div>
-      </div>
-
-      <Boton
-        className="mt-5 w-full"
-        disabled={trabajando || excede || garantia < 10}
-        onClick={() => onSolicitar(garantia, meses)}
-      >
-        {trabajando && <Spinner />} Solicitar y firmar
-      </Boton>
-      <p className="mt-2 text-center text-xs text-slate-400">
-        Firmarás dos transacciones: el depósito de garantía y la apertura del
-        crédito.
-      </p>
-    </div>
-  );
-}
-
-function Fila({ k, v, fuerte }: { k: string; v: string; fuerte?: boolean }) {
-  return (
-    <div className="flex items-center justify-between">
-      <dt className="text-slate-500">{k}</dt>
-      <dd className={fuerte ? "text-base font-bold text-teal-600" : "font-semibold text-slate-800"}>
-        {v}
-      </dd>
-    </div>
-  );
-}
-
-function Credencial({
-  cred,
-  wallet,
-}: {
-  cred: { totalInstallments: number; onTime: number; late: number; issuedAt: number };
-  wallet: string;
-}) {
-  return (
-    <div className="overflow-hidden rounded-3xl border border-teal-200 bg-gradient-to-br from-teal-600 to-sky-600 p-6 text-white shadow-lg">
-      <div className="flex items-center justify-between">
-        <div>
-          <p className="text-xs uppercase tracking-wide text-teal-100">
-            Credencial verificable on-chain
-          </p>
-          <h2 className="mt-1 text-xl font-bold">Buen pagador ✓</h2>
-        </div>
-        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" className="opacity-90">
-          <path d="M12 2l2.4 4.9 5.4.8-3.9 3.8.9 5.4L12 19l-4.8 2.5.9-5.4-3.9-3.8 5.4-.8L12 2z" stroke="white" strokeWidth="1.6" strokeLinejoin="round" />
-        </svg>
-      </div>
-      <div className="mt-4 grid grid-cols-3 gap-3 text-center">
-        <div className="rounded-xl bg-white/15 p-2">
-          <p className="text-lg font-bold">{cred.totalInstallments}</p>
-          <p className="text-[11px] text-teal-50">cuotas</p>
-        </div>
-        <div className="rounded-xl bg-white/15 p-2">
-          <p className="text-lg font-bold">{cred.onTime}</p>
-          <p className="text-[11px] text-teal-50">a tiempo</p>
-        </div>
-        <div className="rounded-xl bg-white/15 p-2">
-          <p className="text-lg font-bold">{cred.late}</p>
-          <p className="text-[11px] text-teal-50">atrasadas</p>
-        </div>
-      </div>
-      <a
-        href={`${EXPERT}/contract/${HISTORY_ID}`}
-        target="_blank"
-        rel="noreferrer"
-        className="mt-4 inline-flex items-center gap-1 text-sm font-medium text-white underline underline-offset-2"
-      >
-        Verificar en stellar.expert
-      </a>
-    </div>
-  );
-}
-
-function Historial({
-  txs,
-  registro,
-  wallet,
-}: {
-  txs: TxLocal[];
-  registro: { onTime: number; late: number };
-  wallet: string;
-}) {
-  return (
-    <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-      <div className="flex items-center justify-between">
-        <h2 className="text-lg font-semibold text-slate-900">Historial</h2>
-        <a
-          href={`${EXPERT}/account/${wallet}`}
-          target="_blank"
-          rel="noreferrer"
-          className="text-sm font-medium text-teal-600 hover:underline"
+    <li className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-200 p-4">
+      <div className="flex items-start gap-3">
+        <span
+          className={`grid h-7 w-7 shrink-0 place-items-center rounded-full text-sm font-bold ${
+            hecho ? "bg-emerald-500 text-white" : "bg-slate-100 text-slate-600"
+          }`}
         >
-          Ver cuenta en stellar.expert
-        </a>
-      </div>
-      <div className="mt-2 flex gap-4 text-sm text-slate-500">
-        <span>
-          A tiempo: <strong className="text-emerald-600">{registro.onTime}</strong>
+          {hecho ? "✓" : n}
         </span>
-        <span>
-          Atrasadas: <strong className="text-rose-500">{registro.late}</strong>
-        </span>
+        <div>
+          <p className="font-medium text-slate-900">{titulo}</p>
+          <p className="text-sm text-slate-500">{desc}</p>
+        </div>
       </div>
+      {children}
+    </li>
+  );
+}
 
-      {txs.length === 0 ? (
-        <p className="mt-4 text-sm text-slate-400">
-          Aún no hay transacciones hechas desde esta app.
+/* -------- Invitar garante -------- */
+function InvitarGarante() {
+  const [invitaciones, setInvitaciones] = useState<Invitacion[]>([]);
+  const [email, setEmail] = useState("");
+  const [codigo, setCodigo] = useState("");
+  const [error, setError] = useState("");
+
+  const cargar = useCallback(() => {
+    api<{ invitaciones: Invitacion[] }>("/api/invitations").then((d) => setInvitaciones(d.invitaciones)).catch(() => {});
+  }, []);
+  useEffect(() => {
+    cargar();
+  }, [cargar]);
+
+  async function invitar(e: React.FormEvent) {
+    e.preventDefault();
+    setError("");
+    try {
+      const d = await api<{ code: string }>("/api/invitations", { guarantorEmail: email });
+      setCodigo(d.code);
+      setEmail("");
+      cargar();
+    } catch (err) {
+      setError((err as Error).message);
+    }
+  }
+
+  const aceptado = invitaciones.find((i) => i.status === "accepted");
+
+  return (
+    <Tarjeta titulo="Tu garante">
+      {aceptado ? (
+        <p className="text-sm text-slate-600">
+          <strong className="text-slate-900">{aceptado.guarantor?.full_name ?? aceptado.guarantor_email}</strong> respalda tus
+          préstamos y puede bloquear la garantía por ti.
         </p>
       ) : (
-        <ul className="mt-4 divide-y divide-slate-100">
-          {txs.map((t) => (
-            <li
-              key={t.hash}
-              className="flex items-center justify-between gap-3 py-3 text-sm"
-            >
-              <div>
-                <p className="font-medium text-slate-800">{t.kind}</p>
-                <p className="text-xs text-slate-400">
-                  {new Date(t.ts).toLocaleString("es-BO")} · {t.amount} USDC
-                </p>
-              </div>
-              <a
-                href={`${EXPERT}/tx/${t.hash}`}
-                target="_blank"
-                rel="noreferrer"
-                className="shrink-0 font-mono text-xs text-teal-600 hover:underline"
-              >
-                {t.hash.slice(0, 8)}…
-              </a>
-            </li>
-          ))}
+        <p className="text-sm text-slate-500">Un familiar puede bloquear la garantía por ti. Invítalo:</p>
+      )}
+      <form onSubmit={invitar} className="mt-3 flex gap-2">
+        <input
+          type="email"
+          aria-label="Email del garante"
+          placeholder="email@familia.com"
+          className={`${inputClase} py-2 text-sm`}
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          required
+        />
+        <Boton type="submit" variant="secondary" className="shrink-0 px-4">
+          Invitar
+        </Boton>
+      </form>
+      {error && <p className="mt-2 text-xs text-rose-600">{error}</p>}
+      {codigo && (
+        <div className="mt-3 rounded-xl border border-dashed border-teal-300 bg-teal-50 p-3 text-center">
+          <p className="text-xs text-teal-700">Comparte este código con tu garante:</p>
+          <p className="font-mono text-lg font-bold tracking-wider text-teal-800">{codigo}</p>
+        </div>
+      )}
+      {invitaciones.filter((i) => i.status === "pending").length > 0 && (
+        <ul className="mt-3 space-y-1 text-xs text-slate-500">
+          {invitaciones
+            .filter((i) => i.status === "pending")
+            .map((i) => (
+              <li key={i.code}>
+                {i.guarantor_email} · código <span className="font-mono">{i.code}</span> · vence {fecha(i.expires_at)}
+              </li>
+            ))}
         </ul>
       )}
-    </div>
+    </Tarjeta>
   );
 }
+
