@@ -53,7 +53,7 @@ export default function Hero() {
           <dl className="mt-10 grid max-w-md grid-cols-3 gap-4 text-center">
             {[
               { n: "80%", t: "de tu ahorro como préstamo" },
-              { n: "0", t: "comisiones ocultas" },
+              { n: "8%", t: "anual sobre saldo, sin sorpresas" },
               { n: "100%", t: "verificable on-chain" },
             ].map((s) => (
               <div
@@ -79,7 +79,7 @@ export default function Hero() {
               </span>
             </div>
             <p className="mt-1 text-3xl font-bold text-slate-900">
-              1.000 <span className="text-lg font-semibold text-slate-400">USDC</span>
+              1.250 <span className="text-lg font-semibold text-slate-400">USDC</span>
             </p>
 
             <div className="my-5 flex items-center justify-center">
@@ -99,19 +99,19 @@ export default function Hero() {
 
             <div className="rounded-2xl bg-gradient-to-br from-teal-600 to-sky-600 p-5 text-white">
               <p className="text-sm text-teal-50">Préstamo disponible</p>
-              <p className="mt-1 text-3xl font-bold">800 USDC</p>
+              <p className="mt-1 text-3xl font-bold">1.000 USDC</p>
               <div className="mt-4 h-2 w-full overflow-hidden rounded-full bg-white/25">
                 <div className="h-full w-1/3 rounded-full bg-white" />
               </div>
               <p className="mt-2 text-xs text-teal-50">
-                Garantía liberada: 33% · recuperas todo al terminar
+                Cada cuota te devuelve 125 USDC · recuperas todo al terminar
               </p>
             </div>
 
             <div className="mt-5 grid grid-cols-2 gap-3 text-center">
               <div className="rounded-xl bg-slate-50 p-3">
-                <p className="text-xs text-slate-500">Cuota mensual</p>
-                <p className="text-lg font-semibold text-slate-900">~138 USDC</p>
+                <p className="text-xs text-slate-500">1ª de 10 cuotas</p>
+                <p className="text-lg font-semibold text-slate-900">106,67 USDC</p>
               </div>
               <div className="rounded-xl bg-slate-50 p-3">
                 <p className="text-xs text-slate-500">Puntaje</p>
