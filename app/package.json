@@ -7,37 +7,29 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "db:generate": "prisma generate",
-    "db:migrate": "prisma migrate dev",
-    "db:push": "prisma db push",
-    "db:seed": "prisma db seed",
-    "db:studio": "prisma studio"
-  },
-  "prisma": {
-    "schema": "../prisma/schema.prisma",
-    "seed": "cross-env NODE_PATH=./node_modules tsx ../prisma/seed.ts"
+    "db:seed": "tsx --env-file=.env.local scripts/seed.ts",
+    "db:types": "npx supabase gen types typescript --project-id bgactooctcxesjxpvwam > lib/database.types.ts",
+    "indexar": "tsx --conditions=react-server --env-file=.env.local scripts/indexar.ts",
+    "demo:ensayo": "tsx scripts/ensayo-demo.ts"
   },
   "dependencies": {
     "@creit.tech/stellar-wallets-kit": "^2.7.1",
-    "@prisma/client": "^6.19.3",
     "@stellar/stellar-sdk": "^17.2.1",
-    "bcryptjs": "^3.0.3",
-    "jose": "^6.2.12",
+    "@supabase/ssr": "^0.7.0",
+    "@supabase/supabase-js": "^2.58.0",
     "next": "16.4.2",
     "react": "19.3.0",
     "react-dom": "19.3.0",
+    "server-only": "^0.0.1",
     "zod": "^4.6.7"
   },
   "devDependencies": {
     "@tailwindcss/turbopack": "^4",
-    "@types/bcryptjs": "^2.4.6",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
-    "cross-env": "^10.1.0",
     "eslint": "^9",
     "eslint-config-next": "16.4.2",
-    "prisma": "^6.19.3",
     "tailwindcss": "^4",
     "tsx": "^4.23.15",
     "typescript": "^5"
