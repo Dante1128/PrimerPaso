@@ -81,10 +81,10 @@ fn flujo_pago_normal_recupera_toda_la_garantia() {
         .iter()
         .any(|(addr, _)| addr == &estudiante));
 
-    // La plataforma abre el préstamo: 800 (80%), 10% de interés, 4 cuotas.
+    // El estudiante abre su propio préstamo: 800 (80%), 10% interés, 4 cuotas.
     ctx.loan.open_loan(&estudiante, &usdc(800), &4, &1_000);
-    // Control de acceso: abrir el préstamo exige la firma del admin.
-    assert!(ctx.env.auths().iter().any(|(addr, _)| addr == &ctx.admin));
+    // Control de acceso: abrir el préstamo exige la firma del prestatario.
+    assert!(ctx.env.auths().iter().any(|(addr, _)| addr == &estudiante));
 
     let prestamo = ctx.loan.get_loan(&estudiante).unwrap();
     assert_eq!(prestamo.principal, usdc(800));

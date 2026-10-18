@@ -203,7 +203,9 @@ impl LoanContract {
             .publish((symbol_short!("deposito"), borrower), amount);
     }
 
-    /// Abre el préstamo. Solo el admin (la plataforma aprueba y desembolsa).
+    /// Abre el préstamo. Lo firma el propio prestatario (autoservicio): pide
+    /// prestado contra su propia garantía ya bloqueada. El préstamo está
+    /// sobre-colateralizado, por lo que no requiere aprobación del admin.
     ///
     /// - `principal` no puede superar el 80% de la garantía.
     /// - `installments` debe ser mayor a cero.
@@ -215,7 +217,7 @@ impl LoanContract {
         installments: u32,
         interest_rate: u32,
     ) {
-        Self::read_admin(&env).require_auth();
+        borrower.require_auth();
 
         let mut loan = Self::load(&env, &borrower)
             .unwrap_or_else(|| panic_with_error!(&env, Error::SinGarantia));

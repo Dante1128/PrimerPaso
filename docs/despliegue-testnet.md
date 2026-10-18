@@ -10,7 +10,7 @@ prueba, sin valor real.
 | Admin (plataforma) | `GC42PHGGXJCKV2ZRCHXYRI44QPPG4G5SFYHYNUM2CANGMFCHBO2OAEOK` |
 | Emisor del USDC de prueba | `GD5LQILPNXNF7G3OZIPRUAW5I4GTCWV3W4MT6AWNDOTZEPFX6RDGW55E` |
 | Token USDC (SAC) | `CCRZZB6FIACFQP73DIKFE72YC6LSCGJ74MIQ5JX2U32CRVO5ZTYU6IBZ` |
-| Contrato **loan** (préstamo y garantía) | `CD5C6XMMU77GZAYMULKSINIVYKSEJB44JAYYSSUVGA6AL4KQMYBNI3CG` |
+| Contrato **loan** (préstamo y garantía) | `CA4LTSK3ELS7Y2HA2H2ZDRBIZU36EJBY7MNHYRXBKMLYOSPRAVX4XE4S` |
 | Contrato **history** (historial) | `CA2MQB3O2FFCS5IRNSA2SM56SBELVMLC553KUWD2LZWTYWLDWR4RNGXC` |
 
 ### Cuentas de prueba (seed)
@@ -29,7 +29,7 @@ subir al repositorio).
 
 ## Enlaces en stellar.expert (Testnet)
 
-- Contrato loan: https://stellar.expert/explorer/testnet/contract/CD5C6XMMU77GZAYMULKSINIVYKSEJB44JAYYSSUVGA6AL4KQMYBNI3CG
+- Contrato loan: https://stellar.expert/explorer/testnet/contract/CA4LTSK3ELS7Y2HA2H2ZDRBIZU36EJBY7MNHYRXBKMLYOSPRAVX4XE4S
 - Contrato history: https://stellar.expert/explorer/testnet/contract/CA2MQB3O2FFCS5IRNSA2SM56SBELVMLC553KUWD2LZWTYWLDWR4RNGXC
 - Token USDC: https://stellar.expert/explorer/testnet/contract/CCRZZB6FIACFQP73DIKFE72YC6LSCGJ74MIQ5JX2U32CRVO5ZTYU6IBZ
 

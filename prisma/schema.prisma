@@ -1,0 +1,119 @@
+// Esquema de base de datos de PrimerPaso.
+//
+// Para el MVP usamos SQLite (archivo local, sin contraseñas). En producción
+// se recomienda PostgreSQL: basta cambiar el `provider` a "postgresql" y la
+// `DATABASE_URL`. Por eso evitamos tipos exclusivos de un motor (los enums y
+// arreglos se modelan como texto para que el esquema sea portable).
+//
+// IMPORTANTE: aquí viven TODOS los datos personales (nombre, carnet, etc.).
+// En la blockchain solo guardamos direcciones Stellar y montos.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+/// Usuario de la plataforma (estudiante, garante o administrador).
+model User {
+  id           String   @id @default(cuid())
+  fullName     String
+  email        String   @unique
+  passwordHash String
+  idCard       String // carnet de identidad
+  university   String
+  career       String
+  studyYear    Int
+
+  /// Rol: "ESTUDIANTE" | "GARANTE" | "ADMIN". Se elige tras el registro.
+  role          String?
+  emailVerified Boolean @default(false)
+
+  /// Dirección Stellar (G...) vinculada y verificada vía SEP-10.
+  walletAddress String? @unique
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  emailCodes         EmailVerification[]
+  sessions           Session[]
+  kyc                KycSubmission?
+  // Invitaciones que este usuario (estudiante) generó.
+  invitationsCreated Invitation[]        @relation("InvitacionesDelEstudiante")
+  // Invitaciones que este usuario (garante) usó para vincularse.
+  invitationsUsed    Invitation[]        @relation("InvitacionesDelGarante")
+}
+
+/// Código de verificación de email (6 dígitos, con expiración).
+model EmailVerification {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  code      String
+  expiresAt DateTime
+  consumed  Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+}
+
+/// Sesión de usuario (token en cookie httpOnly).
+model Session {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  token     String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+}
+
+/// Verificación de identidad siguiendo la estructura de SEP-12.
+/// En el MVP se aprueba automáticamente, pero deja lista la estructura para
+/// conectar un proveedor KYC real (status, type, campos, referencias).
+model KycSubmission {
+  id     String @id @default(cuid())
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  /// Estado estilo SEP-12: NEEDS_INFO | PENDING | ACCEPTED | REJECTED.
+  status String @default("PENDING")
+  /// Tipo de verificación SEP-12 (ej. "individual").
+  type String @default("individual")
+
+  /// Referencias a los archivos subidos (ruta o data URL en el MVP).
+  idDocPath  String?
+  selfiePath String?
+
+  /// Proveedor KYC y su referencia externa (vacío en el MVP = "mock").
+  provider    String  @default("mock")
+  providerRef String?
+  /// Campos adicionales SEP-12 serializados como JSON.
+  fields String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+/// Invitación para que un garante se vincule a un estudiante.
+model Invitation {
+  id   String @id @default(cuid())
+  code String @unique
+
+  /// Estudiante que generó la invitación.
+  studentId String
+  student   User   @relation("InvitacionesDelEstudiante", fields: [studentId], references: [id], onDelete: Cascade)
+
+  /// Garante que la usó (nulo mientras no se use).
+  guarantorId String?
+  guarantor   User?   @relation("InvitacionesDelGarante", fields: [guarantorId], references: [id])
+
+  createdAt DateTime  @default(now())
+  usedAt    DateTime?
+
+  @@index([studentId])
+}
