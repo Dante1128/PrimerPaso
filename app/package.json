@@ -9,8 +9,7 @@
     "lint": "eslint",
     "db:seed": "tsx --env-file=.env.local scripts/seed.ts",
     "db:types": "npx supabase gen types typescript --project-id bgactooctcxesjxpvwam > lib/database.types.ts",
-    "indexar": "tsx --conditions=react-server --env-file=.env.local scripts/indexar.ts",
-    "demo:ensayo": "tsx scripts/ensayo-demo.ts"
+    "indexar": "tsx --conditions=react-server --env-file=.env.local scripts/indexar.ts"
   },
   "dependencies": {
     "@creit.tech/stellar-wallets-kit": "^2.7.1",

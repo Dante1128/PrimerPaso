@@ -80,7 +80,7 @@ async function main() {
   const carlos = await usuario("carlos@primerpaso.test", "Carlos Mamani", "student");
   const maria = await usuario("maria@primerpaso.test", "María Quispe", "student");
   const rosa = await usuario("rosa@primerpaso.test", "Rosa Quispe", "guarantor");
-  // Demo: Lucía la usa el ensayo automático; Ana queda lista para la demo en vivo.
+  // Estudiantes extra: Lucía (KYC pendiente) y Ana (lista para pedir un préstamo).
   const lucia = await usuario("lucia@primerpaso.test", "Lucía Fernández", "student");
   const ana = await usuario("ana@primerpaso.test", "Ana Rojas", "student");
 
@@ -144,7 +144,7 @@ async function main() {
     reviewed_at: ahora,
   });
 
-  // Lucía: KYC pendiente y sin wallet vinculada (el ensayo hace esos pasos).
+  // Lucía: KYC pendiente.
   await insertarSiFalta("kyc_submissions", { profile_id: lucia }, {
     profile_id: lucia,
     status: "pending",
