@@ -57,33 +57,33 @@ export function RevisionKyc() {
     <Tarjeta titulo="Verificaciones de identidad pendientes" accion={<Boton variant="ghost" onClick={cargar}>Actualizar</Boton>}>
       {error && <Alerta tipo="error">{error}</Alerta>}
       {!lista ? (
-        <Spinner className="h-5 w-5 text-teal-500" />
+        <Spinner className="h-5 w-5 text-white0" />
       ) : lista.length === 0 ? (
         <Vacio>No hay KYC pendientes.</Vacio>
       ) : (
         <ul className="space-y-3">
           {lista.map((k) => (
-            <li key={k.id} className="rounded-xl border border-slate-200 p-4">
+            <li key={k.id} className="rounded-xl border-2 border-ink p-4">
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div className="text-sm">
-                  <p className="font-semibold text-slate-900">
+                  <p className="font-semibold text-ink">
                     {k.profile?.full_name}{" "}
-                    <span className="text-xs font-normal text-slate-400">({k.profile?.role === "guarantor" ? "garante" : "estudiante"})</span>
+                    <span className="text-xs font-normal text-ink/50">({k.profile?.role === "guarantor" ? "garante" : "estudiante"})</span>
                   </p>
-                  <p className="text-slate-600">
+                  <p className="text-ink/70">
                     {k.sep12_fields.first_name} {k.sep12_fields.last_name} · CI {k.sep12_fields.id_number ?? "—"} · nac.{" "}
                     {k.sep12_fields.birth_date ?? "—"}
                   </p>
-                  <p className="text-xs text-slate-400">Enviado {fecha(k.created_at)}</p>
+                  <p className="text-xs text-ink/50">Enviado {fecha(k.created_at)}</p>
                   <div className="mt-2 flex flex-wrap gap-3">
-                    {k.documentos.length === 0 && <span className="text-xs text-slate-400">Sin documentos</span>}
+                    {k.documentos.length === 0 && <span className="text-xs text-ink/50">Sin documentos</span>}
                     {k.documentos.map((d) => (
                       <a
                         key={d.path}
                         href={d.url ?? "#"}
                         target="_blank"
                         rel="noreferrer"
-                        className="text-xs font-semibold text-teal-700 hover:underline"
+                        className="text-xs font-semibold text-brandink hover:underline"
                       >
                         {d.path.split("/").pop()?.split("-")[0] === "selfie" ? "Selfie" : "Carnet"} ↗
                       </a>
@@ -142,23 +142,23 @@ export function RevisionSolicitudes() {
       <Tarjeta titulo="Solicitudes por revisar" accion={<Boton variant="ghost" onClick={cargar}>Actualizar</Boton>}>
         {error && <Alerta tipo="error">{error}</Alerta>}
         {!lista ? (
-          <Spinner className="h-5 w-5 text-teal-500" />
+          <Spinner className="h-5 w-5 text-white0" />
         ) : pendientes.length === 0 ? (
           <Vacio>No hay solicitudes pendientes.</Vacio>
         ) : (
           <ul className="space-y-3">
             {pendientes.map((s) => (
-              <li key={s.id} className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-200 p-4">
+              <li key={s.id} className="flex flex-wrap items-center justify-between gap-3 rounded-xl border-2 border-ink p-4">
                 <div className="text-sm">
-                  <p className="font-semibold text-slate-900">
+                  <p className="font-semibold text-ink">
                     {s.student?.full_name} · {usdc(s.amount_usd)} en {s.installments} cuotas
                   </p>
-                  <p className="text-slate-600">
+                  <p className="text-ink/70">
                     {PROPOSITOS[s.purpose]}
                     {s.purpose_detail ? ` — ${s.purpose_detail}` : ""} · garantía {usdc(s.collateral_amount)}
                     {s.guarantor?.full_name ? ` · garante: ${s.guarantor.full_name}` : ""}
                   </p>
-                  <p className="text-xs text-slate-400">{fecha(s.created_at)}</p>
+                  <p className="text-xs text-ink/50">{fecha(s.created_at)}</p>
                 </div>
                 <div className="flex gap-2">
                   <Boton onClick={() => accion(s.id, "approve")} disabled={!!ocupado}>
@@ -176,10 +176,10 @@ export function RevisionSolicitudes() {
 
       {aprobadas.length > 0 && (
         <Tarjeta titulo="Aprobadas: esperando garantía y firma del estudiante">
-          <ul className="divide-y divide-slate-100 text-sm">
+          <ul className="divide-y divide-ink/10 text-sm">
             {aprobadas.map((s) => (
               <li key={s.id} className="flex items-center justify-between gap-3 py-2.5">
-                <span className="text-slate-700">
+                <span className="text-ink/80">
                   {s.student?.full_name} · {usdc(s.amount_usd)} ·{" "}
                   {s.garantiaDepositada ? "garantía bloqueada, falta la firma" : "falta bloquear la garantía"}
                 </span>
@@ -187,7 +187,7 @@ export function RevisionSolicitudes() {
               </li>
             ))}
           </ul>
-          <p className="mt-3 text-xs text-slate-400">
+          <p className="mt-3 text-xs text-ink/50">
             Al firmar el estudiante, el servidor co-firma como operator y la treasury desembolsa.
           </p>
         </Tarjeta>
@@ -195,10 +195,10 @@ export function RevisionSolicitudes() {
 
       {resto.length > 0 && (
         <Tarjeta titulo="Últimas decisiones">
-          <ul className="divide-y divide-slate-100 text-sm">
+          <ul className="divide-y divide-ink/10 text-sm">
             {resto.map((s) => (
               <li key={s.id} className="flex items-center justify-between gap-3 py-2.5">
-                <span className="text-slate-700">
+                <span className="text-ink/80">
                   {s.student?.full_name} · {usdc(s.amount_usd)}
                   {s.rejection_reason ? ` · ${s.rejection_reason}` : ""}
                 </span>
@@ -216,8 +216,8 @@ export default function PanelOperador({ nombre }: { nombre: string }) {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-slate-900">Hola, {nombre.split(" ")[0]}</h1>
-        <p className="mt-1 text-sm text-slate-500">Revisa identidades y solicitudes. Al aprobar, el estudiante ya puede abrir su préstamo.</p>
+        <h1 className="text-2xl font-bold text-ink">Hola, {nombre.split(" ")[0]}</h1>
+        <p className="mt-1 text-sm text-ink/60">Revisa identidades y solicitudes. Al aprobar, el estudiante ya puede abrir su préstamo.</p>
       </div>
       <RevisionKyc />
       <RevisionSolicitudes />

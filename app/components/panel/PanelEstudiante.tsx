@@ -54,7 +54,7 @@ export default function PanelEstudiante({ user }: { user: Usuario }) {
   }, [cargar]);
 
   if (!solicitudes) {
-    return error ? <Alerta tipo="error">{error}</Alerta> : <Spinner className="h-6 w-6 text-teal-500" />;
+    return error ? <Alerta tipo="error">{error}</Alerta> : <Spinner className="h-6 w-6 text-white0" />;
   }
 
   const activos = prestamos.filter((p) => p.status === "active");
@@ -85,10 +85,10 @@ export default function PanelEstudiante({ user }: { user: Usuario }) {
 
       {cerrados.length > 0 && (
         <Tarjeta titulo="Historial de préstamos">
-          <ul className="divide-y divide-slate-100 text-sm">
+          <ul className="divide-y divide-ink/10 text-sm">
             {cerrados.map((p) => (
               <li key={p.id} className="flex items-center justify-between gap-3 py-2.5">
-                <span className="text-slate-700">
+                <span className="text-ink/80">
                   Préstamo #{p.onchain_loan_id} · {usdc(p.principal)} · {fecha(p.opened_at)}
                 </span>
                 <Estado status={p.status} />
@@ -105,8 +105,8 @@ function Encabezado({ user }: { user: Usuario }) {
   return (
     <div className="flex flex-wrap items-end justify-between gap-3">
       <div>
-        <h1 className="text-2xl font-bold text-slate-900">Hola, {user.fullName?.split(" ")[0] ?? "estudiante"}</h1>
-        <p className="mt-1 text-sm text-slate-500">
+        <h1 className="text-2xl font-bold text-ink">Hola, {user.fullName?.split(" ")[0] ?? "estudiante"}</h1>
+        <p className="mt-1 text-sm text-ink/60">
           {user.estudiante?.university_name} · {user.estudiante?.career}
           {user.estudiante?.semester ? ` · ${user.estudiante.semester}º semestre` : ""}
         </p>
@@ -244,7 +244,7 @@ export function SolicitudEnCurso({
       accion={<Estado status={s.status} />}
     >
       {s.status === "submitted" && (
-        <p className="text-sm text-slate-600">
+        <p className="text-sm text-ink/70">
           Un operador está revisando la solicitud. Garantía necesaria: <strong>{usdc(s.collateral_amount)}</strong>
           {s.guarantor?.full_name ? `, que puede aportar ${s.guarantor.full_name} (garante)` : ""}.
         </p>
@@ -302,18 +302,18 @@ export function SolicitudEnCurso({
 
 function Paso({ n, hecho, titulo, desc, children }: { n: number; hecho: boolean; titulo: string; desc: string; children?: React.ReactNode }) {
   return (
-    <li className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-200 p-4">
+    <li className="flex flex-wrap items-center justify-between gap-3 rounded-xl border-2 border-ink p-4">
       <div className="flex items-start gap-3">
         <span
           className={`grid h-7 w-7 shrink-0 place-items-center rounded-full text-sm font-bold ${
-            hecho ? "bg-emerald-500 text-white" : "bg-slate-100 text-slate-600"
+            hecho ? "bg-lime/300 text-white" : "bg-cream text-ink/70"
           }`}
         >
           {hecho ? "✓" : n}
         </span>
         <div>
-          <p className="font-medium text-slate-900">{titulo}</p>
-          <p className="text-sm text-slate-500">{desc}</p>
+          <p className="font-medium text-ink">{titulo}</p>
+          <p className="text-sm text-ink/60">{desc}</p>
         </div>
       </div>
       {children}
@@ -353,12 +353,12 @@ function InvitarGarante() {
   return (
     <Tarjeta titulo="Tu garante">
       {aceptado ? (
-        <p className="text-sm text-slate-600">
-          <strong className="text-slate-900">{aceptado.guarantor?.full_name ?? aceptado.guarantor_email}</strong> respalda tus
+        <p className="text-sm text-ink/70">
+          <strong className="text-ink">{aceptado.guarantor?.full_name ?? aceptado.guarantor_email}</strong> respalda tus
           préstamos y puede bloquear la garantía por ti.
         </p>
       ) : (
-        <p className="text-sm text-slate-500">Un familiar puede bloquear la garantía por ti. Invítalo:</p>
+        <p className="text-sm text-ink/60">Un familiar puede bloquear la garantía por ti. Invítalo:</p>
       )}
       <form onSubmit={invitar} className="mt-3 flex gap-2">
         <input
@@ -374,15 +374,15 @@ function InvitarGarante() {
           Invitar
         </Boton>
       </form>
-      {error && <p className="mt-2 text-xs text-rose-600">{error}</p>}
+      {error && <p className="mt-2 text-xs text-coral">{error}</p>}
       {codigo && (
-        <div className="mt-3 rounded-xl border border-dashed border-teal-300 bg-teal-50 p-3 text-center">
-          <p className="text-xs text-teal-700">Comparte este código con tu garante:</p>
-          <p className="font-mono text-lg font-bold tracking-wider text-teal-800">{codigo}</p>
+        <div className="mt-3 rounded-xl border border-dashed border-ink bg-brand/15 p-3 text-center">
+          <p className="text-xs text-brandink">Comparte este código con tu garante:</p>
+          <p className="font-mono text-lg font-bold tracking-wider text-brandink">{codigo}</p>
         </div>
       )}
       {invitaciones.filter((i) => i.status === "pending").length > 0 && (
-        <ul className="mt-3 space-y-1 text-xs text-slate-500">
+        <ul className="mt-3 space-y-1 text-xs text-ink/60">
           {invitaciones
             .filter((i) => i.status === "pending")
             .map((i) => (

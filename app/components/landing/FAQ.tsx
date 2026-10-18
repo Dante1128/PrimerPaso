@@ -27,13 +27,13 @@ const preguntas = [
 
 export default function FAQ() {
   return (
-    <section id="faq" className="bg-slate-50 py-20">
+    <section id="faq" className="border-t-2 border-ink bg-cream py-20">
       <div className="mx-auto max-w-3xl px-4 sm:px-6">
         <div className="text-center">
-          <p className="text-sm font-semibold uppercase tracking-wide text-teal-600">
+          <p className="inline-block -rotate-1 border-2 border-ink bg-grape px-3 py-1 text-sm font-bold uppercase tracking-wide text-ink nb-shadow-sm">
             Preguntas frecuentes
           </p>
-          <h2 className="mt-2 text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">
+          <h2 className="mt-4 text-3xl font-bold text-ink sm:text-4xl">
             Lo que debes saber
           </h2>
         </div>
@@ -42,26 +42,26 @@ export default function FAQ() {
           {preguntas.map((p) => (
             <details
               key={p.q}
-              className="group rounded-2xl border border-slate-200 bg-white p-5 shadow-sm [&_svg]:open:rotate-45"
+              className="group rounded-xl border-2 border-ink bg-white p-5 nb-shadow-sm [&_svg]:open:rotate-45"
             >
-              <summary className="flex cursor-pointer list-none items-center justify-between gap-4 text-base font-semibold text-slate-900">
+              <summary className="flex cursor-pointer list-none items-center justify-between gap-4 text-base font-bold text-ink">
                 {p.q}
                 <svg
-                  width="20"
-                  height="20"
+                  width="22"
+                  height="22"
                   viewBox="0 0 24 24"
                   fill="none"
-                  className="shrink-0 text-teal-600 transition-transform"
+                  className="shrink-0 rounded-md border-2 border-ink bg-sun p-0.5 text-ink transition-transform"
                 >
                   <path
                     d="M12 5v14M5 12h14"
                     stroke="currentColor"
-                    strokeWidth="2"
+                    strokeWidth="2.5"
                     strokeLinecap="round"
                   />
                 </svg>
               </summary>
-              <p className="mt-3 text-sm leading-relaxed text-slate-600">
+              <p className="mt-3 text-sm font-medium leading-relaxed text-ink/70">
                 {p.a}
               </p>
             </details>

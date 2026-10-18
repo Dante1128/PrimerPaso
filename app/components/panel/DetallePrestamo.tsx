@@ -88,7 +88,7 @@ export default function DetallePrestamo({ loanId, wallet, onCambio }: { loanId: 
   if (!d) {
     return (
       <Tarjeta>
-        {error ? <Alerta tipo="error">{error}</Alerta> : <Spinner className="h-5 w-5 text-teal-500" />}
+        {error ? <Alerta tipo="error">{error}</Alerta> : <Spinner className="h-5 w-5 text-white0" />}
       </Tarjeta>
     );
   }
@@ -114,30 +114,30 @@ export default function DetallePrestamo({ loanId, wallet, onCambio }: { loanId: 
 
         <div className="mt-6 grid gap-5 sm:grid-cols-2">
           <div>
-            <div className="mb-1.5 flex justify-between text-xs text-slate-500">
+            <div className="mb-1.5 flex justify-between text-xs text-ink/60">
               <span>Capital pagado</span>
-              <span className="font-semibold text-slate-700">{pctCapital.toFixed(0)}%</span>
+              <span className="font-semibold text-ink/80">{pctCapital.toFixed(0)}%</span>
             </div>
             <Barra pct={pctCapital} color="from-sky-500 to-teal-500" />
           </div>
           <div>
-            <div className="mb-1.5 flex justify-between text-xs text-slate-500">
+            <div className="mb-1.5 flex justify-between text-xs text-ink/60">
               <span>Garantía liberada · {usdc(garantiaLiberada)}</span>
-              <span className="font-semibold text-emerald-600">{pctGarantia.toFixed(0)}%</span>
+              <span className="font-semibold text-brandink">{pctGarantia.toFixed(0)}%</span>
             </div>
             <Barra pct={pctGarantia} />
           </div>
         </div>
 
         {q && p.status === "active" && (
-          <div className={`mt-6 rounded-xl p-4 ${q.enMora ? "bg-rose-50" : "bg-teal-50"}`}>
+          <div className={`mt-6 rounded-xl p-4 ${q.enMora ? "bg-rose-50" : "bg-brand/15"}`}>
             <div className="flex flex-wrap items-center justify-between gap-4">
               <div>
-                <p className={`text-sm font-medium ${q.enMora ? "text-rose-700" : "text-teal-800"}`}>
+                <p className={`text-sm font-medium ${q.enMora ? "text-rose-700" : "text-brandink"}`}>
                   {q.enMora ? "Cuota vencida" : "Próxima cuota"} · vence {fecha(q.vence)}
                 </p>
-                <p className="mt-1 text-2xl font-bold text-slate-900">{usdc(q.totalProximaCuota)}</p>
-                <p className="text-xs text-slate-500">
+                <p className="mt-1 text-2xl font-bold text-ink">{usdc(q.totalProximaCuota)}</p>
+                <p className="text-xs text-ink/60">
                   Capital {usdc(q.capitalProximaCuota)} + interés {usdc(q.interes)} · libera{" "}
                   {usdc((q.capitalProximaCuota / Number(p.principal)) * Number(p.collateral_initial))} de garantía
                 </p>
@@ -175,7 +175,7 @@ export default function DetallePrestamo({ loanId, wallet, onCambio }: { loanId: 
         <div className="overflow-x-auto">
           <table className="w-full min-w-[520px] text-sm">
             <thead>
-              <tr className="text-left text-xs uppercase tracking-wide text-slate-400">
+              <tr className="text-left text-xs uppercase tracking-wide text-ink/50">
                 <th className="pb-2 font-medium">#</th>
                 <th className="pb-2 font-medium">Vence</th>
                 <th className="pb-2 font-medium">Capital</th>
@@ -183,9 +183,9 @@ export default function DetallePrestamo({ loanId, wallet, onCambio }: { loanId: 
                 <th className="pb-2 font-medium">Estado</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100">
+            <tbody className="divide-y divide-ink/10">
               {d.cuotas.map((c) => (
-                <tr key={c.id} className="text-slate-700">
+                <tr key={c.id} className="text-ink/80">
                   <td className="py-2 font-medium">{c.number}</td>
                   <td className="py-2">{fecha(c.due_at)}</td>
                   <td className="py-2">{usdc(c.principal_due)}</td>
@@ -203,19 +203,19 @@ export default function DetallePrestamo({ loanId, wallet, onCambio }: { loanId: 
       <div className="grid gap-4 lg:grid-cols-2">
         <Tarjeta titulo="Pagos">
           {d.pagos.length === 0 ? (
-            <p className="text-sm text-slate-500">Aún no hay pagos.</p>
+            <p className="text-sm text-ink/60">Aún no hay pagos.</p>
           ) : (
-            <ul className="divide-y divide-slate-100 text-sm">
+            <ul className="divide-y divide-ink/10 text-sm">
               {d.pagos.map((x) => (
                 <li key={x.id} className="flex items-center justify-between gap-3 py-2">
                   <div>
-                    <p className="font-medium text-slate-800">
+                    <p className="font-medium text-ink">
                       {usdc(Number(x.principal) + Number(x.interest))}{" "}
-                      <span className="text-xs font-normal text-slate-400">
+                      <span className="text-xs font-normal text-ink/50">
                         (capital {usdc(x.principal)} + interés {usdc(x.interest)})
                       </span>
                     </p>
-                    <p className="text-xs text-slate-500">
+                    <p className="text-xs text-ink/60">
                       {fecha(x.created_at)} · {x.on_time === false ? "con atraso" : "a tiempo"}
                     </p>
                   </div>
@@ -227,21 +227,21 @@ export default function DetallePrestamo({ loanId, wallet, onCambio }: { loanId: 
         </Tarjeta>
 
         <Tarjeta titulo="Movimientos de la garantía">
-          <ul className="divide-y divide-slate-100 text-sm">
+          <ul className="divide-y divide-ink/10 text-sm">
             {d.garantia.map((g) => (
               <li key={g.id} className="flex items-center justify-between gap-3 py-2">
                 <div>
-                  <p className="font-medium text-slate-800">
+                  <p className="font-medium text-ink">
                     {TIPO_GARANTIA[g.type] ?? g.type} · {usdc(g.amount)}
                   </p>
-                  <p className="text-xs text-slate-500">{fecha(g.created_at)}</p>
+                  <p className="text-xs text-ink/60">{fecha(g.created_at)}</p>
                 </div>
                 <LinkTx hash={g.tx_hash} />
               </li>
             ))}
             {p.opened_tx_hash && (
               <li className="flex items-center justify-between gap-3 py-2">
-                <p className="text-slate-600">Apertura del préstamo · {fecha(p.opened_at)}</p>
+                <p className="text-ink/70">Apertura del préstamo · {fecha(p.opened_at)}</p>
                 <LinkTx hash={p.opened_tx_hash} />
               </li>
             )}

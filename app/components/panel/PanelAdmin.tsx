@@ -20,15 +20,15 @@ export default function PanelAdmin({ nombre }: { nombre: string }) {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-slate-900">Administración</h1>
-        <p className="mt-1 text-sm text-slate-500">Hola, {nombre.split(" ")[0]}. Todo el dinero vive on-chain; aquí ves la caché del indexador y la cadena en vivo.</p>
+        <h1 className="text-2xl font-bold text-ink">Administración</h1>
+        <p className="mt-1 text-sm text-ink/60">Hola, {nombre.split(" ")[0]}. Todo el dinero vive on-chain; aquí ves la caché del indexador y la cadena en vivo.</p>
       </div>
-      <nav className="flex gap-1 overflow-x-auto rounded-full bg-slate-100 p-1 text-sm font-semibold">
+      <nav className="flex gap-1 overflow-x-auto rounded-full bg-cream p-1 text-sm font-semibold">
         {PESTANAS.map((p) => (
           <button
             key={p.id}
             onClick={() => setTab(p.id)}
-            className={`whitespace-nowrap rounded-full px-4 py-1.5 transition ${tab === p.id ? "bg-white text-teal-700 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}
+            className={`whitespace-nowrap rounded-full px-4 py-1.5 transition ${tab === p.id ? "bg-white text-brandink nb-shadow-sm" : "text-ink/60 hover:text-ink/80"}`}
           >
             {p.txt}
           </button>
@@ -67,7 +67,7 @@ function Resumen() {
   }, [cargar]);
 
   if (error) return <Alerta tipo="error">{error}</Alerta>;
-  if (!d) return <Spinner className="h-6 w-6 text-teal-500" />;
+  if (!d) return <Spinner className="h-6 w-6 text-white0" />;
 
   return (
     <div className="space-y-4">
@@ -80,7 +80,7 @@ function Resumen() {
               href={`https://stellar.expert/explorer/testnet/account/${d.pool.treasury}`}
               target="_blank"
               rel="noreferrer"
-              className="text-xs font-semibold text-teal-700 hover:underline"
+              className="text-xs font-semibold text-brandink hover:underline"
             >
               Treasury en stellar.expert ↗
             </a>
@@ -90,9 +90,9 @@ function Resumen() {
           <div className="space-y-3">
             <Dato label="Total" valor={usdc(d.ingresos.total)} destacado />
             <div className="space-y-1 text-sm">
-              <p className="flex justify-between"><span className="text-slate-500">Interés</span><strong>{usdc(d.ingresos.interes)}</strong></p>
-              <p className="flex justify-between"><span className="text-slate-500">Comisiones de apertura</span><strong>{usdc(d.ingresos.originacion)}</strong></p>
-              <p className="flex justify-between"><span className="text-slate-500">Recargos por mora</span><strong>{usdc(d.ingresos.recargos)}</strong></p>
+              <p className="flex justify-between"><span className="text-ink/60">Interés</span><strong>{usdc(d.ingresos.interes)}</strong></p>
+              <p className="flex justify-between"><span className="text-ink/60">Comisiones de apertura</span><strong>{usdc(d.ingresos.originacion)}</strong></p>
+              <p className="flex justify-between"><span className="text-ink/60">Recargos por mora</span><strong>{usdc(d.ingresos.recargos)}</strong></p>
             </div>
           </div>
         </Tarjeta>
@@ -100,9 +100,9 @@ function Resumen() {
           <div className="space-y-3">
             <Dato label="Saldo por cobrar" valor={usdc(d.cartera.saldoPorCobrar)} destacado sub={`${d.cartera.activos} préstamo(s) activo(s)`} />
             <div className="space-y-1 text-sm">
-              <p className="flex justify-between"><span className="text-slate-500">Capital prestado (histórico)</span><strong>{usdc(d.cartera.capitalPrestado)}</strong></p>
-              <p className="flex justify-between"><span className="text-slate-500">Pagados</span><strong>{d.cartera.pagados}</strong></p>
-              <p className="flex justify-between"><span className="text-slate-500">Liquidados</span><strong>{d.cartera.liquidados}</strong></p>
+              <p className="flex justify-between"><span className="text-ink/60">Capital prestado (histórico)</span><strong>{usdc(d.cartera.capitalPrestado)}</strong></p>
+              <p className="flex justify-between"><span className="text-ink/60">Pagados</span><strong>{d.cartera.pagados}</strong></p>
+              <p className="flex justify-between"><span className="text-ink/60">Liquidados</span><strong>{d.cartera.liquidados}</strong></p>
             </div>
           </div>
         </Tarjeta>
@@ -114,11 +114,11 @@ function Resumen() {
             <Vacio>Sin ingresos todavía.</Vacio>
           ) : (
             <table className="w-full text-sm">
-              <tbody className="divide-y divide-slate-100">
+              <tbody className="divide-y divide-ink/10">
                 {d.ingresos.porMes.map((r) => (
                   <tr key={`${r.month}-${r.type}`}>
-                    <td className="py-2 text-slate-500">{new Date(r.month).toLocaleDateString("es-BO", { month: "long", year: "numeric" })}</td>
-                    <td className="py-2 text-slate-700">{INGRESO[r.type] ?? r.type}</td>
+                    <td className="py-2 text-ink/60">{new Date(r.month).toLocaleDateString("es-BO", { month: "long", year: "numeric" })}</td>
+                    <td className="py-2 text-ink/80">{INGRESO[r.type] ?? r.type}</td>
                     <td className="py-2 text-right font-semibold">{usdc(r.total_usd)}</td>
                   </tr>
                 ))}
@@ -146,14 +146,14 @@ function Resumen() {
             </Boton>
           }
         >
-          <ul className="divide-y divide-slate-100 text-sm">
+          <ul className="divide-y divide-ink/10 text-sm">
             {d.movimientos.map((m) => (
               <li key={m.id} className="flex items-center justify-between gap-3 py-2">
                 <div>
-                  <p className="font-medium text-slate-800">
+                  <p className="font-medium text-ink">
                     {MOVIMIENTO[m.type] ?? m.type} · {usdc(m.amount)}
                   </p>
-                  <p className="text-xs text-slate-500">{m.note ?? fecha(m.created_at)}</p>
+                  <p className="text-xs text-ink/60">{m.note ?? fecha(m.created_at)}</p>
                 </div>
                 <LinkTx hash={m.tx_hash} />
               </li>
@@ -224,14 +224,14 @@ function Mora() {
         </div>
       )}
       {!lista ? (
-        <Spinner className="h-5 w-5 text-teal-500" />
+        <Spinner className="h-5 w-5 text-white0" />
       ) : lista.length === 0 ? (
         <Vacio>No hay préstamos activos.</Vacio>
       ) : (
         <div className="overflow-x-auto">
           <table className="w-full min-w-[640px] text-sm">
             <thead>
-              <tr className="text-left text-xs uppercase tracking-wide text-slate-400">
+              <tr className="text-left text-xs uppercase tracking-wide text-ink/50">
                 <th className="pb-2 font-medium">Préstamo</th>
                 <th className="pb-2 font-medium">Saldo</th>
                 <th className="pb-2 font-medium">Garantía</th>
@@ -241,11 +241,11 @@ function Mora() {
                 <th />
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100">
+            <tbody className="divide-y divide-ink/10">
               {lista.map((l) => (
-                <tr key={l.id} className="text-slate-700">
+                <tr key={l.id} className="text-ink/80">
                   <td className="py-2.5">
-                    #{l.onchain_loan_id} <span className="text-slate-400">· {l.student?.full_name ?? "—"}</span>
+                    #{l.onchain_loan_id} <span className="text-ink/50">· {l.student?.full_name ?? "—"}</span>
                   </td>
                   <td className="py-2.5">{usdc(l.outstanding)}</td>
                   <td className="py-2.5">{usdc(l.collateral_locked)}</td>
@@ -267,7 +267,7 @@ function Mora() {
           </table>
         </div>
       )}
-      <p className="mt-3 text-xs text-slate-400">
+      <p className="mt-3 text-xs text-ink/50">
         Solo se puede liquidar después del vencimiento + el periodo de gracia. El contrato toma capital + interés + recargo y
         devuelve el resto al depositante.
       </p>
@@ -334,14 +334,14 @@ function Parametros() {
     }
   }
 
-  if (!form) return <Spinner className="h-6 w-6 text-teal-500" />;
+  if (!form) return <Spinner className="h-6 w-6 text-white0" />;
 
   return (
     <Tarjeta
       titulo="Parámetros del negocio"
       accion={
         estado && (
-          <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${estado.sincronizado ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700"}`}>
+          <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${estado.sincronizado ? "bg-lime/30 text-brandink" : "bg-amber-50 text-amber-700"}`}>
             {estado.sincronizado ? "Base = contrato" : "Base distinta del contrato"}
           </span>
         )
@@ -376,7 +376,7 @@ function Parametros() {
           <Boton type="submit" disabled={guardando}>
             {guardando && <Spinner />} Guardar en el contrato
           </Boton>
-          <p className="mt-2 text-xs text-slate-400">
+          <p className="mt-2 text-xs text-ink/50">
             Se firma como admin con set_params. Los préstamos ya abiertos conservan sus condiciones.
           </p>
         </div>

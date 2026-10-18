@@ -35,7 +35,7 @@ export default function PanelGarante({ user }: { user: Usuario }) {
     cargar();
   }, [cargar]);
 
-  if (!solicitudes) return error ? <Alerta tipo="error">{error}</Alerta> : <Spinner className="h-6 w-6 text-teal-500" />;
+  if (!solicitudes) return error ? <Alerta tipo="error">{error}</Alerta> : <Spinner className="h-6 w-6 text-white0" />;
 
   const porDepositar = solicitudes.filter((s) => s.status === "approved");
   const activos = prestamos.filter((p) => p.status === "active");
@@ -46,12 +46,12 @@ export default function PanelGarante({ user }: { user: Usuario }) {
     <div className="space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">Hola, {user.fullName?.split(" ")[0] ?? "garante"}</h1>
-          <p className="mt-1 text-sm text-slate-500">
+          <h1 className="text-2xl font-bold text-ink">Hola, {user.fullName?.split(" ")[0] ?? "garante"}</h1>
+          <p className="mt-1 text-sm text-ink/60">
             Respaldas a estudiantes bloqueando USDC. Tu garantía vuelve a ti a medida que pagan.
           </p>
         </div>
-        {saldo !== null && <span className="rounded-full bg-slate-100 px-3 py-1 text-sm text-slate-600">Saldo: {usdc(saldo)}</span>}
+        {saldo !== null && <span className="rounded-full bg-cream px-3 py-1 text-sm text-ink/70">Saldo: {usdc(saldo)}</span>}
       </div>
 
       <VincularEstudiante onListo={cargar} />
@@ -62,10 +62,10 @@ export default function PanelGarante({ user }: { user: Usuario }) {
 
       {enRevision.length > 0 && (
         <Tarjeta titulo="Solicitudes en revisión">
-          <ul className="divide-y divide-slate-100 text-sm">
+          <ul className="divide-y divide-ink/10 text-sm">
             {enRevision.map((s) => (
               <li key={s.id} className="flex items-center justify-between gap-3 py-2.5">
-                <span className="text-slate-700">
+                <span className="text-ink/80">
                   {s.student?.full_name} · {usdc(s.amount_usd)} · {PROPOSITOS[s.purpose]} · garantía {usdc(s.collateral_amount)}
                 </span>
                 <Estado status={s.status} />
@@ -85,10 +85,10 @@ export default function PanelGarante({ user }: { user: Usuario }) {
 
       {cerrados.length > 0 && (
         <Tarjeta titulo="Préstamos finalizados que respaldaste">
-          <ul className="divide-y divide-slate-100 text-sm">
+          <ul className="divide-y divide-ink/10 text-sm">
             {cerrados.map((p) => (
               <li key={p.id} className="flex items-center justify-between gap-3 py-2.5">
-                <span className="text-slate-700">
+                <span className="text-ink/80">
                   Préstamo #{p.onchain_loan_id} · {usdc(p.principal)}
                 </span>
                 <Estado status={p.status} />

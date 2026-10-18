@@ -71,16 +71,16 @@ export default function LoginForm() {
         <Link href="/" className="inline-block">
           <Logo />
         </Link>
-        <form onSubmit={enviar} className="mt-6 space-y-4 rounded-3xl border border-slate-200 bg-white p-8 shadow-sm">
-          <h1 className="text-xl font-bold text-slate-900">Ingresar</h1>
+        <form onSubmit={enviar} className="mt-6 space-y-4 rounded-3xl border-2 border-ink bg-white p-8 nb-shadow-sm">
+          <h1 className="text-xl font-bold text-ink">Ingresar</h1>
 
-          <div className="grid grid-cols-2 rounded-full bg-slate-100 p-1 text-sm font-semibold">
+          <div className="grid grid-cols-2 rounded-full bg-cream p-1 text-sm font-semibold">
             {(["password", "codigo"] as const).map((m) => (
               <button
                 key={m}
                 type="button"
                 onClick={() => cambiarModo(m)}
-                className={`rounded-full py-1.5 transition ${modo === m ? "bg-white text-teal-700 shadow-sm" : "text-slate-500"}`}
+                className={`rounded-full py-1.5 transition ${modo === m ? "bg-white text-brandink nb-shadow-sm" : "text-ink/60"}`}
               >
                 {m === "password" ? "Con contraseña" : "Con código"}
               </button>
@@ -121,9 +121,9 @@ export default function LoginForm() {
             {cargando && <Spinner />}{" "}
             {modo === "password" ? "Ingresar" : codigoEnviado ? "Verificar e ingresar" : "Enviarme un código"}
           </Boton>
-          <p className="text-center text-sm text-slate-500">
+          <p className="text-center text-sm text-ink/60">
             ¿No tienes cuenta?{" "}
-            <Link href="/registro" className="font-semibold text-teal-600">
+            <Link href="/registro" className="font-semibold text-brandink">
               Crear cuenta
             </Link>
           </p>

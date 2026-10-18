@@ -21,7 +21,7 @@ export default async function PanelPage() {
   const nombre = user.fullName ?? user.email;
 
   return (
-    <main className="min-h-screen bg-slate-50">
+    <main className="min-h-screen bg-cream">
       <TopBar nombre={nombre} rol={user.role} wallet={user.wallet} />
       <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
         {user.role === "student" && <PanelEstudiante user={user} />}

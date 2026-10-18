@@ -1,6 +1,7 @@
 const pasos = [
   {
     n: 1,
+    color: "bg-sun",
     titulo: "Depositas tu ahorro",
     texto:
       "Bloqueas USDC como garantía en un contrato Soroban. Tú o un familiar garante pueden aportarlo. Nadie más puede tocarlo.",
@@ -8,7 +9,7 @@ const pasos = [
       <path
         d="M12 3v12m0 0l-4-4m4 4l4-4M4 21h16"
         stroke="currentColor"
-        strokeWidth="2"
+        strokeWidth="2.4"
         strokeLinecap="round"
         strokeLinejoin="round"
       />
@@ -16,6 +17,7 @@ const pasos = [
   },
   {
     n: 2,
+    color: "bg-azure",
     titulo: "Recibes tu préstamo",
     texto:
       "Obtienes al instante un crédito por el 80% de tu garantía, directo en tu wallet. Sin papeleo ni historial previo.",
@@ -23,7 +25,7 @@ const pasos = [
       <path
         d="M3 8h18v10H3zM3 8l3-4h12l3 4M8 13h.01M12 13h4"
         stroke="currentColor"
-        strokeWidth="2"
+        strokeWidth="2.4"
         strokeLinecap="round"
         strokeLinejoin="round"
       />
@@ -31,6 +33,7 @@ const pasos = [
   },
   {
     n: 3,
+    color: "bg-coral",
     titulo: "Pagas y liberas",
     texto:
       "Cada cuota que pagas libera automáticamente una parte proporcional de tu garantía y queda registrada en tu historial.",
@@ -38,7 +41,7 @@ const pasos = [
       <path
         d="M9 12l2 2 4-4m-3-7a9 9 0 110 18 9 9 0 010-18z"
         stroke="currentColor"
-        strokeWidth="2"
+        strokeWidth="2.4"
         strokeLinecap="round"
         strokeLinejoin="round"
       />
@@ -46,6 +49,7 @@ const pasos = [
   },
   {
     n: 4,
+    color: "bg-lime",
     titulo: "Recuperas tu ahorro",
     texto:
       "Al terminar de pagar, recuperas el 100% de tu garantía y recibes una credencial de buen pagador verificable on-chain.",
@@ -53,7 +57,7 @@ const pasos = [
       <path
         d="M12 15a3 3 0 100-6 3 3 0 000 6zm0 0v6m-7-9a7 7 0 1114 0"
         stroke="currentColor"
-        strokeWidth="2"
+        strokeWidth="2.4"
         strokeLinecap="round"
         strokeLinejoin="round"
       />
@@ -63,55 +67,41 @@ const pasos = [
 
 export default function ComoFunciona() {
   return (
-    <section id="como-funciona" className="bg-white py-20">
+    <section id="como-funciona" className="border-y-2 border-ink bg-white py-20">
       <div className="mx-auto max-w-6xl px-4 sm:px-6">
         <div className="mx-auto max-w-2xl text-center">
-          <p className="text-sm font-semibold uppercase tracking-wide text-teal-600">
+          <p className="inline-block -rotate-1 border-2 border-ink bg-sun px-3 py-1 text-sm font-bold uppercase tracking-wide text-ink nb-shadow-sm">
             Cómo funciona
           </p>
-          <h2 className="mt-2 text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">
+          <h2 className="mt-4 text-3xl font-bold text-ink sm:text-4xl">
             Cuatro pasos simples
           </h2>
-          <p className="mt-4 text-lg text-slate-600">
+          <p className="mt-4 text-lg font-medium text-ink/70">
             Tu ahorro nunca se pierde: trabaja como respaldo mientras construyes
             tu reputación crediticia.
           </p>
         </div>
 
         <div className="mt-14 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-          {pasos.map((p, i) => (
-            <div key={p.n} className="relative">
-              <div className="h-full rounded-2xl border border-slate-200 bg-white p-6 shadow-sm transition hover:border-teal-200 hover:shadow-md">
-                <div className="flex items-center gap-3">
-                  <span className="grid h-11 w-11 place-items-center rounded-xl bg-teal-50 text-teal-600">
-                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
-                      {p.icono}
-                    </svg>
-                  </span>
-                  <span className="text-sm font-bold text-slate-300">
-                    0{p.n}
-                  </span>
-                </div>
-                <h3 className="mt-4 text-lg font-semibold text-slate-900">
-                  {p.titulo}
-                </h3>
-                <p className="mt-2 text-sm leading-relaxed text-slate-600">
-                  {p.texto}
-                </p>
-              </div>
-              {i < pasos.length - 1 && (
-                <div className="absolute -right-3 top-1/2 hidden -translate-y-1/2 text-teal-300 lg:block">
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-                    <path
-                      d="M5 12h14M13 6l6 6-6 6"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    />
+          {pasos.map((p) => (
+            <div
+              key={p.n}
+              className="h-full rounded-2xl border-2 border-ink bg-cream p-6 nb-shadow nb-press"
+            >
+              <div className="flex items-center justify-between">
+                <span
+                  className={`grid h-12 w-12 place-items-center rounded-xl border-2 border-ink ${p.color} text-ink nb-shadow-sm`}
+                >
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+                    {p.icono}
                   </svg>
-                </div>
-              )}
+                </span>
+                <span className="text-3xl font-bold text-ink/15">0{p.n}</span>
+              </div>
+              <h3 className="mt-4 text-lg font-bold text-ink">{p.titulo}</h3>
+              <p className="mt-2 text-sm font-medium leading-relaxed text-ink/70">
+                {p.texto}
+              </p>
             </div>
           ))}
         </div>

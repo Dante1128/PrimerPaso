@@ -50,8 +50,8 @@ export default function SimuladorPrestamo({
     <div className="grid gap-6 lg:grid-cols-5">
       {/* Controles y resumen */}
       <div className="lg:col-span-2">
-        <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-          <label htmlFor="sim-monto" className="block text-sm font-medium text-slate-700">
+        <div className="nb-card p-6">
+          <label htmlFor="sim-monto" className="block text-sm font-bold text-ink">
             ¿Cuánto necesitas? (USDC)
           </label>
           <input
@@ -62,7 +62,7 @@ export default function SimuladorPrestamo({
             step={50}
             value={monto}
             onChange={(e) => setMonto(Number(e.target.value))}
-            className="mt-2 w-full rounded-xl border border-slate-300 px-3 py-2 text-lg font-semibold text-slate-900 outline-none focus:border-teal-500 focus:ring-2 focus:ring-teal-100"
+            className="mt-2 w-full rounded-xl border-2 border-ink px-3 py-2 text-lg font-bold text-ink outline-none transition focus:-translate-x-0.5 focus:-translate-y-0.5 focus:shadow-[3px_3px_0_0_#141414]"
           />
           <input
             type="range"
@@ -72,20 +72,20 @@ export default function SimuladorPrestamo({
             step={50}
             value={montoValido}
             onChange={(e) => setMonto(Number(e.target.value))}
-            className="mt-4 w-full accent-teal-600"
+            className="mt-4 w-full accent-brand"
           />
-          <div className="mt-1 flex justify-between text-xs text-slate-400">
+          <div className="mt-1 flex justify-between text-xs text-ink/50">
             <span>{fmt(p.min_amount_usd)}</span>
             <span>{fmt(p.max_amount_usd)}</span>
           </div>
           {fueraDeRango && (
-            <p className="mt-1 text-xs text-amber-600">
+            <p className="mt-1 text-xs text-ink">
               El monto va de {fmt(p.min_amount_usd)} a {fmt(p.max_amount_usd)} USDC.
             </p>
           )}
 
-          <label htmlFor="sim-cuotas" className="mt-5 block text-sm font-medium text-slate-700">
-            Cuotas mensuales: <span className="font-semibold text-teal-700">{s.cuotas}</span>
+          <label htmlFor="sim-cuotas" className="mt-5 block text-sm font-bold text-ink">
+            Cuotas mensuales: <span className="font-bold text-brandink">{s.cuotas}</span>
           </label>
           <input
             id="sim-cuotas"
@@ -94,10 +94,10 @@ export default function SimuladorPrestamo({
             max={p.max_installments}
             value={s.cuotas}
             onChange={(e) => setCuotas(Number(e.target.value))}
-            className="mt-2 w-full accent-teal-600"
+            className="mt-2 w-full accent-brand"
           />
 
-          <dl className="mt-6 space-y-2.5 border-t border-slate-100 pt-5 text-sm">
+          <dl className="mt-6 space-y-2.5 border-t-2 border-ink/10 pt-5 text-sm">
             <Fila t={`Garantía a bloquear (${p.max_ltv_bps / 100}% LTV)`} v={`${fmt(s.garantia)} USDC`} />
             <Fila t={`Comisión de apertura (${p.origination_fee_bps / 100}%)`} v={`− ${fmt(s.comision)} USDC`} />
             <Fila t="Recibes en tu wallet" v={`${fmt(s.recibes)} USDC`} fuerte />
@@ -105,18 +105,18 @@ export default function SimuladorPrestamo({
           </dl>
 
           <div className="mt-5 grid grid-cols-2 gap-3">
-            <div className="rounded-xl bg-slate-50 p-3">
-              <p className="text-xs text-slate-500">Costo bruto</p>
-              <p className="text-lg font-bold text-slate-900">{fmt(s.totalPagado)}</p>
-              <p className="text-[11px] text-slate-400">capital + interés que pagas</p>
+            <div className="rounded-xl border-2 border-ink bg-cream p-3">
+              <p className="text-xs font-semibold text-ink/60">Costo bruto</p>
+              <p className="text-lg font-bold text-ink">{fmt(s.totalPagado)}</p>
+              <p className="text-[11px] text-ink/50">capital + interés que pagas</p>
             </div>
-            <div className="rounded-xl bg-teal-50 p-3">
-              <p className="text-xs text-teal-700">Costo neto</p>
-              <p className="text-lg font-bold text-teal-800">{fmt(s.costoNeto)}</p>
-              <p className="text-[11px] text-teal-700/70">interés + comisión · {fmt(s.costoNetoPct)}%</p>
+            <div className="rounded-xl border-2 border-ink bg-brand/15 p-3">
+              <p className="text-xs font-semibold text-brandink">Costo neto</p>
+              <p className="text-lg font-bold text-brandink">{fmt(s.costoNeto)}</p>
+              <p className="text-[11px] text-brandink/70">interés + comisión · {fmt(s.costoNetoPct)}%</p>
             </div>
           </div>
-          <p className="mt-3 text-xs text-slate-400">
+          <p className="mt-3 text-xs text-ink/50">
             Al terminar recuperas el 100% de tu garantía ({fmt(s.garantia)} USDC). Montos exactos del contrato, pagando a
             tiempo.
           </p>
@@ -126,7 +126,7 @@ export default function SimuladorPrestamo({
               type="button"
               disabled={fueraDeRango}
               onClick={() => onUsar(s.monto, s.cuotas)}
-              className="mt-5 w-full rounded-full bg-teal-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-teal-700 disabled:opacity-50"
+              className="mt-5 w-full rounded-xl border-2 border-ink bg-brand px-5 py-2.5 text-sm font-bold text-white nb-shadow nb-press disabled:opacity-50"
             >
               {textoUsar}
             </button>
@@ -136,13 +136,13 @@ export default function SimuladorPrestamo({
 
       {/* Calendario */}
       <div className="lg:col-span-3">
-        <div className="h-full rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-          <h3 className="text-lg font-semibold text-slate-900">Tus cuotas y tu garantía</h3>
-          <p className="mt-1 text-sm text-slate-500">Cada cuota paga capital e interés, y te devuelve parte de tu garantía.</p>
-          <div className="mt-5 max-h-[420px] overflow-auto rounded-xl border border-slate-100">
+        <div className="h-full rounded-3xl border-2 border-ink bg-white p-6 nb-shadow-sm">
+          <h3 className="text-lg font-bold text-ink">Tus cuotas y tu garantía</h3>
+          <p className="mt-1 text-sm font-medium text-ink/60">Cada cuota paga capital e interés, y te devuelve parte de tu garantía.</p>
+          <div className="mt-5 max-h-[420px] overflow-auto rounded-xl border-2 border-ink">
             <table className="w-full text-sm">
               <thead className="sticky top-0">
-                <tr className="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
+                <tr className="bg-cream text-left text-xs font-bold uppercase tracking-wide text-ink/60">
                   <th className="px-3 py-2.5 font-medium">#</th>
                   <th className="px-3 py-2.5 font-medium">Cuota</th>
                   <th className="px-3 py-2.5 font-medium">Interés</th>
@@ -150,17 +150,17 @@ export default function SimuladorPrestamo({
                   <th className="px-3 py-2.5 font-medium">Saldo</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100">
+              <tbody className="divide-y divide-ink/10">
                 {s.calendario.map((c) => (
-                  <tr key={c.numero} className="text-slate-700">
+                  <tr key={c.numero} className="text-ink/80">
                     <td className="px-3 py-2.5 font-medium">{c.numero}</td>
                     <td className="px-3 py-2.5 font-semibold">{fmt(c.total)}</td>
-                    <td className="px-3 py-2.5 text-slate-500">{fmt(c.interes)}</td>
+                    <td className="px-3 py-2.5 text-ink/60">{fmt(c.interes)}</td>
                     <td className="px-3 py-2.5">
-                      <span className="font-medium text-emerald-600">+{fmt(c.garantiaLiberada)}</span>
-                      <span className="ml-1.5 text-xs text-slate-400">({fmt(c.garantiaLiberadaAcumulada)})</span>
+                      <span className="font-bold text-brandink">+{fmt(c.garantiaLiberada)}</span>
+                      <span className="ml-1.5 text-xs text-ink/50">({fmt(c.garantiaLiberadaAcumulada)})</span>
                     </td>
-                    <td className="px-3 py-2.5 text-slate-500">{fmt(c.saldoDespues)}</td>
+                    <td className="px-3 py-2.5 text-ink/60">{fmt(c.saldoDespues)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -175,8 +175,8 @@ export default function SimuladorPrestamo({
 function Fila({ t, v, fuerte }: { t: string; v: string; fuerte?: boolean }) {
   return (
     <div className="flex items-center justify-between gap-3">
-      <dt className="text-slate-500">{t}</dt>
-      <dd className={fuerte ? "text-lg font-bold text-teal-600" : "font-semibold text-slate-900"}>{v}</dd>
+      <dt className="text-ink/60">{t}</dt>
+      <dd className={fuerte ? "text-lg font-bold text-brandink" : "font-semibold text-ink"}>{v}</dd>
     </div>
   );
 }

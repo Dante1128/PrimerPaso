@@ -1,4 +1,4 @@
-// Primitivos de interfaz reutilizables (tema claro).
+// Primitivos de interfaz reutilizables — estilo NEO-BRUTALISTA (tema claro).
 import { ReactNode } from "react";
 
 export function Campo({
@@ -18,19 +18,19 @@ export function Campo({
     <div>
       <label
         htmlFor={htmlFor}
-        className="mb-1 block text-sm font-medium text-slate-700"
+        className="mb-1.5 block text-sm font-bold text-ink"
       >
         {label}
       </label>
       {children}
-      {hint && !error && <p className="mt-1 text-xs text-slate-400">{hint}</p>}
-      {error && <p className="mt-1 text-xs text-rose-600">{error}</p>}
+      {hint && !error && <p className="mt-1 text-xs text-ink/50">{hint}</p>}
+      {error && <p className="mt-1 text-xs font-semibold text-coral">{error}</p>}
     </div>
   );
 }
 
 export const inputClase =
-  "w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-slate-900 placeholder:text-slate-400 outline-none transition focus:border-teal-500 focus:ring-2 focus:ring-teal-100 disabled:bg-slate-50 disabled:text-slate-400";
+  "w-full rounded-xl border-2 border-ink bg-white px-3 py-2.5 font-medium text-ink placeholder:text-ink/40 outline-none transition focus:-translate-x-0.5 focus:-translate-y-0.5 focus:shadow-[3px_3px_0_0_#141414] disabled:bg-black/5 disabled:text-ink/40";
 
 export function Boton({
   children,
@@ -38,15 +38,16 @@ export function Boton({
   className = "",
   ...props
 }: {
-  variant?: "primary" | "secondary" | "ghost";
+  variant?: "primary" | "secondary" | "ghost" | "sun" | "coral";
 } & React.ButtonHTMLAttributes<HTMLButtonElement>) {
   const base =
-    "inline-flex items-center justify-center gap-2 rounded-full px-5 py-2.5 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-60";
+    "inline-flex items-center justify-center gap-2 rounded-xl px-5 py-2.5 text-sm font-bold transition disabled:cursor-not-allowed disabled:opacity-60";
   const estilos = {
-    primary: "bg-teal-600 text-white shadow-sm hover:bg-teal-700",
-    secondary:
-      "border border-slate-300 bg-white text-slate-700 hover:border-teal-300 hover:text-teal-700",
-    ghost: "text-slate-600 hover:text-teal-700",
+    primary: "border-2 border-ink bg-brand text-white nb-shadow nb-press",
+    secondary: "border-2 border-ink bg-white text-ink nb-shadow nb-press",
+    sun: "border-2 border-ink bg-sun text-ink nb-shadow nb-press",
+    coral: "border-2 border-ink bg-coral text-white nb-shadow nb-press",
+    ghost: "text-ink/70 hover:text-ink underline-offset-4 hover:underline",
   } as const;
   return (
     <button className={`${base} ${estilos[variant]} ${className}`} {...props}>
@@ -63,13 +64,13 @@ export function Alerta({
   children: ReactNode;
 }) {
   const estilos = {
-    info: "border-sky-200 bg-sky-50 text-sky-800",
-    error: "border-rose-200 bg-rose-50 text-rose-700",
-    success: "border-emerald-200 bg-emerald-50 text-emerald-800",
+    info: "bg-azure/20 text-ink",
+    error: "bg-coral/20 text-ink",
+    success: "bg-lime/25 text-ink",
   } as const;
   return (
     <div
-      className={`rounded-xl border px-4 py-3 text-sm ${estilos[tipo]}`}
+      className={`rounded-xl border-2 border-ink px-4 py-3 text-sm font-medium nb-shadow-sm ${estilos[tipo]}`}
       role={tipo === "error" ? "alert" : undefined}
     >
       {children}

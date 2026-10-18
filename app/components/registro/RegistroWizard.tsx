@@ -58,8 +58,8 @@ export default function RegistroWizard() {
 
   if (cargandoInicial) {
     return (
-      <div className="grid min-h-screen place-items-center text-slate-400">
-        <Spinner className="h-6 w-6 text-teal-500" />
+      <div className="grid min-h-screen place-items-center text-ink/50">
+        <Spinner className="h-6 w-6 text-white0" />
       </div>
     );
   }
@@ -75,7 +75,7 @@ export default function RegistroWizard() {
 
         <Stepper etapas={etapas} paso={paso} />
 
-        <div className="mt-6 rounded-3xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
+        <div className="mt-6 rounded-3xl border-2 border-ink bg-white p-6 nb-shadow-sm sm:p-8">
           {paso === "cuenta" && (
             <PasoCuenta
               onNext={(e) => {
@@ -109,8 +109,8 @@ function Stepper({ etapas, paso }: { etapas: typeof ETAPAS; paso: Paso }) {
     <div className="mt-6 flex items-center gap-2">
       {etapas.map((e, i) => (
         <div key={e.id} className="flex flex-1 flex-col items-center gap-1.5">
-          <div className={`h-1.5 w-full rounded-full ${i <= actual ? "bg-teal-500" : "bg-slate-200"}`} />
-          <span className={`text-[11px] font-medium ${i <= actual ? "text-teal-700" : "text-slate-400"}`}>
+          <div className={`h-1.5 w-full rounded-full ${i <= actual ? "bg-brand/150" : "bg-slate-200"}`} />
+          <span className={`text-[11px] font-medium ${i <= actual ? "text-brandink" : "text-ink/50"}`}>
             {e.txt}
           </span>
         </div>
@@ -142,8 +142,8 @@ function PasoCuenta({ onNext }: { onNext: (email: string) => void }) {
 
   return (
     <form onSubmit={enviar} className="space-y-4">
-      <h1 className="text-xl font-bold text-slate-900">Crea tu cuenta</h1>
-      <p className="text-sm text-slate-500">Te enviaremos un código a tu email para verificarlo.</p>
+      <h1 className="text-xl font-bold text-ink">Crea tu cuenta</h1>
+      <p className="text-sm text-ink/60">Te enviaremos un código a tu email para verificarlo.</p>
 
       <Campo label="Nombre completo" htmlFor="fullName">
         <input id="fullName" className={inputClase} value={form.fullName} onChange={(e) => set("fullName", e.target.value)} required />
@@ -160,9 +160,9 @@ function PasoCuenta({ onNext }: { onNext: (email: string) => void }) {
       <Boton type="submit" disabled={cargando} className="w-full">
         {cargando && <Spinner />} Crear cuenta
       </Boton>
-      <p className="text-center text-sm text-slate-500">
+      <p className="text-center text-sm text-ink/60">
         ¿Ya tienes cuenta?{" "}
-        <Link href="/ingresar" className="font-semibold text-teal-600">
+        <Link href="/ingresar" className="font-semibold text-brandink">
           Ingresar
         </Link>
       </p>
@@ -204,9 +204,9 @@ function PasoEmail({ email, onNext }: { email: string; onNext: () => void }) {
 
   return (
     <form onSubmit={verificar} className="space-y-4">
-      <h1 className="text-xl font-bold text-slate-900">Verifica tu email</h1>
-      <p className="text-sm text-slate-500">
-        Ingresa el código que enviamos a <strong className="text-slate-700">{email}</strong>.
+      <h1 className="text-xl font-bold text-ink">Verifica tu email</h1>
+      <p className="text-sm text-ink/60">
+        Ingresa el código que enviamos a <strong className="text-ink/80">{email}</strong>.
       </p>
 
       <Campo label="Código de verificación" htmlFor="code">
@@ -229,7 +229,7 @@ function PasoEmail({ email, onNext }: { email: string; onNext: () => void }) {
       <Boton type="submit" disabled={cargando} className="w-full">
         {cargando && <Spinner />} Verificar
       </Boton>
-      <button type="button" onClick={reenviar} className="w-full text-center text-sm font-semibold text-teal-600">
+      <button type="button" onClick={reenviar} className="w-full text-center text-sm font-semibold text-brandink">
         Reenviar código
       </button>
     </form>
@@ -259,7 +259,7 @@ function PasoRol({ onNext }: { onNext: (r: Rol) => void }) {
 
   return (
     <div className="space-y-4">
-      <h1 className="text-xl font-bold text-slate-900">¿Cómo participas?</h1>
+      <h1 className="text-xl font-bold text-ink">¿Cómo participas?</h1>
       <div className="grid gap-3">
         <RolCard activo={role === "student"} onClick={() => setRole("student")} titulo="Estudiante" desc="Pido mi primer crédito, respaldado por un ahorro en USDC." />
         <RolCard activo={role === "guarantor"} onClick={() => setRole("guarantor")} titulo="Garante" desc="Respaldo a un estudiante bloqueando USDC como garantía." />
@@ -286,11 +286,11 @@ function RolCard({ activo, onClick, titulo, desc }: { activo: boolean; onClick: 
       type="button"
       onClick={onClick}
       className={`rounded-2xl border p-4 text-left transition ${
-        activo ? "border-teal-500 bg-teal-50 ring-2 ring-teal-100" : "border-slate-200 hover:border-teal-300"
+        activo ? "border-teal-500 bg-brand/15 ring-2 ring-sun" : "border-ink "
       }`}
     >
-      <p className="font-semibold text-slate-900">{titulo}</p>
-      <p className="mt-0.5 text-sm text-slate-500">{desc}</p>
+      <p className="font-semibold text-ink">{titulo}</p>
+      <p className="mt-0.5 text-sm text-ink/60">{desc}</p>
     </button>
   );
 }
@@ -318,8 +318,8 @@ function PasoUniversidad({ onNext }: { onNext: () => void }) {
 
   return (
     <form onSubmit={enviar} className="space-y-4">
-      <h1 className="text-xl font-bold text-slate-900">Tus datos universitarios</h1>
-      <p className="text-sm text-slate-500">Nos ayudan a evaluar tu solicitud. No se guardan en la blockchain.</p>
+      <h1 className="text-xl font-bold text-ink">Tus datos universitarios</h1>
+      <p className="text-sm text-ink/60">Nos ayudan a evaluar tu solicitud. No se guardan en la blockchain.</p>
 
       <Campo label="Universidad" htmlFor="uni">
         <input id="uni" className={inputClase} value={form.universityName} onChange={(e) => set("universityName", e.target.value)} placeholder="Ej. Universidad Mayor de San Andrés" required />
@@ -381,8 +381,8 @@ function PasoKyc({ onNext }: { onNext: () => void }) {
 
   return (
     <form onSubmit={enviar} className="space-y-4">
-      <h1 className="text-xl font-bold text-slate-900">Verifica tu identidad</h1>
-      <p className="text-sm text-slate-500">
+      <h1 className="text-xl font-bold text-ink">Verifica tu identidad</h1>
+      <p className="text-sm text-ink/60">
         Tus documentos se guardan en un almacenamiento privado y los revisa un operador de PrimerPaso.
       </p>
 
@@ -424,18 +424,18 @@ function SubidaArchivo({ label, archivo, onFile }: { label: string; archivo: Fil
 
   return (
     <Campo label={label}>
-      <label className="flex cursor-pointer items-center gap-3 rounded-xl border border-dashed border-slate-300 bg-slate-50 px-4 py-3 transition hover:border-teal-300">
+      <label className="flex cursor-pointer items-center gap-3 rounded-xl border border-dashed border-ink bg-cream px-4 py-3 transition ">
         {preview ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={preview} alt="vista previa" className="h-12 w-12 rounded-lg object-cover" />
         ) : (
-          <span className="grid h-12 w-12 place-items-center rounded-lg bg-white text-slate-400">
+          <span className="grid h-12 w-12 place-items-center rounded-lg bg-white text-ink/50">
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
               <path d="M12 16V4m0 0L8 8m4-4l4 4M4 20h16" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
           </span>
         )}
-        <span className="text-sm text-slate-500">
+        <span className="text-sm text-ink/60">
           {archivo ? `${archivo.name} ✓ (toca para cambiar)` : "Toca para subir (JPG, PNG o PDF, máx. 5 MB)"}
         </span>
         <input
@@ -473,8 +473,8 @@ function PasoWallet({ onNext }: { onNext: () => void }) {
 
   return (
     <div className="space-y-4">
-      <h1 className="text-xl font-bold text-slate-900">Conecta tu wallet</h1>
-      <p className="text-sm text-slate-500">
+      <h1 className="text-xl font-bold text-ink">Conecta tu wallet</h1>
+      <p className="text-sm text-ink/60">
         Vincula tu wallet Freighter y autentícala con SEP-10 (firmas un challenge, sin exponer tu llave).
       </p>
 
@@ -493,9 +493,9 @@ function PasoWallet({ onNext }: { onNext: () => void }) {
           <Boton onClick={conectar} disabled={cargando} className="w-full">
             {cargando && <Spinner />} Conectar con Freighter
           </Boton>
-          <p className="text-center text-xs text-slate-400">
+          <p className="text-center text-xs text-ink/50">
             ¿No tienes Freighter?{" "}
-            <a href="https://www.freighter.app/" target="_blank" rel="noreferrer" className="text-teal-600">
+            <a href="https://www.freighter.app/" target="_blank" rel="noreferrer" className="text-brandink">
               Instálalo aquí
             </a>{" "}
             y elige la red Testnet.
@@ -550,8 +550,8 @@ function PasoFondeo({ onDone }: { onDone: () => void }) {
 
   return (
     <div className="space-y-4">
-      <h1 className="text-xl font-bold text-slate-900">Fondea tu cuenta</h1>
-      <p className="text-sm text-slate-500">
+      <h1 className="text-xl font-bold text-ink">Fondea tu cuenta</h1>
+      <p className="text-sm text-ink/60">
         En Testnet, con dinero de prueba: crea tu cuenta en la red, agrega el USDC de prueba y te entrega 1.500 USDC.
       </p>
 
@@ -577,8 +577,8 @@ function PasoFondeo({ onDone }: { onDone: () => void }) {
 
 function ItemFondeo({ estado, texto }: { estado: EstadoFondeo; texto: string }) {
   const iconos = {
-    pendiente: <span className="h-4 w-4 rounded-full border border-slate-300" />,
-    haciendo: <Spinner className="h-4 w-4 text-teal-500" />,
+    pendiente: <span className="h-4 w-4 rounded-full border-2 border-ink" />,
+    haciendo: <Spinner className="h-4 w-4 text-white0" />,
     ok: (
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" className="text-emerald-500">
         <path d="M5 12l5 5 9-9" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
@@ -591,7 +591,7 @@ function ItemFondeo({ estado, texto }: { estado: EstadoFondeo; texto: string }) 
     ),
   };
   return (
-    <li className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700">
+    <li className="flex items-center gap-3 rounded-xl border-2 border-ink bg-white px-4 py-3 text-sm text-ink/80">
       {iconos[estado]}
       {texto}
     </li>
