@@ -426,7 +426,7 @@ impl LoanContract {
             .unwrap_or_else(|| panic_with_error!(env, Error::NoInicializado))
     }
 
-    fn token_client(env: &Env) -> token::TokenClient {
+    fn token_client(env: &Env) -> token::TokenClient<'_> {
         let token: Address = env
             .storage()
             .instance()
@@ -436,7 +436,7 @@ impl LoanContract {
     }
 
     /// Cliente del historial, si está configurado.
-    fn history_client(env: &Env) -> Option<HistoryClient> {
+    fn history_client(env: &Env) -> Option<HistoryClient<'_>> {
         env.storage()
             .instance()
             .get::<DataKey, Address>(&DataKey::History)

@@ -1,0 +1,73 @@
+const preguntas = [
+  {
+    q: "¿Qué es la garantía y por qué la bloqueo?",
+    a: "Es un ahorro en USDC que bloqueas en un contrato inteligente. Sirve como respaldo del préstamo: nadie lo toca mientras pagas, y lo recuperas por completo al terminar. Es tuyo en todo momento.",
+  },
+  {
+    q: "¿Cuánto puedo pedir prestado?",
+    a: "Hasta el 80% del monto que bloquees como garantía. Si bloqueas 1.000 USDC, puedes recibir hasta 800 USDC de préstamo.",
+  },
+  {
+    q: "¿Qué pasa cuando pago una cuota?",
+    a: "Cada cuota libera automáticamente una parte proporcional de tu garantía de vuelta a tu wallet y queda registrada como historial crediticio positivo, subiendo tu puntaje.",
+  },
+  {
+    q: "¿Y si no llego a pagar?",
+    a: "El contrato toma de tu garantía únicamente el monto adeudado y te devuelve el resto. Nunca pierdes más de lo que debes; tu familia garante tampoco.",
+  },
+  {
+    q: "¿Necesito historial crediticio previo?",
+    a: "No. PrimerPaso está pensado justamente para tu primer crédito: tu ahorro es el aval. A medida que pagas, construyes el historial que antes no tenías.",
+  },
+  {
+    q: "¿Esto usa dinero real?",
+    a: "No. El MVP funciona sobre la red de pruebas de Stellar (Testnet) con USDC de prueba. Es una demostración segura, sin valor monetario real.",
+  },
+];
+
+export default function FAQ() {
+  return (
+    <section id="faq" className="bg-slate-50 py-20">
+      <div className="mx-auto max-w-3xl px-4 sm:px-6">
+        <div className="text-center">
+          <p className="text-sm font-semibold uppercase tracking-wide text-teal-600">
+            Preguntas frecuentes
+          </p>
+          <h2 className="mt-2 text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">
+            Lo que debes saber
+          </h2>
+        </div>
+
+        <div className="mt-10 space-y-3">
+          {preguntas.map((p) => (
+            <details
+              key={p.q}
+              className="group rounded-2xl border border-slate-200 bg-white p-5 shadow-sm [&_svg]:open:rotate-45"
+            >
+              <summary className="flex cursor-pointer list-none items-center justify-between gap-4 text-base font-semibold text-slate-900">
+                {p.q}
+                <svg
+                  width="20"
+                  height="20"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  className="shrink-0 text-teal-600 transition-transform"
+                >
+                  <path
+                    d="M12 5v14M5 12h14"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                  />
+                </svg>
+              </summary>
+              <p className="mt-3 text-sm leading-relaxed text-slate-600">
+                {p.a}
+              </p>
+            </details>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}

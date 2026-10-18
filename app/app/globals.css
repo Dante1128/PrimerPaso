@@ -1,0 +1,34 @@
+@import "tailwindcss";
+
+/* PrimerPaso — tema CLARO únicamente (sin modo oscuro).
+   Paleta confiable: primario teal (ahorro/crecimiento), acentos sky/emerald,
+   neutros slate sobre fondos blancos. */
+
+:root {
+  --background: #ffffff;
+  --foreground: #0f172a; /* slate-900 */
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-geist-sans), system-ui, Arial, Helvetica, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Patrón de puntos suave para fondos de sección (decorativo). */
+.bg-dots {
+  background-image: radial-gradient(#cbd5e1 1px, transparent 1px);
+  background-size: 22px 22px;
+}
