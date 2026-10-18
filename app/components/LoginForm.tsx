@@ -6,30 +6,50 @@ import Link from "next/link";
 import Logo from "@/components/Logo";
 import { Campo, inputClase, Boton, Alerta, Spinner } from "@/components/ui";
 
+type Modo = "password" | "codigo";
+
+async function api(url: string, body: unknown) {
+  const res = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error ?? "No se pudo ingresar");
+  return data;
+}
+
 export default function LoginForm() {
   const router = useRouter();
+  const [modo, setModo] = useState<Modo>("password");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [code, setCode] = useState("");
+  const [codigoEnviado, setCodigoEnviado] = useState(false);
   const [error, setError] = useState("");
   const [cargando, setCargando] = useState(false);
+
+  /** Tras abrir sesión: al panel, o al registro si falta algún paso. */
+  async function entrar() {
+    const res = await fetch("/api/auth/me");
+    const { user } = await res.json();
+    router.replace(user?.pasoPendiente ? "/registro" : "/panel");
+  }
 
   async function enviar(e: React.FormEvent) {
     e.preventDefault();
     setError("");
     setCargando(true);
     try {
-      const res = await fetch("/api/auth/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data.error ?? "No se pudo ingresar");
-      // Si aún no terminó el onboarding, el flujo de registro lo retoma.
-      if (!data.emailVerified || !data.role || !data.hasWallet) {
-        router.replace("/registro");
+      if (modo === "password") {
+        await api("/api/auth/login", { email, password });
+        await entrar();
+      } else if (!codigoEnviado) {
+        await api("/api/auth/code", { email });
+        setCodigoEnviado(true);
       } else {
-        router.replace("/panel");
+        await api("/api/auth/verify-email", { email, code });
+        await entrar();
       }
     } catch (err) {
       setError((err as Error).message);
@@ -38,43 +58,68 @@ export default function LoginForm() {
     }
   }
 
+  function cambiarModo(m: Modo) {
+    setModo(m);
+    setError("");
+    setCodigoEnviado(false);
+    setCode("");
+  }
+
   return (
     <main className="grid min-h-screen place-items-center bg-gradient-to-b from-teal-50/60 to-white px-4">
       <div className="w-full max-w-md">
         <Link href="/" className="inline-block">
           <Logo />
         </Link>
-        <form
-          onSubmit={enviar}
-          className="mt-6 space-y-4 rounded-3xl border border-slate-200 bg-white p-8 shadow-sm"
-        >
+        <form onSubmit={enviar} className="mt-6 space-y-4 rounded-3xl border border-slate-200 bg-white p-8 shadow-sm">
           <h1 className="text-xl font-bold text-slate-900">Ingresar</h1>
 
+          <div className="grid grid-cols-2 rounded-full bg-slate-100 p-1 text-sm font-semibold">
+            {(["password", "codigo"] as const).map((m) => (
+              <button
+                key={m}
+                type="button"
+                onClick={() => cambiarModo(m)}
+                className={`rounded-full py-1.5 transition ${modo === m ? "bg-white text-teal-700 shadow-sm" : "text-slate-500"}`}
+              >
+                {m === "password" ? "Con contraseña" : "Con código"}
+              </button>
+            ))}
+          </div>
+
           <Campo label="Email" htmlFor="email">
-            <input
-              id="email"
-              type="email"
-              className={inputClase}
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-            />
+            <input id="email" type="email" className={inputClase} value={email} onChange={(e) => setEmail(e.target.value)} required disabled={codigoEnviado} />
           </Campo>
-          <Campo label="Contraseña" htmlFor="password">
-            <input
-              id="password"
-              type="password"
-              className={inputClase}
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-            />
-          </Campo>
+
+          {modo === "password" && (
+            <Campo label="Contraseña" htmlFor="password">
+              <input id="password" type="password" className={inputClase} value={password} onChange={(e) => setPassword(e.target.value)} required />
+            </Campo>
+          )}
+
+          {modo === "codigo" && codigoEnviado && (
+            <>
+              <Alerta tipo="success">Te enviamos un código a {email}.</Alerta>
+              <Campo label="Código" htmlFor="code">
+                <input
+                  id="code"
+                  inputMode="numeric"
+                  autoComplete="one-time-code"
+                  maxLength={8}
+                  className={`${inputClase} text-center text-2xl tracking-[0.5em]`}
+                  value={code}
+                  onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))}
+                  required
+                />
+              </Campo>
+            </>
+          )}
 
           {error && <Alerta tipo="error">{error}</Alerta>}
 
           <Boton type="submit" disabled={cargando} className="w-full">
-            {cargando && <Spinner />} Ingresar
+            {cargando && <Spinner />}{" "}
+            {modo === "password" ? "Ingresar" : codigoEnviado ? "Verificar e ingresar" : "Enviarme un código"}
           </Boton>
           <p className="text-center text-sm text-slate-500">
             ¿No tienes cuenta?{" "}
