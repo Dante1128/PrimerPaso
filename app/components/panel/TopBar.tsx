@@ -31,13 +31,7 @@ export default function TopBar({
           <div className="hidden text-right sm:block">
             <p className="text-sm font-medium text-slate-800">{nombre}</p>
             <p className="text-xs text-slate-400">
-              {rol === "ESTUDIANTE"
-                ? "Estudiante"
-                : rol === "GARANTE"
-                  ? "Garante"
-                  : rol === "ADMIN"
-                    ? "Administrador"
-                    : "—"}
+              {{ student: "Estudiante", guarantor: "Garante", operator: "Operador", admin: "Administrador" }[rol ?? ""] ?? "—"}
               {wallet ? ` · ${cortarDir(wallet)}` : ""}
             </p>
           </div>

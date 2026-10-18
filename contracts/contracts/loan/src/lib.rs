@@ -1,128 +1,320 @@
 #![no_std]
 //! Contrato de **Préstamo y Garantía** de PrimerPaso.
 //!
-//! Modelo económico (todo en la unidad mínima del token USDC, "stroops"):
+//! PrimerPaso es el único prestamista. Todo se maneja en **USDC** y on-chain.
 //!
-//! 1. El estudiante (o su garante) bloquea una garantía `C` en USDC con
-//!    [`deposit_collateral`].
-//! 2. La plataforma abre un préstamo con [`open_loan`] por un principal `P`
-//!    que no puede superar el 80% de `C`. El contrato desembolsa `P` al
-//!    estudiante desde su liquidez (ver [`fund_pool`]).
-//! 3. La deuda total es `D = P + P * tasa / 10000` (tasa en puntos básicos,
-//!    plana para todo el plazo). Se divide en `n` cuotas mensuales.
-//! 4. Cada pago con [`repay`] libera garantía de forma proporcional:
-//!    garantía liberada objetivo = `C * total_pagado / D`. Al terminar de
-//!    pagar, el estudiante recupera toda su garantía.
-//! 5. Si cae en mora, el admin puede [`liquidate`]: el contrato toma de la
-//!    garantía **solo lo adeudado** y devuelve el resto al estudiante.
+//! Flujo (montos en la unidad mínima de USDC, 7 decimales):
 //!
-//! Cada cuota pagada (a tiempo o con atraso) se registra en el contrato de
-//! historial, y al completar el préstamo se emite una credencial de buen
-//! pagador. Ningún dato personal se guarda en la cadena: solo direcciones y
-//! montos.
+//! 1. Un **depositante** (el estudiante o su garante) bloquea garantía en
+//!    USDC con [`LoanContract::deposit_collateral`] y obtiene una *posición*.
+//! 2. Un **operator** y el **prestatario** firman [`LoanContract::open_loan`].
+//!    El capital respeta el LTV y los límites de [`LoanParams`]. La
+//!    **treasury** (pool) desembolsa `capital - comisión`; la comisión de
+//!    originación se queda en la treasury. El desembolso usa una
+//!    *allowance* que la treasury otorga a este contrato (`approve`).
+//! 3. Interés simple sobre saldo, cobrado al inicio de cada periodo:
+//!    `interés del periodo = saldo * rate_bps / 10000 / 12`.
+//!    El interés pendiente se paga antes que el capital.
+//! 4. Cada [`LoanContract::repay`] envía el USDC a la treasury y libera
+//!    garantía al depositante en proporción al **capital** pagado:
+//!    `liberada = capital_pagado * garantía_inicial / capital_inicial`; el
+//!    último pago libera todo el remanente.
+//! 5. Vencida una cuota y pasada la gracia, el admin o un operator puede
+//!    [`LoanContract::liquidate`]: la treasury recibe capital pendiente +
+//!    interés devengado + recargo, y el remanente vuelve al depositante.
+//!
+//! Invariante: `garantía bloqueada >= deuda / LTV`.
+//! Sin datos personales en la cadena: solo direcciones y montos.
 
 use soroban_sdk::{
-    contract, contractclient, contracterror, contractimpl, contracttype, panic_with_error,
-    symbol_short, token, Address, Env,
+    contract, contractclient, contracterror, contractevent, contractimpl, contracttype,
+    panic_with_error, token, Address, BytesN, ContractExecutable, Env,
 };
 
-/// Segundos por cuota (un mes de 30 días). Las cuotas son mensuales.
-const SECONDS_PER_MONTH: u64 = 30 * 24 * 60 * 60;
+const BPS: i128 = 10_000;
+const MESES_POR_ANIO: i128 = 12;
 
-/// Porcentaje máximo del principal respecto de la garantía (80%).
-const MAX_LTV_PERCENT: i128 = 80;
+const DIA_EN_LEDGERS: u32 = 17_280;
+const TTL_EXTENDER_A: u32 = 30 * DIA_EN_LEDGERS;
+const TTL_UMBRAL: u32 = TTL_EXTENDER_A - DIA_EN_LEDGERS;
 
-/// Interfaz mínima del contrato de historial, para invocarlo de forma
-/// tipada sin depender del crate completo.
 #[contractclient(name = "HistoryClient")]
 pub trait HistoryInterface {
-    fn record_payment(env: Env, borrower: Address, on_time: bool);
-    fn issue_credential(env: Env, borrower: Address, total_installments: u32);
+    fn record_payment(env: Env, borrower: Address, loan_id: u64, on_time: bool, settled: bool);
+    fn record_default(env: Env, borrower: Address, loan_id: u64);
 }
 
-/// Estado de un préstamo.
+/// Parámetros globales de la plataforma (porcentajes en bps). Editables por
+/// el admin; cada préstamo congela los suyos al abrirse.
+#[contracttype]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct LoanParams {
+    /// Préstamo máximo respecto de la garantía (8000 = 80%).
+    pub max_ltv_bps: u32,
+    /// Tasa anual de interés simple sobre saldo (800 = 8%).
+    pub rate_bps: u32,
+    /// Comisión de originación, descontada del desembolso (100 = 1%).
+    pub origination_fee_bps: u32,
+    /// Recargo sobre lo vencido, cobrado en la liquidación (200 = 2%).
+    pub late_fee_bps: u32,
+    /// Fase 2: parte del rendimiento de la garantía para la plataforma.
+    pub yield_share_platform_bps: u32,
+    /// Gracia tras el vencimiento antes de poder liquidar, en segundos.
+    pub grace_seconds: u64,
+    /// Capital mínimo y máximo, en unidades mínimas de USDC.
+    pub min_principal: i128,
+    pub max_principal: i128,
+    pub max_installments: u32,
+}
+
+#[contracttype]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum PositionStatus {
+    /// Garantía depositada, sin préstamo.
+    Open,
+    /// Garantía respaldando un préstamo.
+    InUse,
+    /// Garantía devuelta o tomada por completo.
+    Closed,
+}
+
+/// Garantía bloqueada por un depositante a favor de un prestatario.
+#[contracttype]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct Position {
+    pub id: u64,
+    pub depositor: Address,
+    pub borrower: Address,
+    /// Monto depositado originalmente.
+    pub amount: i128,
+    /// Monto que sigue bloqueado en el contrato.
+    pub locked: i128,
+    pub loan_id: Option<u64>,
+    pub status: PositionStatus,
+}
+
 #[contracttype]
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum LoanStatus {
-    /// Garantía depositada, préstamo todavía no abierto.
-    Pending,
-    /// Préstamo activo, con cuotas por pagar.
     Active,
-    /// Préstamo pagado por completo.
-    Completed,
-    /// Préstamo liquidado por mora.
+    Repaid,
     Liquidated,
 }
 
-/// Datos de un préstamo, indexados por la dirección del estudiante.
+/// Parámetros congelados al abrir el préstamo.
+#[contracttype]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct LoanTerms {
+    pub max_ltv_bps: u32,
+    pub rate_bps: u32,
+    pub origination_fee_bps: u32,
+    pub late_fee_bps: u32,
+    pub grace_seconds: u64,
+}
+
 #[contracttype]
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Loan {
-    /// Dirección (wallet) del estudiante prestatario.
+    pub id: u64,
+    pub position_id: u64,
     pub borrower: Address,
-    /// Garantía total bloqueada en USDC.
-    pub collateral: i128,
-    /// Principal desembolsado.
+    pub depositor: Address,
+    /// Capital inicial (lo que se adeuda).
     pub principal: i128,
-    /// Deuda total a pagar (principal + interés).
-    pub total_due: i128,
-    /// Acumulado efectivamente pagado.
-    pub total_repaid: i128,
-    /// Garantía ya devuelta al estudiante.
+    /// Comisión de originación retenida en la treasury.
+    pub origination_fee: i128,
+    /// Lo que efectivamente recibió el prestatario.
+    pub disbursed: i128,
+    pub principal_paid: i128,
+    /// Interés devengado acumulado (incluye el ya pagado).
+    pub interest_accrued: i128,
+    pub interest_paid: i128,
+    pub collateral_initial: i128,
     pub collateral_released: i128,
-    /// Número de cuotas pactadas.
     pub installments: u32,
-    /// Monto de cada cuota (deuda total / número de cuotas).
-    pub installment_amount: i128,
-    /// Cuotas completadas hasta ahora.
-    pub paid_installments: u32,
-    /// Tasa de interés en puntos básicos (ej. 1000 = 10%).
-    pub interest_rate: u32,
-    /// Marca de tiempo de apertura del préstamo.
+    pub installments_paid: u32,
+    /// Vencimiento de la primera cuota; la cuota k vence en
+    /// `first_due_ts + (k - 1) * period_seconds`.
+    pub first_due_ts: u64,
+    pub period_seconds: u64,
+    /// Periodos cuyo interés ya se devengó.
+    pub periods_accrued: u32,
     pub opened_at: u64,
-    /// Segundos por cuota.
-    pub period: u64,
-    /// Estado actual.
+    pub terms: LoanTerms,
     pub status: LoanStatus,
 }
 
-/// Claves de almacenamiento.
+/// Lo que se debe hoy, para mostrar en la UI.
+#[contracttype]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct PaymentQuote {
+    /// Interés devengado aún impago.
+    pub interest_due: i128,
+    pub principal_outstanding: i128,
+    /// Capital que falta para completar la próxima cuota.
+    pub next_installment_principal: i128,
+    pub next_due_ts: u64,
+    /// Capital de cuotas ya vencidas e impagas + interés pendiente.
+    pub overdue_amount: i128,
+    pub overdue: bool,
+    /// Vencida y pasada la gracia: se puede liquidar.
+    pub liquidatable: bool,
+    /// Recargo que se cobraría en una liquidación hoy.
+    pub late_fee: i128,
+}
+
 #[contracttype]
 #[derive(Clone)]
 pub enum DataKey {
-    /// Administrador (la plataforma): abre préstamos y liquida.
     Admin,
-    /// Dirección del token USDC usado como garantía y desembolso.
-    Token,
-    /// Dirección del contrato de historial (opcional).
+    Treasury,
     History,
-    /// Préstamo de una dirección.
-    Loan(Address),
+    Usdc,
+    Params,
+    Paused,
+    NextPositionId,
+    NextLoanId,
+    Operator(Address),
+    Position(u64),
+    Loan(u64),
 }
 
-/// Errores del contrato de préstamo.
 #[contracterror]
 #[derive(Clone, Copy, Debug, Eq, PartialEq, PartialOrd, Ord)]
 #[repr(u32)]
 pub enum Error {
-    /// El contrato ya fue inicializado.
     YaInicializado = 1,
-    /// El contrato aún no fue inicializado.
     NoInicializado = 2,
-    /// No hay garantía depositada para esa dirección.
-    SinGarantia = 3,
-    /// La operación no es válida para el estado actual del préstamo.
-    EstadoInvalido = 4,
-    /// El principal supera el 80% de la garantía.
-    PrincipalExcedeLimite = 5,
-    /// Parámetros inválidos (cuotas en cero, tasa fuera de rango, etc.).
-    ParametrosInvalidos = 6,
-    /// Monto inválido (cero o negativo).
-    MontoInvalido = 7,
-    /// El pago supera lo que aún se adeuda.
-    ExcedeDeuda = 8,
-    /// No hay cuotas vencidas: no se puede liquidar todavía.
-    SinMora = 9,
+    /// El contrato está en pausa.
+    Pausado = 3,
+    /// Quien firma no tiene permiso para esta operación.
+    NoAutorizado = 4,
+    PosicionNoExiste = 5,
+    PrestamoNoExiste = 6,
+    EstadoInvalido = 7,
+    /// El capital supera el LTV máximo.
+    ExcedeLtv = 8,
+    /// Capital o número de cuotas fuera de los límites.
+    FueraDeLimites = 9,
+    ParametrosInvalidos = 10,
+    MontoInvalido = 11,
+    /// El pago supera lo adeudado.
+    ExcedeDeuda = 12,
+    /// Hay interés pendiente: debe pagarse antes que el capital.
+    InteresPendiente = 13,
+    /// La cuota no está vencida o la gracia no terminó.
+    SinMora = 14,
+    /// La treasury no tiene saldo o allowance suficiente.
+    PoolInsuficiente = 15,
+    InvarianteViolado = 16,
+}
+
+// --- Eventos ---
+
+#[contractevent]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct CollateralDeposited {
+    #[topic]
+    pub position_id: u64,
+    #[topic]
+    pub borrower: Address,
+    pub depositor: Address,
+    pub amount: i128,
+}
+
+#[contractevent]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct LoanOpened {
+    #[topic]
+    pub loan_id: u64,
+    #[topic]
+    pub borrower: Address,
+    pub position_id: u64,
+    pub depositor: Address,
+    pub principal: i128,
+    pub origination_fee: i128,
+    pub disbursed: i128,
+    pub collateral: i128,
+    pub installments: u32,
+    pub first_due_ts: u64,
+    pub period_seconds: u64,
+    pub rate_bps: u32,
+}
+
+#[contractevent]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct PaymentRecorded {
+    #[topic]
+    pub loan_id: u64,
+    #[topic]
+    pub borrower: Address,
+    pub payer: Address,
+    pub principal: i128,
+    pub interest: i128,
+    pub on_time: bool,
+}
+
+#[contractevent]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct CollateralReleased {
+    #[topic]
+    pub loan_id: u64,
+    #[topic]
+    pub depositor: Address,
+    pub amount: i128,
+}
+
+#[contractevent]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct LoanRepaid {
+    #[topic]
+    pub loan_id: u64,
+    #[topic]
+    pub borrower: Address,
+}
+
+#[contractevent]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct LoanLiquidated {
+    #[topic]
+    pub loan_id: u64,
+    #[topic]
+    pub borrower: Address,
+    pub principal_due: i128,
+    pub interest_due: i128,
+    pub late_fee: i128,
+    /// Lo que efectivamente se tomó de la garantía para la treasury.
+    pub taken: i128,
+}
+
+#[contractevent]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct CollateralReturned {
+    #[topic]
+    pub position_id: u64,
+    #[topic]
+    pub depositor: Address,
+    pub amount: i128,
+}
+
+#[contractevent]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct ParamsUpdated {
+    pub params: LoanParams,
+}
+
+#[contractevent]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct OperatorChanged {
+    #[topic]
+    pub operator: Address,
+    pub enabled: bool,
+}
+
+#[contractevent]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct PausedChanged {
+    pub paused: bool,
 }
 
 #[contract]
@@ -130,296 +322,602 @@ pub struct LoanContract;
 
 #[contractimpl]
 impl LoanContract {
-    /// Inicializa el contrato con el admin y el token USDC.
-    pub fn init(env: Env, admin: Address, token: Address) {
+    pub fn initialize(
+        env: Env,
+        admin: Address,
+        treasury: Address,
+        history: Address,
+        usdc: Address,
+        params: LoanParams,
+    ) {
         if env.storage().instance().has(&DataKey::Admin) {
             panic_with_error!(&env, Error::YaInicializado);
         }
-        env.storage().instance().set(&DataKey::Admin, &admin);
-        env.storage().instance().set(&DataKey::Token, &token);
+        Self::validar_params(&env, &params);
+        let s = env.storage().instance();
+        s.set(&DataKey::Admin, &admin);
+        s.set(&DataKey::Treasury, &treasury);
+        s.set(&DataKey::History, &history);
+        s.set(&DataKey::Usdc, &usdc);
+        s.set(&DataKey::Params, &params);
+        s.set(&DataKey::Paused, &false);
+        s.set(&DataKey::NextPositionId, &1u64);
+        s.set(&DataKey::NextLoanId, &1u64);
+        Self::extender_instancia(&env);
+        ParamsUpdated { params }.publish(&env);
     }
 
-    /// Define o actualiza el contrato de historial. Solo el admin.
-    pub fn set_history(env: Env, history: Address) {
-        Self::read_admin(&env).require_auth();
-        env.storage().instance().set(&DataKey::History, &history);
+    // --- Administración (solo admin) ---
+
+    /// Cambia los parámetros globales. Los préstamos abiertos conservan los suyos.
+    pub fn set_params(env: Env, params: LoanParams) {
+        Self::require_admin(&env);
+        Self::validar_params(&env, &params);
+        env.storage().instance().set(&DataKey::Params, &params);
+        ParamsUpdated { params }.publish(&env);
     }
 
-    /// Fondea la liquidez del contrato (de donde salen los desembolsos).
-    /// Cualquiera puede aportar; en la práctica lo hace la plataforma.
-    pub fn fund_pool(env: Env, from: Address, amount: i128) {
-        from.require_auth();
+    pub fn set_operator(env: Env, operator: Address, enabled: bool) {
+        Self::require_admin(&env);
+        let key = DataKey::Operator(operator.clone());
+        if enabled {
+            env.storage().persistent().set(&key, &true);
+            Self::extender(&env, &key);
+        } else {
+            env.storage().persistent().remove(&key);
+        }
+        OperatorChanged { operator, enabled }.publish(&env);
+    }
+
+    pub fn set_treasury(env: Env, treasury: Address) {
+        Self::require_admin(&env);
+        env.storage().instance().set(&DataKey::Treasury, &treasury);
+    }
+
+    pub fn pause(env: Env) {
+        Self::require_admin(&env);
+        env.storage().instance().set(&DataKey::Paused, &true);
+        PausedChanged { paused: true }.publish(&env);
+    }
+
+    pub fn unpause(env: Env) {
+        Self::require_admin(&env);
+        env.storage().instance().set(&DataKey::Paused, &false);
+        PausedChanged { paused: false }.publish(&env);
+    }
+
+    pub fn upgrade(env: Env, wasm_hash: BytesN<32>) {
+        Self::require_admin(&env);
+        env.deployer()
+            .update_current_contract(ContractExecutable::Wasm(wasm_hash));
+    }
+
+    // --- Operación ---
+
+    /// Bloquea garantía en USDC a favor de `borrower`. Firma el depositante
+    /// (estudiante o garante). El único activo aceptado es el USDC
+    /// configurado al inicializar.
+    pub fn deposit_collateral(env: Env, depositor: Address, borrower: Address, amount: i128) -> u64 {
+        depositor.require_auth();
+        Self::require_not_paused(&env);
         if amount <= 0 {
             panic_with_error!(&env, Error::MontoInvalido);
         }
-        Self::token_client(&env).transfer(
-            &from,
-            &env.current_contract_address(),
-            &amount,
-        );
-    }
+        Self::usdc(&env).transfer(&depositor, &env.current_contract_address(), &amount);
 
-    /// Deposita garantía en USDC. La firma el propio estudiante o su garante.
-    ///
-    /// Si no existe préstamo, crea uno en estado `Pending`. Si ya existe uno
-    /// `Pending`, suma a la garantía. No se permite depositar sobre un
-    /// préstamo ya activo, completado o liquidado.
-    pub fn deposit_collateral(env: Env, borrower: Address, from: Address, amount: i128) {
-        from.require_auth();
-        if amount <= 0 {
-            panic_with_error!(&env, Error::MontoInvalido);
-        }
-
-        // El dinero entra al contrato.
-        Self::token_client(&env).transfer(&from, &env.current_contract_address(), &amount);
-
-        let mut loan = match Self::load(&env, &borrower) {
-            Some(l) => {
-                if l.status != LoanStatus::Pending {
-                    panic_with_error!(&env, Error::EstadoInvalido);
-                }
-                l
-            }
-            None => Loan {
-                borrower: borrower.clone(),
-                collateral: 0,
-                principal: 0,
-                total_due: 0,
-                total_repaid: 0,
-                collateral_released: 0,
-                installments: 0,
-                installment_amount: 0,
-                paid_installments: 0,
-                interest_rate: 0,
-                opened_at: 0,
-                period: 0,
-                status: LoanStatus::Pending,
-            },
+        let id = Self::siguiente_id(&env, DataKey::NextPositionId);
+        let position = Position {
+            id,
+            depositor: depositor.clone(),
+            borrower: borrower.clone(),
+            amount,
+            locked: amount,
+            loan_id: None,
+            status: PositionStatus::Open,
         };
-
-        loan.collateral += amount;
-        Self::save(&env, &loan);
-        env.events()
-            .publish((symbol_short!("deposito"), borrower), amount);
+        Self::guardar_posicion(&env, &position);
+        CollateralDeposited {
+            position_id: id,
+            borrower,
+            depositor,
+            amount,
+        }
+        .publish(&env);
+        id
     }
 
-    /// Abre el préstamo. Lo firma el propio prestatario (autoservicio): pide
-    /// prestado contra su propia garantía ya bloqueada. El préstamo está
-    /// sobre-colateralizado, por lo que no requiere aprobación del admin.
-    ///
-    /// - `principal` no puede superar el 80% de la garantía.
-    /// - `installments` debe ser mayor a cero.
-    /// - `interest_rate` en puntos básicos (ej. 1000 = 10%).
+    /// Devuelve al depositante una garantía cuyo préstamo nunca se abrió.
+    pub fn withdraw_unused(env: Env, depositor: Address, position_id: u64) {
+        depositor.require_auth();
+        Self::require_not_paused(&env);
+        let mut position = Self::cargar_posicion(&env, position_id);
+        if position.depositor != depositor {
+            panic_with_error!(&env, Error::NoAutorizado);
+        }
+        if position.status != PositionStatus::Open {
+            panic_with_error!(&env, Error::EstadoInvalido);
+        }
+        let monto = position.locked;
+        Self::usdc(&env).transfer(&env.current_contract_address(), &depositor, &monto);
+        position.locked = 0;
+        position.status = PositionStatus::Closed;
+        Self::guardar_posicion(&env, &position);
+        CollateralReturned {
+            position_id,
+            depositor,
+            amount: monto,
+        }
+        .publish(&env);
+    }
+
+    /// Abre un préstamo contra una posición. Firman un operator y el
+    /// prestatario. La treasury desembolsa `capital - comisión`.
     pub fn open_loan(
         env: Env,
-        borrower: Address,
+        operator: Address,
+        position_id: u64,
         principal: i128,
         installments: u32,
-        interest_rate: u32,
-    ) {
-        borrower.require_auth();
-
-        let mut loan = Self::load(&env, &borrower)
-            .unwrap_or_else(|| panic_with_error!(&env, Error::SinGarantia));
-
-        if loan.status != LoanStatus::Pending {
+        first_due_ts: u64,
+        period_seconds: u64,
+    ) -> u64 {
+        operator.require_auth();
+        Self::require_not_paused(&env);
+        if !Self::is_operator(env.clone(), operator) {
+            panic_with_error!(&env, Error::NoAutorizado);
+        }
+        let mut position = Self::cargar_posicion(&env, position_id);
+        if position.status != PositionStatus::Open {
             panic_with_error!(&env, Error::EstadoInvalido);
         }
-        if loan.collateral <= 0 {
-            panic_with_error!(&env, Error::SinGarantia);
+        position.borrower.require_auth();
+
+        let p = Self::get_params(env.clone());
+        let now = env.ledger().timestamp();
+        if principal < p.min_principal
+            || principal > p.max_principal
+            || installments == 0
+            || installments > p.max_installments
+        {
+            panic_with_error!(&env, Error::FueraDeLimites);
         }
-        if principal <= 0 || installments == 0 {
+        if period_seconds == 0 || first_due_ts <= now || principal < installments as i128 {
             panic_with_error!(&env, Error::ParametrosInvalidos);
         }
-        // Límite 80%: principal <= garantía * 80 / 100.
-        if principal > loan.collateral * MAX_LTV_PERCENT / 100 {
-            panic_with_error!(&env, Error::PrincipalExcedeLimite);
+        // LTV: capital <= garantía * max_ltv_bps / 10000
+        if principal * BPS > position.locked * p.max_ltv_bps as i128 {
+            panic_with_error!(&env, Error::ExcedeLtv);
         }
 
-        let total_due = principal + principal * (interest_rate as i128) / 10_000;
-        let installment_amount = total_due / (installments as i128);
-        if installment_amount <= 0 {
-            panic_with_error!(&env, Error::ParametrosInvalidos);
+        // Desembolso desde el pool: la comisión se queda en la treasury.
+        let fee = principal * p.origination_fee_bps as i128 / BPS;
+        let neto = principal - fee;
+        let treasury = Self::read_treasury(&env);
+        if Self::pool_available(env.clone()) < neto {
+            panic_with_error!(&env, Error::PoolInsuficiente);
         }
-
-        loan.principal = principal;
-        loan.total_due = total_due;
-        loan.installments = installments;
-        loan.installment_amount = installment_amount;
-        loan.interest_rate = interest_rate;
-        loan.opened_at = env.ledger().timestamp();
-        loan.period = SECONDS_PER_MONTH;
-        loan.status = LoanStatus::Active;
-
-        // Desembolso del principal al estudiante desde la liquidez.
-        Self::token_client(&env).transfer(
+        Self::usdc(&env).transfer_from(
             &env.current_contract_address(),
-            &borrower,
-            &principal,
+            &treasury,
+            &position.borrower,
+            &neto,
         );
 
-        Self::save(&env, &loan);
-        env.events()
-            .publish((symbol_short!("prestamo"), borrower), principal);
+        let id = Self::siguiente_id(&env, DataKey::NextLoanId);
+        let mut loan = Loan {
+            id,
+            position_id,
+            borrower: position.borrower.clone(),
+            depositor: position.depositor.clone(),
+            principal,
+            origination_fee: fee,
+            disbursed: neto,
+            principal_paid: 0,
+            interest_accrued: 0,
+            interest_paid: 0,
+            collateral_initial: position.locked,
+            collateral_released: 0,
+            installments,
+            installments_paid: 0,
+            first_due_ts,
+            period_seconds,
+            periods_accrued: 0,
+            opened_at: now,
+            terms: LoanTerms {
+                max_ltv_bps: p.max_ltv_bps,
+                rate_bps: p.rate_bps,
+                origination_fee_bps: p.origination_fee_bps,
+                late_fee_bps: p.late_fee_bps,
+                grace_seconds: p.grace_seconds,
+            },
+            status: LoanStatus::Active,
+        };
+        // Devenga el interés del primer periodo.
+        Self::devengar(&mut loan, now);
+        Self::guardar_prestamo(&env, &loan);
+
+        position.loan_id = Some(id);
+        position.status = PositionStatus::InUse;
+        Self::guardar_posicion(&env, &position);
+
+        LoanOpened {
+            loan_id: id,
+            borrower: loan.borrower.clone(),
+            position_id,
+            depositor: loan.depositor.clone(),
+            principal,
+            origination_fee: fee,
+            disbursed: neto,
+            collateral: loan.collateral_initial,
+            installments,
+            first_due_ts,
+            period_seconds,
+            rate_bps: p.rate_bps,
+        }
+        .publish(&env);
+        id
     }
 
-    /// Paga una cuota (o un monto parcial/total). La firma el estudiante.
-    ///
-    /// Registra el pago, libera garantía proporcional y, si corresponde,
-    /// marca el préstamo como completado y emite la credencial.
-    pub fn repay(env: Env, borrower: Address, amount: i128) {
-        borrower.require_auth();
+    /// Paga interés y/o capital en USDC. Puede pagar el estudiante o su
+    /// garante (firma quien paga). Todo va a la treasury; el capital libera
+    /// garantía proporcional al depositante.
+    pub fn repay(env: Env, payer: Address, loan_id: u64, principal: i128, interest: i128) {
+        payer.require_auth();
+        Self::require_not_paused(&env);
+        let mut loan = Self::cargar_prestamo_activo(&env, loan_id);
+        let now = env.ledger().timestamp();
+        Self::devengar(&mut loan, now);
 
-        let mut loan = Self::load(&env, &borrower)
-            .unwrap_or_else(|| panic_with_error!(&env, Error::SinGarantia));
-        if loan.status != LoanStatus::Active {
-            panic_with_error!(&env, Error::EstadoInvalido);
-        }
-        if amount <= 0 {
+        if principal < 0 || interest < 0 || principal + interest == 0 {
             panic_with_error!(&env, Error::MontoInvalido);
         }
-        let outstanding = loan.total_due - loan.total_repaid;
-        if amount > outstanding {
+        let interes_pendiente = loan.interest_accrued - loan.interest_paid;
+        if interest > interes_pendiente || principal > loan.principal - loan.principal_paid {
             panic_with_error!(&env, Error::ExcedeDeuda);
         }
+        if principal > 0 && interest != interes_pendiente {
+            panic_with_error!(&env, Error::InteresPendiente);
+        }
 
-        // El pago entra al contrato (vuelve a la liquidez/prestamista).
-        Self::token_client(&env).transfer(&borrower, &env.current_contract_address(), &amount);
+        Self::usdc(&env).transfer(&payer, &Self::read_treasury(&env), &(principal + interest));
 
-        let prev_completed = loan.paid_installments;
-        loan.total_repaid += amount;
+        let on_time = now <= Self::vencimiento_siguiente(&loan);
+        loan.interest_paid += interest;
+        loan.principal_paid += principal;
+        let saldado = loan.principal_paid == loan.principal;
 
-        // Cuotas completadas tras este pago.
-        let completed = if loan.total_repaid >= loan.total_due {
+        // Cuotas completadas por el capital pagado; cada una va al historial.
+        let previas = loan.installments_paid;
+        let completas = if saldado {
             loan.installments
         } else {
-            let c = (loan.total_repaid / loan.installment_amount) as u32;
-            if c > loan.installments {
-                loan.installments
-            } else {
-                c
-            }
+            let por_cuota = loan.principal / loan.installments as i128;
+            ((loan.principal_paid / por_cuota) as u32).min(loan.installments - 1)
         };
-        loan.paid_installments = completed;
-
-        // Registrar en el historial cada cuota recién completada.
-        if let Some(history) = Self::history_client(&env) {
-            let now = env.ledger().timestamp();
-            let mut k = prev_completed + 1;
-            while k <= completed {
-                let vencimiento = loan.opened_at + (k as u64) * loan.period;
-                let a_tiempo = now <= vencimiento;
-                history.record_payment(&borrower, &a_tiempo);
-                k += 1;
-            }
-        }
-
-        // Liberar garantía de forma proporcional a lo pagado.
-        let objetivo = loan.collateral * loan.total_repaid / loan.total_due;
-        let delta = objetivo - loan.collateral_released;
-        if delta > 0 {
-            Self::token_client(&env).transfer(
-                &env.current_contract_address(),
-                &borrower,
-                &delta,
+        loan.installments_paid = completas;
+        let history = Self::history(&env);
+        let mut k = previas + 1;
+        while k <= completas {
+            history.record_payment(
+                &loan.borrower,
+                &loan_id,
+                &(now <= Self::vencimiento_cuota(&loan, k)),
+                &(saldado && k == completas),
             );
-            loan.collateral_released += delta;
-            env.events()
-                .publish((symbol_short!("liberado"), borrower.clone()), delta);
+            k += 1;
         }
 
-        env.events()
-            .publish((symbol_short!("pago"), borrower.clone()), amount);
+        PaymentRecorded {
+            loan_id,
+            borrower: loan.borrower.clone(),
+            payer,
+            principal,
+            interest,
+            on_time,
+        }
+        .publish(&env);
 
-        // ¿Préstamo completado?
-        if loan.total_repaid >= loan.total_due {
-            loan.status = LoanStatus::Completed;
-            if let Some(history) = Self::history_client(&env) {
-                history.issue_credential(&borrower, &loan.installments);
+        // Solo el capital libera garantía.
+        let mut position = Self::cargar_posicion(&env, loan.position_id);
+        let liberar = Self::garantia_objetivo(&loan, loan.principal_paid) - loan.collateral_released;
+        if liberar > 0 {
+            Self::usdc(&env).transfer(&env.current_contract_address(), &loan.depositor, &liberar);
+            loan.collateral_released += liberar;
+            position.locked -= liberar;
+            CollateralReleased {
+                loan_id,
+                depositor: loan.depositor.clone(),
+                amount: liberar,
             }
-            env.events()
-                .publish((symbol_short!("completo"), borrower), loan.installments);
+            .publish(&env);
         }
 
-        Self::save(&env, &loan);
+        // Invariante: bloqueado * LTV >= deuda * 10000.
+        let deuda = loan.principal - loan.principal_paid;
+        if position.locked * (loan.terms.max_ltv_bps as i128) < deuda * BPS {
+            panic_with_error!(&env, Error::InvarianteViolado);
+        }
+
+        if saldado {
+            loan.status = LoanStatus::Repaid;
+            position.status = PositionStatus::Closed;
+            LoanRepaid {
+                loan_id,
+                borrower: loan.borrower.clone(),
+            }
+            .publish(&env);
+        }
+        Self::guardar_posicion(&env, &position);
+        Self::guardar_prestamo(&env, &loan);
     }
 
-    /// Liquida un préstamo en mora. Solo el admin.
-    ///
-    /// Requiere que la próxima cuota impaga esté vencida. Toma de la garantía
-    /// restante **solo lo adeudado** (lo envía al admin/prestamista) y
-    /// devuelve el resto de la garantía al estudiante.
-    pub fn liquidate(env: Env, borrower: Address) {
-        let admin = Self::read_admin(&env);
-        admin.require_auth();
-
-        let mut loan = Self::load(&env, &borrower)
-            .unwrap_or_else(|| panic_with_error!(&env, Error::SinGarantia));
-        if loan.status != LoanStatus::Active {
-            panic_with_error!(&env, Error::EstadoInvalido);
+    /// Ejecuta la garantía de un préstamo vencido y fuera de gracia.
+    /// Puede llamarlo el admin o un operator.
+    pub fn liquidate(env: Env, caller: Address, loan_id: u64) {
+        caller.require_auth();
+        Self::require_not_paused(&env);
+        if caller != Self::read_admin(&env) && !Self::is_operator(env.clone(), caller) {
+            panic_with_error!(&env, Error::NoAutorizado);
         }
-
-        // La próxima cuota impaga vence en opened_at + (paid+1) * period.
-        let siguiente = (loan.paid_installments + 1) as u64;
-        let vencimiento = loan.opened_at + siguiente * loan.period;
-        if env.ledger().timestamp() <= vencimiento {
+        let mut loan = Self::cargar_prestamo_activo(&env, loan_id);
+        let now = env.ledger().timestamp();
+        if now <= Self::vencimiento_siguiente(&loan) + loan.terms.grace_seconds {
             panic_with_error!(&env, Error::SinMora);
         }
+        Self::devengar(&mut loan, now);
 
-        let outstanding = loan.total_due - loan.total_repaid;
-        let garantia_restante = loan.collateral - loan.collateral_released;
-        // Tomar solo lo adeudado (acotado por la garantía disponible).
-        let tomar = if outstanding < garantia_restante {
-            outstanding
-        } else {
-            garantia_restante
-        };
+        let principal_due = loan.principal - loan.principal_paid;
+        let interest_due = loan.interest_accrued - loan.interest_paid;
+        let late_fee = Self::recargo(&loan, now);
+        let adeudado = principal_due + interest_due + late_fee;
 
-        let token = Self::token_client(&env);
+        let mut position = Self::cargar_posicion(&env, loan.position_id);
+        let bloqueado = position.locked;
+        let tomar = adeudado.min(bloqueado);
+        let devolver = bloqueado - tomar;
+
+        let usdc = Self::usdc(&env);
         if tomar > 0 {
-            token.transfer(&env.current_contract_address(), &admin, &tomar);
+            usdc.transfer(&env.current_contract_address(), &Self::read_treasury(&env), &tomar);
         }
-        let devolver = garantia_restante - tomar;
         if devolver > 0 {
-            token.transfer(&env.current_contract_address(), &borrower, &devolver);
+            usdc.transfer(&env.current_contract_address(), &position.depositor, &devolver);
         }
 
-        loan.collateral_released = loan.collateral;
+        position.locked = 0;
+        position.status = PositionStatus::Closed;
+        Self::guardar_posicion(&env, &position);
+
+        loan.collateral_released = loan.collateral_initial;
         loan.status = LoanStatus::Liquidated;
+        Self::guardar_prestamo(&env, &loan);
 
-        // Registrar las cuotas impagas como atrasadas en el historial.
-        if let Some(history) = Self::history_client(&env) {
-            let mut k = loan.paid_installments + 1;
-            while k <= loan.installments {
-                history.record_payment(&borrower, &false);
-                k += 1;
-            }
+        Self::history(&env).record_default(&loan.borrower, &loan_id);
+
+        LoanLiquidated {
+            loan_id,
+            borrower: loan.borrower.clone(),
+            principal_due,
+            interest_due,
+            late_fee,
+            taken: tomar,
         }
-
-        Self::save(&env, &loan);
-        env.events()
-            .publish((symbol_short!("liquida"), borrower), tomar);
+        .publish(&env);
+        if devolver > 0 {
+            CollateralReturned {
+                position_id: position.id,
+                depositor: position.depositor,
+                amount: devolver,
+            }
+            .publish(&env);
+        }
     }
 
-    /// Consulta el estado del préstamo de una dirección.
-    pub fn get_loan(env: Env, borrower: Address) -> Option<Loan> {
-        Self::load(&env, &borrower)
+    // --- Lecturas ---
+
+    pub fn get_loan(env: Env, loan_id: u64) -> Option<Loan> {
+        env.storage().persistent().get(&DataKey::Loan(loan_id))
     }
 
-    /// Devuelve el admin.
-    pub fn admin(env: Env) -> Address {
-        Self::read_admin(&env)
+    pub fn get_position(env: Env, position_id: u64) -> Option<Position> {
+        env.storage()
+            .persistent()
+            .get(&DataKey::Position(position_id))
     }
 
-    /// Devuelve la dirección del token USDC.
-    pub fn token(env: Env) -> Address {
+    pub fn get_params(env: Env) -> LoanParams {
         env.storage()
             .instance()
-            .get(&DataKey::Token)
+            .get(&DataKey::Params)
             .unwrap_or_else(|| panic_with_error!(&env, Error::NoInicializado))
     }
 
-    // --- helpers internos ---
+    /// Garantía que se liberaría si hoy se pagara `principal` de capital.
+    pub fn quote_release(env: Env, loan_id: u64, principal: i128) -> i128 {
+        let loan = Self::cargar_prestamo_activo(&env, loan_id);
+        let pagado = (loan.principal_paid + principal).min(loan.principal);
+        Self::garantia_objetivo(&loan, pagado) - loan.collateral_released
+    }
+
+    /// Lo que se adeuda hoy: interés devengado, capital de la próxima cuota,
+    /// lo vencido y si ya se puede liquidar.
+    pub fn quote_next_payment(env: Env, loan_id: u64) -> PaymentQuote {
+        let mut loan = Self::cargar_prestamo_activo(&env, loan_id);
+        let now = env.ledger().timestamp();
+        Self::devengar(&mut loan, now);
+        let vence = Self::vencimiento_siguiente(&loan);
+        let objetivo_cuota = Self::capital_acumulado_cuota(&loan, loan.installments_paid + 1);
+        PaymentQuote {
+            interest_due: loan.interest_accrued - loan.interest_paid,
+            principal_outstanding: loan.principal - loan.principal_paid,
+            next_installment_principal: objetivo_cuota - loan.principal_paid,
+            next_due_ts: vence,
+            overdue_amount: Self::vencido(&loan, now),
+            overdue: now > vence,
+            liquidatable: now > vence + loan.terms.grace_seconds,
+            late_fee: Self::recargo(&loan, now),
+        }
+    }
+
+    /// ¿La próxima cuota impaga ya venció? (sin contar la gracia)
+    pub fn is_overdue(env: Env, loan_id: u64) -> bool {
+        match Self::get_loan(env.clone(), loan_id) {
+            Some(loan) if loan.status == LoanStatus::Active => {
+                env.ledger().timestamp() > Self::vencimiento_siguiente(&loan)
+            }
+            _ => false,
+        }
+    }
+
+    /// USDC que el pool puede desembolsar hoy: el menor entre el saldo de
+    /// la treasury y la allowance que otorgó a este contrato.
+    pub fn pool_available(env: Env) -> i128 {
+        let usdc = Self::usdc(&env);
+        let treasury = Self::read_treasury(&env);
+        let saldo = usdc.balance(&treasury);
+        let allowance = usdc.allowance(&treasury, &env.current_contract_address());
+        saldo.min(allowance)
+    }
+
+    pub fn is_operator(env: Env, operator: Address) -> bool {
+        env.storage()
+            .persistent()
+            .get(&DataKey::Operator(operator))
+            .unwrap_or(false)
+    }
+
+    pub fn is_paused(env: Env) -> bool {
+        env.storage()
+            .instance()
+            .get(&DataKey::Paused)
+            .unwrap_or(false)
+    }
+
+    pub fn get_admin(env: Env) -> Address {
+        Self::read_admin(&env)
+    }
+
+    pub fn get_treasury(env: Env) -> Address {
+        Self::read_treasury(&env)
+    }
+
+    pub fn get_usdc(env: Env) -> Address {
+        Self::usdc_address(&env)
+    }
+
+    // --- Lógica interna ---
+
+    fn validar_params(env: &Env, p: &LoanParams) {
+        let bps = BPS as u32;
+        let ok = p.max_ltv_bps > 0
+            && p.max_ltv_bps <= bps
+            && p.rate_bps <= bps
+            && p.origination_fee_bps < bps
+            && p.late_fee_bps <= bps
+            && p.yield_share_platform_bps <= bps
+            && p.min_principal > 0
+            && p.min_principal <= p.max_principal
+            && p.max_installments > 0;
+        if !ok {
+            panic_with_error!(env, Error::ParametrosInvalidos);
+        }
+    }
+
+    /// Periodos iniciados a la fecha `now`. El primero empieza al abrir; el
+    /// periodo k+1 empieza apenas vence la cuota k.
+    fn periodos_iniciados(loan: &Loan, now: u64) -> u64 {
+        if now <= loan.first_due_ts {
+            1
+        } else {
+            2 + (now - loan.first_due_ts - 1) / loan.period_seconds
+        }
+    }
+
+    /// Cuotas cuyo vencimiento ya pasó a la fecha `now`.
+    fn cuotas_vencidas(loan: &Loan, now: u64) -> u32 {
+        let n = Self::periodos_iniciados(loan, now) - 1;
+        n.min(loan.installments as u64) as u32
+    }
+
+    /// Devenga el interés de los periodos iniciados desde la última vez,
+    /// sobre el saldo de capital vigente (que no cambió entre tanto).
+    fn devengar(loan: &mut Loan, now: u64) {
+        let saldo = loan.principal - loan.principal_paid;
+        let iniciados = Self::periodos_iniciados(loan, now).min(u32::MAX as u64) as u32;
+        if saldo <= 0 || iniciados <= loan.periods_accrued {
+            return;
+        }
+        let nuevos = (iniciados - loan.periods_accrued) as i128;
+        let por_periodo = saldo * loan.terms.rate_bps as i128 / BPS / MESES_POR_ANIO;
+        loan.interest_accrued += por_periodo * nuevos;
+        loan.periods_accrued = iniciados;
+    }
+
+    /// Lo vencido: capital de cuotas vencidas e impagas + interés pendiente.
+    fn vencido(loan: &Loan, now: u64) -> i128 {
+        let capital_exigible = Self::capital_acumulado_cuota(loan, Self::cuotas_vencidas(loan, now));
+        let capital_vencido = (capital_exigible - loan.principal_paid).max(0);
+        let interes = loan.interest_accrued - loan.interest_paid;
+        if capital_vencido == 0 {
+            0
+        } else {
+            capital_vencido + interes
+        }
+    }
+
+    /// Recargo por mora: `late_fee_bps` sobre lo vencido.
+    fn recargo(loan: &Loan, now: u64) -> i128 {
+        Self::vencido(loan, now) * loan.terms.late_fee_bps as i128 / BPS
+    }
+
+    /// Garantía liberada acumulada que corresponde a `capital_pagado`.
+    /// Entera (redondeo hacia abajo); al saldar se libera todo.
+    fn garantia_objetivo(loan: &Loan, capital_pagado: i128) -> i128 {
+        if capital_pagado >= loan.principal {
+            loan.collateral_initial
+        } else {
+            capital_pagado * loan.collateral_initial / loan.principal
+        }
+    }
+
+    /// Capital acumulado que debe estar pagado al completar la cuota `k`.
+    fn capital_acumulado_cuota(loan: &Loan, k: u32) -> i128 {
+        if k >= loan.installments {
+            loan.principal
+        } else {
+            loan.principal / loan.installments as i128 * k as i128
+        }
+    }
+
+    fn vencimiento_cuota(loan: &Loan, k: u32) -> u64 {
+        loan.first_due_ts + (k.saturating_sub(1) as u64) * loan.period_seconds
+    }
+
+    fn vencimiento_siguiente(loan: &Loan) -> u64 {
+        Self::vencimiento_cuota(loan, (loan.installments_paid + 1).min(loan.installments))
+    }
+
+    // --- Acceso a otros contratos y roles ---
+
+    fn usdc_address(env: &Env) -> Address {
+        env.storage()
+            .instance()
+            .get(&DataKey::Usdc)
+            .unwrap_or_else(|| panic_with_error!(env, Error::NoInicializado))
+    }
+
+    fn usdc(env: &Env) -> token::TokenClient<'_> {
+        token::TokenClient::new(env, &Self::usdc_address(env))
+    }
+
+    fn history(env: &Env) -> HistoryClient<'_> {
+        let addr: Address = env
+            .storage()
+            .instance()
+            .get(&DataKey::History)
+            .unwrap_or_else(|| panic_with_error!(env, Error::NoInicializado));
+        HistoryClient::new(env, &addr)
+    }
 
     fn read_admin(env: &Env) -> Address {
         env.storage()
@@ -428,33 +926,74 @@ impl LoanContract {
             .unwrap_or_else(|| panic_with_error!(env, Error::NoInicializado))
     }
 
-    fn token_client(env: &Env) -> token::TokenClient<'_> {
-        let token: Address = env
+    fn read_treasury(env: &Env) -> Address {
+        env.storage()
+            .instance()
+            .get(&DataKey::Treasury)
+            .unwrap_or_else(|| panic_with_error!(env, Error::NoInicializado))
+    }
+
+    fn require_admin(env: &Env) {
+        Self::read_admin(env).require_auth();
+        Self::extender_instancia(env);
+    }
+
+    fn require_not_paused(env: &Env) {
+        if Self::is_paused(env.clone()) {
+            panic_with_error!(env, Error::Pausado);
+        }
+        Self::extender_instancia(env);
+    }
+
+    // --- Almacenamiento ---
+
+    fn siguiente_id(env: &Env, key: DataKey) -> u64 {
+        let id: u64 = env.storage().instance().get(&key).unwrap_or(1);
+        env.storage().instance().set(&key, &(id + 1));
+        id
+    }
+
+    fn cargar_posicion(env: &Env, id: u64) -> Position {
+        env.storage()
+            .persistent()
+            .get(&DataKey::Position(id))
+            .unwrap_or_else(|| panic_with_error!(env, Error::PosicionNoExiste))
+    }
+
+    fn cargar_prestamo_activo(env: &Env, id: u64) -> Loan {
+        let loan: Loan = env
             .storage()
-            .instance()
-            .get(&DataKey::Token)
-            .unwrap_or_else(|| panic_with_error!(env, Error::NoInicializado));
-        token::TokenClient::new(env, &token)
+            .persistent()
+            .get(&DataKey::Loan(id))
+            .unwrap_or_else(|| panic_with_error!(env, Error::PrestamoNoExiste));
+        if loan.status != LoanStatus::Active {
+            panic_with_error!(env, Error::EstadoInvalido);
+        }
+        loan
     }
 
-    /// Cliente del historial, si está configurado.
-    fn history_client(env: &Env) -> Option<HistoryClient<'_>> {
-        env.storage()
-            .instance()
-            .get::<DataKey, Address>(&DataKey::History)
-            .map(|addr| HistoryClient::new(env, &addr))
+    fn guardar_posicion(env: &Env, p: &Position) {
+        let key = DataKey::Position(p.id);
+        env.storage().persistent().set(&key, p);
+        Self::extender(env, &key);
     }
 
-    fn load(env: &Env, borrower: &Address) -> Option<Loan> {
+    fn guardar_prestamo(env: &Env, l: &Loan) {
+        let key = DataKey::Loan(l.id);
+        env.storage().persistent().set(&key, l);
+        Self::extender(env, &key);
+    }
+
+    fn extender(env: &Env, key: &DataKey) {
         env.storage()
             .persistent()
-            .get(&DataKey::Loan(borrower.clone()))
+            .extend_ttl(key, TTL_UMBRAL, TTL_EXTENDER_A);
     }
 
-    fn save(env: &Env, loan: &Loan) {
+    fn extender_instancia(env: &Env) {
         env.storage()
-            .persistent()
-            .set(&DataKey::Loan(loan.borrower.clone()), loan);
+            .instance()
+            .extend_ttl(TTL_UMBRAL, TTL_EXTENDER_A);
     }
 }
 

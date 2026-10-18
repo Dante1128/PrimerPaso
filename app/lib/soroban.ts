@@ -1,266 +1,260 @@
-// Capa de acceso a los contratos Soroban (lado servidor).
+// Contratos de PrimerPaso (loan, history) vía Stellar RPC — lado servidor.
 //
-// Lecturas: se simulan por RPC (no requieren firma).
-// Escrituras: se construyen y "preparan" (footprint + auth) en el servidor;
-// el cliente las firma con su wallet y luego se envían.
+// Dos formas de invocar:
+//  - prepararParaWallet: arma la transacción con el usuario como fuente,
+//    firma en el servidor las autorizaciones de las cuentas de la
+//    plataforma (operator/admin) y devuelve el XDR para que el usuario lo
+//    firme con su wallet. Ej.: open_loan (operator + estudiante).
+//  - ejecutarComoServidor: la plataforma firma y envía sola. Ej.: liquidate.
+import "server-only";
 import {
-  rpc,
   Contract,
-  Address,
   Keypair,
-  nativeToScVal,
-  scValToNative,
+  Operation,
   TransactionBuilder,
-  BASE_FEE,
-  Account,
-  xdr,
+  authorizeEntry,
+  nativeToScVal,
+  rpc,
+  type xdr,
 } from "@stellar/stellar-sdk";
-
-const RPC_URL =
-  process.env.NEXT_PUBLIC_SOROBAN_RPC_URL ??
-  "https://soroban-testnet.stellar.org";
-export const NETWORK_PASSPHRASE =
-  process.env.NEXT_PUBLIC_NETWORK_PASSPHRASE ??
-  "Test SDF Network ; September 2015";
+import { NETWORK_PASSPHRASE, conReintentos, enviarYEsperar, rpcServer, simularLectura } from "@/lib/stellar";
 
 export const LOAN_ID = process.env.NEXT_PUBLIC_LOAN_CONTRACT_ID ?? "";
 export const HISTORY_ID = process.env.NEXT_PUBLIC_HISTORY_CONTRACT_ID ?? "";
-// Cuenta neutral solo para simular lecturas (no firma, no paga).
-const READ_SOURCE = process.env.NEXT_PUBLIC_ADMIN_ADDRESS ?? "";
 
-function server(): rpc.Server {
-  return new rpc.Server(RPC_URL);
-}
+/** Unidad mínima de USDC (7 decimales). */
+export const STROOPS = BigInt(10_000_000);
+export const aStroops = (usdc: number | string) => BigInt(Math.round(Number(usdc) * 1e7));
+export const aUsdc = (stroops: bigint | string | number) => Number(BigInt(stroops)) / 1e7;
 
-// ---------- conversión de argumentos ----------
-export function argAddress(a: string): xdr.ScVal {
-  return new Address(a).toScVal();
-}
-export function argI128(stroops: bigint): xdr.ScVal {
-  return nativeToScVal(stroops, { type: "i128" });
-}
-export function argU32(n: number): xdr.ScVal {
-  return nativeToScVal(n, { type: "u32" });
-}
-
-// ---------- lecturas (simulación) ----------
-async function simular(
-  contractId: string,
-  method: string,
-  args: xdr.ScVal[],
-): Promise<unknown> {
-  const srv = server();
-  const contract = new Contract(contractId);
-  const source = new Account(READ_SOURCE, "0");
-  const tx = new TransactionBuilder(source, {
-    fee: BASE_FEE,
-    networkPassphrase: NETWORK_PASSPHRASE,
-  })
-    .addOperation(contract.call(method, ...args))
-    .setTimeout(60)
-    .build();
-
-  const sim = await srv.simulateTransaction(tx);
-  if (rpc.Api.isSimulationError(sim)) {
-    throw new Error(`Simulación falló (${method}): ${sim.error}`);
-  }
-  const retval = sim.result?.retval;
-  if (!retval) return null;
-  return scValToNative(retval);
-}
-
-/** Normaliza el enum de estado (puede venir como string o arreglo). */
-function normalizarEstado(v: unknown): string {
-  if (Array.isArray(v)) return String(v[0]);
-  if (v && typeof v === "object" && "tag" in v) {
-    return String((v as { tag: unknown }).tag);
-  }
-  return String(v);
-}
-
-export type Prestamo = {
-  borrower: string;
-  collateral: string;
-  principal: string;
-  totalDue: string;
-  totalRepaid: string;
-  collateralReleased: string;
-  installments: number;
-  installmentAmount: string;
-  paidInstallments: number;
-  interestRate: number;
-  openedAt: number;
-  period: number;
-  status: string;
+// --- Argumentos ---
+export const arg = {
+  address: (a: string) => nativeToScVal(a, { type: "address" }),
+  i128: (v: bigint) => nativeToScVal(v, { type: "i128" }),
+  u32: (v: number) => nativeToScVal(v, { type: "u32" }),
+  u64: (v: bigint | number) => nativeToScVal(BigInt(v), { type: "u64" }),
+  bool: (v: boolean) => nativeToScVal(v),
 };
 
-/** Lee el préstamo de una dirección (o null si no existe). */
-export async function leerPrestamo(borrower: string): Promise<Prestamo | null> {
-  const raw = (await simular(LOAN_ID, "get_loan", [argAddress(borrower)])) as
-    | Record<string, unknown>
-    | null;
-  if (!raw) return null;
-  const s = (k: string) => String(raw[k] ?? "0");
-  const n = (k: string) => Number(raw[k] ?? 0);
-  return {
-    borrower: String(raw.borrower ?? borrower),
-    collateral: s("collateral"),
-    principal: s("principal"),
-    totalDue: s("total_due"),
-    totalRepaid: s("total_repaid"),
-    collateralReleased: s("collateral_released"),
-    installments: n("installments"),
-    installmentAmount: s("installment_amount"),
-    paidInstallments: n("paid_installments"),
-    interestRate: n("interest_rate"),
-    openedAt: Number(raw.opened_at ?? 0),
-    period: Number(raw.period ?? 0),
-    status: normalizarEstado(raw.status),
-  };
+// --- Cuentas de la plataforma ---
+function llave(nombre: "ADMIN_SECRET_KEY" | "OPERATOR_SECRET_KEY"): Keypair {
+  const s = process.env[nombre];
+  if (!s) throw new Error(`Falta ${nombre} en .env.local`);
+  return Keypair.fromSecret(s);
 }
+export const operatorKeypair = () => llave("OPERATOR_SECRET_KEY");
+export const adminKeypair = () => llave("ADMIN_SECRET_KEY");
 
-/** Lee el puntaje crediticio de una dirección. */
-export async function leerPuntaje(address: string): Promise<number> {
-  const v = await simular(HISTORY_ID, "score", [argAddress(address)]);
-  return Number(v ?? 500);
-}
+// --- Tipos que devuelve el contrato loan ---
+export type LoanParams = {
+  max_ltv_bps: number;
+  rate_bps: number;
+  origination_fee_bps: number;
+  late_fee_bps: number;
+  yield_share_platform_bps: number;
+  grace_seconds: bigint;
+  min_principal: bigint;
+  max_principal: bigint;
+  max_installments: number;
+};
 
-export type Credencial = {
+export type LoanOnchain = {
+  id: bigint;
+  position_id: bigint;
   borrower: string;
-  totalInstallments: number;
-  onTime: number;
-  late: number;
-  issuedAt: number;
-} | null;
+  depositor: string;
+  principal: bigint;
+  origination_fee: bigint;
+  disbursed: bigint;
+  principal_paid: bigint;
+  interest_accrued: bigint;
+  interest_paid: bigint;
+  collateral_initial: bigint;
+  collateral_released: bigint;
+  installments: number;
+  installments_paid: number;
+  first_due_ts: bigint;
+  period_seconds: bigint;
+  opened_at: bigint;
+  status: "Active" | "Repaid" | "Liquidated";
+  terms: { rate_bps: number; late_fee_bps: number; grace_seconds: bigint; max_ltv_bps: number; origination_fee_bps: number };
+};
 
-/** Lee la credencial de buen pagador (o null si no existe). */
-export async function leerCredencial(address: string): Promise<Credencial> {
-  const raw = (await simular(HISTORY_ID, "get_credential", [
-    argAddress(address),
-  ])) as Record<string, unknown> | null;
-  if (!raw) return null;
-  return {
-    borrower: String(raw.borrower ?? address),
-    totalInstallments: Number(raw.total_installments ?? 0),
-    onTime: Number(raw.on_time ?? 0),
-    late: Number(raw.late ?? 0),
-    issuedAt: Number(raw.issued_at ?? 0),
-  };
+export type PaymentQuote = {
+  interest_due: bigint;
+  principal_outstanding: bigint;
+  next_installment_principal: bigint;
+  next_due_ts: bigint;
+  overdue_amount: bigint;
+  overdue: boolean;
+  liquidatable: boolean;
+  late_fee: bigint;
+};
+
+/** Los enums de Soroban llegan como ["Active"]; los dejamos como "Active". */
+function normalizarEnum<T extends { status: unknown }>(v: T): T {
+  const s = v.status;
+  return { ...v, status: Array.isArray(s) ? s[0] : s };
 }
 
-export type RegistroHistorial = { onTime: number; late: number };
+// --- Lecturas ---
+export const leerParams = async () => (await simularLectura(LOAN_ID, "get_params")) as LoanParams;
 
-/** Lee el registro de pagos (a tiempo / atrasados). */
-export async function leerRegistro(
-  address: string,
-): Promise<RegistroHistorial> {
-  const raw = (await simular(HISTORY_ID, "get_record", [
-    argAddress(address),
-  ])) as Record<string, unknown> | null;
-  return {
-    onTime: Number(raw?.on_time ?? 0),
-    late: Number(raw?.late ?? 0),
-  };
+export async function leerPrestamo(loanId: bigint | number): Promise<LoanOnchain | null> {
+  const v = (await simularLectura(LOAN_ID, "get_loan", [arg.u64(loanId)])) as LoanOnchain | undefined;
+  return v ? normalizarEnum(v) : null;
 }
 
-// ---------- escrituras (preparar + enviar) ----------
+/** Cotización de la próxima cuota (solo para préstamos activos). */
+export async function cotizarPago(loanId: bigint | number): Promise<PaymentQuote | null> {
+  try {
+    return (await simularLectura(LOAN_ID, "quote_next_payment", [arg.u64(loanId)])) as PaymentQuote;
+  } catch {
+    return null;
+  }
+}
 
-/** Construye y prepara (footprint + auth) una invocación. Devuelve el XDR
- *  sin firmar, listo para que la wallet del `source` lo firme. */
-export async function prepararInvocacion(
-  source: string,
-  contractId: string,
-  method: string,
-  args: xdr.ScVal[],
-): Promise<string> {
-  const srv = server();
-  const contract = new Contract(contractId);
-  const cuenta = await srv.getAccount(source);
-  const tx = new TransactionBuilder(cuenta, {
-    fee: BASE_FEE,
-    networkPassphrase: NETWORK_PASSPHRASE,
-  })
-    .addOperation(contract.call(method, ...args))
-    .setTimeout(120)
+export async function leerPosicion(positionId: bigint | number) {
+  const v = (await simularLectura(LOAN_ID, "get_position", [arg.u64(positionId)])) as
+    | { id: bigint; depositor: string; borrower: string; amount: bigint; locked: bigint; loan_id?: bigint; status: string | string[] }
+    | undefined;
+  return v ? normalizarEnum(v) : null;
+}
+
+export const poolDisponible = async () => BigInt((await simularLectura(LOAN_ID, "pool_available")) as bigint);
+
+export const leerPuntaje = async (address: string) =>
+  Number(await simularLectura(HISTORY_ID, "get_score", [arg.address(address)]));
+
+export async function leerCredencial(address: string) {
+  return (await simularLectura(HISTORY_ID, "get_credential", [arg.address(address)])) as
+    | { borrower: string; loans_repaid: number; on_time: number; late: number; last_loan_id: bigint; issued_at: bigint; updated_at: bigint }
+    | undefined;
+}
+
+export const leerRegistro = async (address: string) =>
+  (await simularLectura(HISTORY_ID, "get_record", [arg.address(address)])) as {
+    on_time: number;
+    late: number;
+    defaults: number;
+    loans_repaid: number;
+  };
+
+// --- Escrituras ---
+
+/** Dirección (G...) que debe firmar una entrada de autorización. */
+function firmanteDe(entrada: xdr.SorobanAuthorizationEntry): string | null {
+  const j = JSON.parse(
+    JSON.stringify((entrada as unknown as { credentials: unknown }).credentials, (_k, v) =>
+      typeof v === "bigint" ? String(v) : v,
+    ),
+  );
+  const nodo = j?.address ?? j?.address_v2 ?? j?.address_with_delegates;
+  return typeof nodo?.address === "string" ? nodo.address : null;
+}
+
+async function simular(fuente: string, contractId: string, metodo: string, args: xdr.ScVal[]) {
+  const server = rpcServer();
+  const cuenta = await conReintentos(() => server.getAccount(fuente));
+  const tx = new TransactionBuilder(cuenta, { fee: "1000000", networkPassphrase: NETWORK_PASSPHRASE })
+    .addOperation(new Contract(contractId).call(metodo, ...args))
+    .setTimeout(300)
     .build();
-
-  const preparada = await srv.prepareTransaction(tx);
-  return preparada.toXDR();
+  const sim = await conReintentos(() => server.simulateTransaction(tx));
+  if (!rpc.Api.isSimulationSuccess(sim)) {
+    throw new ErrorContrato(rpc.Api.isSimulationError(sim) ? sim.error : "La simulación falló");
+  }
+  return { tx, sim };
 }
 
-/** Keypair del admin (plataforma) para firmar liquidaciones en el servidor. */
-export function adminKeypair(): Keypair | null {
-  const s = process.env.STELLAR_ADMIN_SECRET;
-  return s ? Keypair.fromSecret(s) : null;
+/** Error de un contrato con el mensaje traducido para el usuario. */
+export class ErrorContrato extends Error {
+  constructor(crudo: string) {
+    super(traducirError(crudo));
+  }
 }
 
-/** Ejecuta una invocación firmada por el admin desde el servidor
- *  (p. ej. liquidate). Requiere STELLAR_ADMIN_SECRET. */
-export async function ejecutarComoAdmin(
-  method: string,
+const ERRORES_LOAN: Record<number, string> = {
+  3: "La plataforma está en pausa.",
+  4: "No tienes permiso para esta operación.",
+  5: "La posición de garantía no existe.",
+  6: "El préstamo no existe.",
+  7: "La operación no es válida en el estado actual.",
+  8: "El monto supera el 80% de la garantía.",
+  9: "Monto o número de cuotas fuera de los límites.",
+  10: "Parámetros inválidos.",
+  11: "Monto inválido.",
+  12: "El pago supera lo adeudado.",
+  13: "Primero debes pagar el interés pendiente.",
+  14: "El préstamo aún no está en mora (o la gracia no terminó).",
+  15: "El pool no tiene liquidez suficiente.",
+  16: "La operación rompería la garantía mínima.",
+};
+
+function traducirError(crudo: string): string {
+  const m = crudo.match(/Error\(Contract, #(\d+)\)/);
+  if (m) return ERRORES_LOAN[Number(m[1])] ?? `Error del contrato #${m[1]}`;
+  if (/balance is not sufficient|resulting balance is not within/i.test(crudo)) return "Saldo de USDC insuficiente.";
+  if (/trustline entry is missing/i.test(crudo)) return "Tu cuenta no tiene trustline al USDC.";
+  if (/Account not found|does not exist/i.test(crudo)) return "La cuenta no existe en la red (fondéala primero).";
+  return "La transacción no se pudo simular.";
+}
+
+/**
+ * Arma una invocación con `fuente` (la wallet del usuario) como cuenta
+ * fuente, firma las autorizaciones de `firmantesServidor` y devuelve el XDR
+ * listo para que el usuario lo firme con su wallet.
+ */
+export async function prepararParaWallet(
+  fuente: string,
+  contractId: string,
+  metodo: string,
   args: xdr.ScVal[],
-): Promise<{ ok: boolean; hash?: string; error?: string }> {
-  const kp = adminKeypair();
-  if (!kp) {
-    return { ok: false, error: "STELLAR_ADMIN_SECRET no configurado" };
-  }
-  try {
-    const srv = server();
-    const contract = new Contract(LOAN_ID);
-    const cuenta = await srv.getAccount(kp.publicKey());
-    const tx = new TransactionBuilder(cuenta, {
-      fee: BASE_FEE,
-      networkPassphrase: NETWORK_PASSPHRASE,
-    })
-      .addOperation(contract.call(method, ...args))
-      .setTimeout(120)
-      .build();
-    const preparada = await srv.prepareTransaction(tx);
-    preparada.sign(kp);
-    return await enviarInvocacion(preparada.toXDR());
-  } catch (e) {
-    const err = e as { message?: string };
-    return { ok: false, error: err.message ?? "Error al ejecutar como admin" };
-  }
+  firmantesServidor: Keypair[] = [],
+): Promise<string> {
+  const { tx, sim } = await simular(fuente, contractId, metodo, args);
+  const { sequence } = await conReintentos(() => rpcServer().getLatestLedger());
+  const porDireccion = new Map(firmantesServidor.map((k) => [k.publicKey(), k]));
+
+  const auth = await Promise.all(
+    (sim.result?.auth ?? []).map((entrada) => {
+      const kp = porDireccion.get(firmanteDe(entrada) ?? "");
+      return kp ? authorizeEntry(entrada, kp, sequence + 200, NETWORK_PASSPHRASE) : entrada;
+    }),
+  );
+  const op = tx.operations[0] as Operation.InvokeHostFunction;
+  return rpc
+    .assembleTransaction(tx, sim)
+    .clearOperations()
+    .addOperation(Operation.invokeHostFunction({ source: op.source, func: op.func, auth }))
+    .build()
+    .toXDR();
 }
 
-/** ¿La próxima cuota impaga está vencida? (misma regla que el contrato). */
-export function estaEnMora(p: {
-  openedAt: number;
-  period: number;
-  paidInstallments: number;
-  status: string;
-}): boolean {
-  if (p.status !== "Active") return false;
-  const vencimiento = p.openedAt + (p.paidInstallments + 1) * p.period;
-  return Math.floor(Date.now() / 1000) > vencimiento;
+/** La plataforma firma y envía la invocación (fuente = `keypair`). */
+export async function ejecutarComoServidor(keypair: Keypair, contractId: string, metodo: string, args: xdr.ScVal[]) {
+  const { tx, sim } = await simular(keypair.publicKey(), contractId, metodo, args);
+  const listo = rpc.assembleTransaction(tx, sim).build();
+  listo.sign(keypair);
+  return enviarYEsperar(listo);
 }
 
-/** Envía una transacción Soroban ya firmada y espera el resultado. */
-export async function enviarInvocacion(
-  signedXdr: string,
-): Promise<{ ok: boolean; hash?: string; error?: string }> {
-  const srv = server();
-  try {
-    const tx = TransactionBuilder.fromXDR(signedXdr, NETWORK_PASSPHRASE);
-    const sent = await srv.sendTransaction(tx);
-    if (sent.status === "ERROR") {
-      return { ok: false, error: "La red rechazó la transacción" };
-    }
-    // Esperamos la confirmación.
-    let intento = 0;
-    while (intento < 30) {
-      const res = await srv.getTransaction(sent.hash);
-      if (res.status === "SUCCESS") return { ok: true, hash: sent.hash };
-      if (res.status === "FAILED") {
-        return { ok: false, hash: sent.hash, error: "La transacción falló" };
-      }
-      await new Promise((r) => setTimeout(r, 1000));
-      intento++;
-    }
-    return { ok: false, hash: sent.hash, error: "Tiempo de espera agotado" };
-  } catch (e) {
-    const err = e as { message?: string };
-    return { ok: false, error: err.message ?? "Error al enviar" };
+/**
+ * Verifica que un XDR firmado por el usuario sea exactamente una invocación
+ * de `metodo` en `contractId` desde `fuente`, antes de enviarlo.
+ */
+export function validarXdr(xdrFirmado: string, contractId: string, metodo: string, fuente: string) {
+  const tx = TransactionBuilder.fromXDR(xdrFirmado, NETWORK_PASSPHRASE);
+  if ("innerTransaction" in tx) throw new Error("Transacción no soportada");
+  if (tx.source !== fuente) throw new Error("La transacción no la firma tu wallet");
+  if (tx.operations.length !== 1 || tx.operations[0].type !== "invokeHostFunction") {
+    throw new Error("Transacción inesperada");
   }
+  const j = JSON.stringify((tx.operations[0] as Operation.InvokeHostFunction).func, (_k, v) =>
+    typeof v === "bigint" ? String(v) : v,
+  );
+  if (!j.includes(contractId) || !j.includes(`"${metodo}"`)) {
+    throw new Error("La transacción no corresponde a esta operación");
+  }
+  return tx;
 }

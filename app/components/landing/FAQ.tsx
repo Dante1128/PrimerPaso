@@ -5,7 +5,7 @@ const preguntas = [
   },
   {
     q: "¿Cuánto puedo pedir prestado?",
-    a: "Hasta el 80% del monto que bloquees como garantía. Si bloqueas 1.000 USDC, puedes recibir hasta 800 USDC de préstamo.",
+    a: "Entre 100 y 3.000 USDC, hasta el 80% de la garantía que bloquees. Por ejemplo: bloqueas 1.250 USDC y pides 1.000; recibes 990 (la comisión de apertura es 1%) y pagas 8% anual sobre el saldo en hasta 12 cuotas.",
   },
   {
     q: "¿Qué pasa cuando pago una cuota?",

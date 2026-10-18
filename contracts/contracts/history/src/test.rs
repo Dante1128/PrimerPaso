@@ -4,102 +4,94 @@
 use super::*;
 use soroban_sdk::{testutils::Address as _, Address, Env};
 
-/// Prepara un entorno con el contrato de historial ya inicializado.
-/// Devuelve (env, cliente, dirección_autorizada).
-fn setup() -> (Env, HistoryContractClient<'static>, Address) {
+/// Prepara un entorno con el historial inicializado.
+fn setup() -> (Env, HistoryContractClient<'static>) {
     let env = Env::default();
-    // Autorizamos todas las firmas para simplificar las pruebas.
     env.mock_all_auths();
-
     let admin = Address::generate(&env);
-    let authorized = Address::generate(&env);
-
-    let contract_id = env.register(HistoryContract, ());
-    let client = HistoryContractClient::new(&env, &contract_id);
-    client.init(&admin, &authorized);
-
-    (env, client, authorized)
+    let loan = Address::generate(&env);
+    let id = env.register(HistoryContract, ());
+    let client = HistoryContractClient::new(&env, &id);
+    client.initialize(&admin, &loan);
+    (env, client)
 }
 
 #[test]
 fn registra_pagos_y_calcula_puntaje() {
-    let (env, client, _authorized) = setup();
+    let (env, client) = setup();
     let estudiante = Address::generate(&env);
+    assert_eq!(client.get_score(&estudiante), 500);
 
-    // Sin historial, el puntaje es la base 500.
-    assert_eq!(client.score(&estudiante), 500);
+    client.record_payment(&estudiante, &1, &true, &false);
+    client.record_payment(&estudiante, &1, &true, &false);
+    client.record_payment(&estudiante, &1, &true, &false);
+    client.record_payment(&estudiante, &1, &false, &false);
 
-    // Tres cuotas a tiempo y una atrasada.
-    client.record_payment(&estudiante, &true);
-    client.record_payment(&estudiante, &true);
-    client.record_payment(&estudiante, &true);
-    client.record_payment(&estudiante, &false);
-
-    let record = client.get_record(&estudiante);
-    assert_eq!(record.on_time, 3);
-    assert_eq!(record.late, 1);
-
+    let r = client.get_record(&estudiante);
+    assert_eq!((r.on_time, r.late, r.defaults), (3, 1, 0));
     // 500 + 3*20 - 1*40 = 520
-    assert_eq!(client.score(&estudiante), 520);
+    assert_eq!(client.get_score(&estudiante), 520);
+
+    client.record_default(&estudiante, &1);
+    // 520 - 150 = 370
+    assert_eq!(client.get_score(&estudiante), 370);
 }
 
 #[test]
 fn puntaje_respeta_los_limites() {
-    let (env, client, _authorized) = setup();
-    let estudiante = Address::generate(&env);
-
-    // Muchos atrasos: el puntaje no baja de 300.
+    let (env, client) = setup();
+    let malo = Address::generate(&env);
     for _ in 0..20 {
-        client.record_payment(&estudiante, &false);
+        client.record_payment(&malo, &1, &false, &false);
     }
-    assert_eq!(client.score(&estudiante), 300);
+    assert_eq!(client.get_score(&malo), 300);
 
-    let otro = Address::generate(&env);
-    // Muchos pagos a tiempo: el puntaje no sube de 850.
+    let bueno = Address::generate(&env);
     for _ in 0..50 {
-        client.record_payment(&otro, &true);
+        client.record_payment(&bueno, &2, &true, &false);
     }
-    assert_eq!(client.score(&otro), 850);
+    assert_eq!(client.get_score(&bueno), 850);
 }
 
 #[test]
-fn emite_credencial_no_transferible() {
-    let (env, client, _authorized) = setup();
+fn credencial_se_emite_al_saldar_y_no_es_transferible() {
+    let (env, client) = setup();
     let estudiante = Address::generate(&env);
 
-    client.record_payment(&estudiante, &true);
-    client.record_payment(&estudiante, &true);
+    client.record_payment(&estudiante, &7, &true, &false);
+    assert!(!client.verify(&estudiante));
 
-    assert!(!client.has_credential(&estudiante));
+    client.record_payment(&estudiante, &7, &true, &true);
+    assert!(client.verify(&estudiante));
+    let c = client.get_credential(&estudiante).unwrap();
+    // Queda ligada a la dirección: no existe función para transferirla.
+    assert_eq!(c.borrower, estudiante);
+    assert_eq!((c.loans_repaid, c.on_time, c.late, c.last_loan_id), (1, 2, 0, 7));
 
-    client.issue_credential(&estudiante, &6);
-
-    assert!(client.has_credential(&estudiante));
-    let credencial = client.get_credential(&estudiante).unwrap();
-    // La credencial queda ligada a la dirección del estudiante: no existe
-    // ninguna función para transferirla a otra cuenta.
-    assert_eq!(credencial.borrower, estudiante);
-    assert_eq!(credencial.total_installments, 6);
-    assert_eq!(credencial.on_time, 2);
-    assert_eq!(credencial.late, 0);
+    // Un segundo préstamo saldado actualiza la misma credencial.
+    client.record_payment(&estudiante, &9, &false, &true);
+    let c = client.get_credential(&estudiante).unwrap();
+    assert_eq!((c.loans_repaid, c.late, c.last_loan_id), (2, 1, 9));
 }
 
 #[test]
-#[should_panic]
-fn no_permite_emitir_dos_veces() {
-    let (env, client, _authorized) = setup();
+fn solo_el_contrato_de_prestamo_escribe() {
+    let env = Env::default();
+    let id = env.register(HistoryContract, ());
+    let client = HistoryContractClient::new(&env, &id);
+    client.initialize(&Address::generate(&env), &Address::generate(&env));
     let estudiante = Address::generate(&env);
-
-    client.issue_credential(&estudiante, &3);
-    // Emitir de nuevo debe fallar (CredencialYaEmitida).
-    client.issue_credential(&estudiante, &3);
+    // Sin la firma del contrato `loan`, no se puede escribir.
+    assert!(client
+        .try_record_payment(&estudiante, &1, &true, &true)
+        .is_err());
+    assert!(client.try_record_default(&estudiante, &1).is_err());
 }
 
 #[test]
-fn admin_puede_cambiar_autorizado() {
-    let (env, client, _authorized) = setup();
+fn admin_puede_cambiar_contrato_de_prestamo() {
+    let (env, client) = setup();
     let nuevo = Address::generate(&env);
-
-    client.set_authorized(&nuevo);
-    assert_eq!(client.authorized(), nuevo);
+    client.set_loan_contract(&nuevo);
+    assert_eq!(client.get_loan_contract(), nuevo);
 }
