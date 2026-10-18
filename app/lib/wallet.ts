@@ -7,7 +7,7 @@ import {
 } from "@creit.tech/stellar-wallets-kit/modules/freighter";
 
 const PASSPHRASE =
-  process.env.NEXT_PUBLIC_NETWORK_PASSPHRASE ?? Networks.TESTNET;
+  process.env.NEXT_PUBLIC_STELLAR_NETWORK === "PUBLIC" ? Networks.PUBLIC : Networks.TESTNET;
 
 let inicializado = false;
 

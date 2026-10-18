@@ -6,13 +6,12 @@
 //  2. El cliente la firma con su wallet (Freighter) demostrando que controla
 //     la cuenta, y la devuelve.
 //  3. El servidor verifica que la cuenta firmó correctamente. (verifyChallenge)
+import "server-only";
 import { WebAuth } from "@stellar/stellar-sdk";
 import { NETWORK_PASSPHRASE, sep10ServerKeypair } from "@/lib/stellar";
 
-const HOME_DOMAIN =
-  process.env.NEXT_PUBLIC_SEP10_HOME_DOMAIN ?? "localhost:3000";
-const WEB_AUTH_DOMAIN =
-  process.env.NEXT_PUBLIC_SEP10_WEB_AUTH_DOMAIN ?? HOME_DOMAIN;
+const HOME_DOMAIN = process.env.SEP10_HOME_DOMAIN ?? "localhost:3000";
+const WEB_AUTH_DOMAIN = HOME_DOMAIN;
 
 /** Construye el challenge SEP-10 (XDR base64) para una cuenta cliente. */
 export function buildChallenge(clientAccount: string): string {
