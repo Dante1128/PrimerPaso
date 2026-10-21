@@ -21,12 +21,21 @@ function initKit() {
   inicializado = true;
 }
 
-/** Conecta Freighter y devuelve la dirección pública (G...). */
+/**
+ * Conecta Freighter y devuelve la dirección pública (G...) de la cuenta
+ * activa. Usa fetchAddress: pide permiso y la cuenta a la extensión
+ * (getAddress solo lee la memoria del kit y falla si aún no hay conexión).
+ */
 export async function conectarFreighter(): Promise<string> {
   initKit();
   StellarWalletsKit.setWallet(FREIGHTER_ID);
-  const { address } = await StellarWalletsKit.getAddress();
-  return address;
+  try {
+    const { address } = await StellarWalletsKit.fetchAddress();
+    if (!address) throw new Error();
+    return address;
+  } catch {
+    throw new Error("No se pudo conectar Freighter. Ábrelo, desbloquéalo, elige la red Testnet y autoriza este sitio.");
+  }
 }
 
 /** Firma un XDR con la wallet y devuelve el XDR firmado. */
