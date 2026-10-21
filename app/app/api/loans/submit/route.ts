@@ -31,7 +31,7 @@ export const POST = manejar(async (req: Request) => {
   }
 
   // Refresca la caché ya (el cron lo haría igual en unos minutos).
-  await sincronizar().catch((e) => console.error("[indexer]", e));
+  await sincronizar({ esperarMs: 5000 }).catch((e) => console.error("[indexer]", e));
 
   return Response.json({
     ok: true,

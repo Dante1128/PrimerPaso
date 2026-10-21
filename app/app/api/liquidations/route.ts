@@ -49,7 +49,7 @@ export const POST = manejar(async (req: Request) => {
   if (!r.ok) throw new ErrorApi(`La liquidación falló (${r.detail ?? "sin detalle"})`, 502);
 
   await auditar(user.id, "loan_liquidated", "loan", String(loanId), { tx_hash: r.hash });
-  await sincronizar().catch((e) => console.error("[indexer]", e));
+  await sincronizar({ esperarMs: 5000 }).catch((e) => console.error("[indexer]", e));
 
   const { data: loan } = await supabaseAdmin()
     .from("loans")

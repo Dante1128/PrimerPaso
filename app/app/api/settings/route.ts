@@ -63,7 +63,7 @@ export const PUT = manejar(async (req: Request) => {
     .from("platform_settings")
     .update({ ...p, updated_at: new Date().toISOString() })
     .eq("id", true);
-  await sincronizar().catch((e) => console.error("[indexer]", e));
+  await sincronizar({ esperarMs: 5000 }).catch((e) => console.error("[indexer]", e));
   await auditar(user.id, "settings_updated", "platform_settings", "true", { ...p, tx_hash: r.hash });
   return Response.json({ ok: true, hash: r.hash, link: linkTx(r.hash) });
 });

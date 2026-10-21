@@ -5,12 +5,20 @@
 //
 // La blockchain es la fuente de verdad: cada proyección de un préstamo vuelve
 // a leer su estado con get_loan, así que reprocesar es seguro.
+//
+// Idempotencia (migración 0003_indexer_idempotente.sql):
+//  - Un candado con vencimiento garantiza que corra un solo indexador a la vez.
+//  - Índices únicos en onchain_events y en cada tabla proyectada: las
+//    inserciones son "si no existe", así un evento nunca se cuenta dos veces.
+//  - El evento se marca processed recién después de proyectarlo; si falla a
+//    medias, queda pendiente y se reintenta en la siguiente corrida.
 import "server-only";
+import { randomUUID } from "crypto";
 import { rpc, scValToNative } from "@stellar/stellar-sdk";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { conReintentos, rpcServer } from "@/lib/stellar";
 import { HISTORY_ID, LOAN_ID, aUsdc, leerCredencial, leerPrestamo, leerPuntaje, leerRegistro } from "@/lib/soroban";
-import type { Json } from "@/lib/database.types";
+import type { Database, Json } from "@/lib/database.types";
 
 type Evento = {
   contrato: string;
@@ -32,25 +40,60 @@ function aJson(v: unknown): Json {
   return JSON.parse(JSON.stringify(v, (_k, x) => (typeof x === "bigint" ? x.toString() : x)));
 }
 
+/** Segundos que dura el candado; se renueva en cada página de eventos. */
+const CANDADO_SEGUNDOS = 120;
+
+export type ResultadoSync = {
+  eventos: number;
+  hastaLedger: number;
+  /** Eventos que quedaron pendientes por un error (se reintentan después). */
+  pendientes: number;
+  /** Otro indexador estaba corriendo: esta llamada no hizo nada. */
+  ocupado?: boolean;
+};
+
+async function tomarCandado(dueno: string): Promise<boolean> {
+  const { data, error } = await db().rpc("indexer_acquire_lock", { p_holder: dueno, p_seconds: CANDADO_SEGUNDOS });
+  if (error) throw new Error(`Candado del indexador: ${error.message} (¿aplicaste la migración 0003?)`);
+  return data === true;
+}
+
 /**
- * Procesa todos los eventos nuevos de los dos contratos. Devuelve cuántos
- * eventos nuevos guardó y hasta qué ledger llegó.
+ * Procesa los eventos nuevos de los dos contratos, y reintenta los que
+ * quedaron pendientes. Si otro indexador está corriendo, espera hasta
+ * `esperarMs` y, si sigue ocupado, no hace nada (ese otro procesará todo).
  */
-export async function sincronizar(): Promise<{ eventos: number; hastaLedger: number }> {
+export async function sincronizar({ esperarMs = 0 }: { esperarMs?: number } = {}): Promise<ResultadoSync> {
+  const dueno = randomUUID();
+  const limite = Date.now() + esperarMs;
+  while (!(await tomarCandado(dueno))) {
+    if (Date.now() >= limite) return { eventos: 0, hastaLedger: -1, pendientes: 0, ocupado: true };
+    await new Promise((s) => setTimeout(s, 1000));
+  }
+  try {
+    return await sincronizarConCandado(dueno);
+  } finally {
+    await db().rpc("indexer_release_lock", { p_holder: dueno });
+  }
+}
+
+async function sincronizarConCandado(dueno: string): Promise<ResultadoSync> {
   const server = rpcServer();
   const contratos = [LOAN_ID, HISTORY_ID];
+
+  let nuevos = await reprocesarPendientes(contratos);
 
   const { data: estados } = await db().from("indexer_state").select("contract_id, last_ledger").in("contract_id", contratos);
   const ultimo = Math.min(...contratos.map((c) => estados?.find((e) => e.contract_id === c)?.last_ledger ?? 0));
   const latest = (await conReintentos(() => server.getLatestLedger())).sequence;
 
   let inicio = Math.max(ultimo + 1, 1);
-  if (inicio > latest) return { eventos: 0, hastaLedger: ultimo };
+  if (inicio > latest) return { eventos: nuevos, hastaLedger: ultimo, pendientes: await contarPendientes(contratos) };
 
-  let nuevos = 0;
   let cursor: string | undefined;
   let hasta = ultimo;
   for (let pagina = 0; pagina < 50; pagina++) {
+    await tomarCandado(dueno); // renueva el lease
     let resp: rpc.Api.GetEventsResponse;
     try {
       resp = await conReintentos(() => server.getEvents(
@@ -71,10 +114,8 @@ export async function sincronizar(): Promise<{ eventos: number; hastaLedger: num
 
     for (const e of resp.events) {
       const ev = decodificar(e);
-      if (await guardarEvento(ev)) {
-        await proyectar(ev);
-        nuevos++;
-      }
+      const id = await guardarEvento(ev);
+      if (id && (await proyectarYMarcar(id, ev))) nuevos++;
       hasta = Math.max(hasta, ev.ledger);
     }
     hasta = Math.max(hasta, resp.latestLedger - 1);
@@ -82,11 +123,66 @@ export async function sincronizar(): Promise<{ eventos: number; hastaLedger: num
     cursor = resp.cursor;
   }
 
+  // Los eventos que fallaron quedan guardados como pendientes, así que avanzar
+  // el ledger es seguro: no se pierden.
   const ahora = new Date().toISOString();
-  await db()
+  const { error } = await db()
     .from("indexer_state")
     .upsert(contratos.map((c) => ({ contract_id: c, last_ledger: hasta, updated_at: ahora })), { onConflict: "contract_id" });
-  return { eventos: nuevos, hastaLedger: hasta };
+  if (error) throw new Error(`indexer_state: ${error.message}`);
+  return { eventos: nuevos, hastaLedger: hasta, pendientes: await contarPendientes(contratos) };
+}
+
+/** Proyecta un evento ya guardado y lo marca como procesado. false si falló. */
+async function proyectarYMarcar(id: string, ev: Evento): Promise<boolean> {
+  try {
+    await proyectar(ev);
+  } catch (e) {
+    console.error(`[indexer] ${ev.tipo} ${ev.txHash} quedó pendiente:`, (e as Error).message);
+    return false;
+  }
+  const { error } = await db().from("onchain_events").update({ processed: true }).eq("id", id);
+  if (error) throw new Error(`onchain_events: ${error.message}`);
+  return true;
+}
+
+/** Reintenta los eventos guardados que no se llegaron a proyectar. */
+async function reprocesarPendientes(contratos: string[]): Promise<number> {
+  const { data, error } = await db()
+    .from("onchain_events")
+    .select("id, contract_id, event_type, ledger, tx_hash, event_index, payload")
+    .in("contract_id", contratos)
+    .eq("processed", false)
+    .order("ledger")
+    .order("event_index")
+    .limit(200);
+  if (error) throw new Error(`onchain_events: ${error.message}`);
+
+  let ok = 0;
+  for (const fila of data ?? []) {
+    const p = (fila.payload ?? {}) as { topics?: unknown[]; datos?: Record<string, unknown>; fecha?: string };
+    const ev: Evento = {
+      contrato: fila.contract_id,
+      tipo: fila.event_type,
+      topics: p.topics ?? [],
+      datos: p.datos ?? {},
+      ledger: fila.ledger,
+      txHash: fila.tx_hash,
+      indice: fila.event_index,
+      fecha: p.fecha ?? new Date().toISOString(),
+    };
+    if (await proyectarYMarcar(fila.id, ev)) ok++;
+  }
+  return ok;
+}
+
+async function contarPendientes(contratos: string[]): Promise<number> {
+  const { count } = await db()
+    .from("onchain_events")
+    .select("id", { count: "exact", head: true })
+    .in("contract_id", contratos)
+    .eq("processed", false);
+  return count ?? 0;
 }
 
 function decodificar(e: rpc.Api.EventResponse): Evento {
@@ -104,25 +200,50 @@ function decodificar(e: rpc.Api.EventResponse): Evento {
   };
 }
 
-/** Guarda el evento crudo. Devuelve false si ya estaba (idempotente). */
-async function guardarEvento(ev: Evento): Promise<boolean> {
-  const { count } = await db()
+/**
+ * Guarda el evento crudo como pendiente. Devuelve su id si es nuevo, o null
+ * si ya estaba (el índice único descarta el duplicado de forma atómica).
+ */
+async function guardarEvento(ev: Evento): Promise<string | null> {
+  const { data, error } = await db()
     .from("onchain_events")
-    .select("id", { count: "exact", head: true })
-    .eq("contract_id", ev.contrato)
-    .eq("tx_hash", ev.txHash)
-    .eq("event_index", ev.indice);
-  if (count) return false;
-  await db().from("onchain_events").insert({
-    contract_id: ev.contrato,
-    event_type: ev.tipo,
-    ledger: ev.ledger,
-    tx_hash: ev.txHash,
-    event_index: ev.indice,
-    payload: aJson({ topics: ev.topics, datos: ev.datos, fecha: ev.fecha }),
-    processed: true,
-  });
-  return true;
+    .upsert(
+      {
+        contract_id: ev.contrato,
+        event_type: ev.tipo,
+        ledger: ev.ledger,
+        tx_hash: ev.txHash,
+        event_index: ev.indice,
+        payload: aJson({ topics: ev.topics, datos: ev.datos, fecha: ev.fecha }),
+        processed: false,
+      },
+      { onConflict: "contract_id,tx_hash,event_index", ignoreDuplicates: true },
+    )
+    .select("id");
+  if (error) throw new Error(`onchain_events: ${error.message} (¿aplicaste la migración 0003?)`);
+  return data?.[0]?.id ?? null;
+}
+
+type Tabla = keyof Database["public"]["Tables"];
+
+/**
+ * Inserta filas ignorando las que ya existen según el índice único
+ * `conflicto`. Cualquier otro error se lanza (y el evento queda pendiente).
+ */
+async function insertarUnico<T extends Tabla>(
+  tabla: T,
+  filas: Database["public"]["Tables"][T]["Insert"] | Database["public"]["Tables"][T]["Insert"][],
+  conflicto: string,
+) {
+  const { error } = await db()
+    .from(tabla)
+    .upsert(filas as never, { onConflict: conflicto, ignoreDuplicates: true });
+  if (error) throw new Error(`${tabla}: ${error.message}`);
+}
+
+/** update que falla en voz alta en vez de ignorar el error. */
+function exigir(r: { error: { message: string } | null }, que: string) {
+  if (r.error) throw new Error(`${que}: ${r.error.message}`);
 }
 
 // ---------------------------------------------------------------------------
@@ -139,50 +260,59 @@ async function proyectar(ev: Evento) {
 
   switch (ev.tipo) {
     case "collateral_deposited":
-      await db().from("collateral_events").insert({
-        type: "deposit",
-        position_onchain_id: Number(ev.topics[0]),
-        amount: usd(d.amount),
-        to_address: String(d.depositor),
-        tx_hash: ev.txHash,
-        ledger: ev.ledger,
-        created_at: ev.fecha,
-      });
+      await insertarUnico(
+        "collateral_events",
+        {
+          type: "deposit",
+          position_onchain_id: Number(ev.topics[0]),
+          amount: usd(d.amount),
+          to_address: String(d.depositor),
+          tx_hash: ev.txHash,
+          ledger: ev.ledger,
+          created_at: ev.fecha,
+        },
+        "tx_hash,type",
+      );
       break;
 
     case "loan_opened": {
       const loanUuid = await refrescarPrestamo(BigInt(ev.topics[0] as bigint), ev);
       if (!loanUuid) break;
-      await db()
-        .from("collateral_events")
-        .update({ loan_id: loanUuid })
-        .eq("position_onchain_id", Number(d.position_id))
-        .is("loan_id", null);
-      await db().from("pool_movements").insert({
-        type: "disburse",
-        amount: usd(d.disbursed),
-        loan_id: loanUuid,
-        tx_hash: ev.txHash,
-        ledger: ev.ledger,
-        note: `Desembolso del préstamo #${ev.topics[0]}`,
-        created_at: ev.fecha,
-      });
-      await db().from("platform_revenue").insert({
-        type: "origination",
-        amount_usd: usd(d.origination_fee),
-        loan_id: loanUuid,
-        tx_hash: ev.txHash,
-        created_at: ev.fecha,
-      });
+      exigir(
+        await db()
+          .from("collateral_events")
+          .update({ loan_id: loanUuid })
+          .eq("position_onchain_id", Number(d.position_id))
+          .is("loan_id", null),
+        "collateral_events",
+      );
+      await insertarUnico(
+        "pool_movements",
+        {
+          type: "disburse",
+          amount: usd(d.disbursed),
+          loan_id: loanUuid,
+          tx_hash: ev.txHash,
+          ledger: ev.ledger,
+          note: `Desembolso del préstamo #${ev.topics[0]}`,
+          created_at: ev.fecha,
+        },
+        "tx_hash,type",
+      );
+      await insertarUnico(
+        "platform_revenue",
+        { type: "origination", amount_usd: usd(d.origination_fee), loan_id: loanUuid, tx_hash: ev.txHash, created_at: ev.fecha },
+        "tx_hash,type",
+      );
       break;
     }
 
     case "payment_recorded": {
       const loanUuid = await refrescarPrestamo(BigInt(ev.topics[0] as bigint), ev);
       if (!loanUuid) break;
-      const { data: pago } = await db()
-        .from("payments")
-        .insert({
+      await insertarUnico(
+        "payments",
+        {
           loan_id: loanUuid,
           principal: usd(d.principal),
           interest: usd(d.interest),
@@ -190,28 +320,30 @@ async function proyectar(ev: Evento) {
           tx_hash: ev.txHash,
           ledger: ev.ledger,
           created_at: ev.fecha,
-        })
-        .select("id")
-        .single();
+        },
+        "tx_hash",
+      );
+      const { data: pago } = await db().from("payments").select("id").eq("tx_hash", ev.txHash).maybeSingle();
       if (BigInt(d.principal as bigint) > BigInt(0)) {
-        await db().from("pool_movements").insert({
-          type: "repay_principal",
-          amount: usd(d.principal),
-          loan_id: loanUuid,
-          tx_hash: ev.txHash,
-          ledger: ev.ledger,
-          created_at: ev.fecha,
-        });
+        await insertarUnico(
+          "pool_movements",
+          { type: "repay_principal", amount: usd(d.principal), loan_id: loanUuid, tx_hash: ev.txHash, ledger: ev.ledger, created_at: ev.fecha },
+          "tx_hash,type",
+        );
       }
       if (BigInt(d.interest as bigint) > BigInt(0)) {
-        await db().from("platform_revenue").insert({
-          type: "interest",
-          amount_usd: usd(d.interest),
-          loan_id: loanUuid,
-          payment_id: pago?.id ?? null,
-          tx_hash: ev.txHash,
-          created_at: ev.fecha,
-        });
+        await insertarUnico(
+          "platform_revenue",
+          {
+            type: "interest",
+            amount_usd: usd(d.interest),
+            loan_id: loanUuid,
+            payment_id: pago?.id ?? null,
+            tx_hash: ev.txHash,
+            created_at: ev.fecha,
+          },
+          "tx_hash,type",
+        );
       }
       await marcarCuotas(loanUuid, ev, Boolean(d.on_time), pago?.id ?? null);
       break;
@@ -219,15 +351,19 @@ async function proyectar(ev: Evento) {
 
     case "collateral_released": {
       const loanUuid = await refrescarPrestamo(BigInt(ev.topics[0] as bigint), ev);
-      await db().from("collateral_events").insert({
-        loan_id: loanUuid,
-        type: "release",
-        amount: usd(d.amount),
-        to_address: String(ev.topics[1]),
-        tx_hash: ev.txHash,
-        ledger: ev.ledger,
-        created_at: ev.fecha,
-      });
+      await insertarUnico(
+        "collateral_events",
+        {
+          loan_id: loanUuid,
+          type: "release",
+          amount: usd(d.amount),
+          to_address: String(ev.topics[1]),
+          tx_hash: ev.txHash,
+          ledger: ev.ledger,
+          created_at: ev.fecha,
+        },
+        "tx_hash,type",
+      );
       break;
     }
 
@@ -244,33 +380,43 @@ async function proyectar(ev: Evento) {
       const interes = minimo(resto, BigInt(d.interest_due as bigint));
       resto -= interes;
       const recargo = minimo(resto, BigInt(d.late_fee as bigint));
-      await db().from("collateral_events").insert({
-        loan_id: loanUuid,
-        type: "liquidation",
-        amount: usd(d.taken),
-        to_address: process.env.TREASURY_ADDRESS ?? null,
-        tx_hash: ev.txHash,
-        ledger: ev.ledger,
-        created_at: ev.fecha,
-      });
-      if (capital > BigInt(0)) {
-        await db().from("pool_movements").insert({
-          type: "repay_principal",
-          amount: aUsdc(capital),
+      await insertarUnico(
+        "collateral_events",
+        {
           loan_id: loanUuid,
+          type: "liquidation",
+          amount: usd(d.taken),
+          to_address: process.env.TREASURY_ADDRESS ?? null,
           tx_hash: ev.txHash,
           ledger: ev.ledger,
-          note: "Recuperado por liquidación",
           created_at: ev.fecha,
-        });
+        },
+        "tx_hash,type",
+      );
+      if (capital > BigInt(0)) {
+        await insertarUnico(
+          "pool_movements",
+          {
+            type: "repay_principal",
+            amount: aUsdc(capital),
+            loan_id: loanUuid,
+            tx_hash: ev.txHash,
+            ledger: ev.ledger,
+            note: "Recuperado por liquidación",
+            created_at: ev.fecha,
+          },
+          "tx_hash,type",
+        );
       }
       const ingresos = [
         { type: "interest" as const, monto: interes },
         { type: "late_fee" as const, monto: recargo },
       ].filter((x) => x.monto > BigInt(0));
       if (ingresos.length) {
-        await db().from("platform_revenue").insert(
+        await insertarUnico(
+          "platform_revenue",
           ingresos.map((x) => ({ type: x.type, amount_usd: aUsdc(x.monto), loan_id: loanUuid, tx_hash: ev.txHash, created_at: ev.fecha })),
+          "tx_hash,type",
         );
       }
       break;
@@ -284,22 +430,26 @@ async function proyectar(ev: Evento) {
         .eq("position_onchain_id", posicion)
         .eq("type", "deposit")
         .maybeSingle();
-      await db().from("collateral_events").insert({
-        loan_id: dep?.loan_id ?? null,
-        position_onchain_id: posicion,
-        type: dep?.loan_id ? "return" : "withdraw",
-        amount: usd(d.amount),
-        to_address: String(ev.topics[1]),
-        tx_hash: ev.txHash,
-        ledger: ev.ledger,
-        created_at: ev.fecha,
-      });
+      await insertarUnico(
+        "collateral_events",
+        {
+          loan_id: dep?.loan_id ?? null,
+          position_onchain_id: posicion,
+          type: dep?.loan_id ? "return" : "withdraw",
+          amount: usd(d.amount),
+          to_address: String(ev.topics[1]),
+          tx_hash: ev.txHash,
+          ledger: ev.ledger,
+          created_at: ev.fecha,
+        },
+        "tx_hash,type",
+      );
       break;
     }
 
     case "params_updated": {
-      const p = d.params as Record<string, bigint | number>;
-      await db()
+      const p = d.params as Record<string, bigint | number | string>;
+      const r = await db()
         .from("platform_settings")
         .update({
           max_ltv_bps: Number(p.max_ltv_bps),
@@ -314,6 +464,7 @@ async function proyectar(ev: Evento) {
           updated_at: ev.fecha,
         })
         .eq("id", true);
+      exigir(r, "platform_settings");
       break;
     }
   }
@@ -367,7 +518,7 @@ async function refrescarPrestamo(onchainId: bigint, ev: Evento): Promise<string 
     .eq("onchain_loan_id", Number(l.id))
     .maybeSingle();
   if (existente) {
-    await db().from("loans").update(fila).eq("id", existente.id);
+    exigir(await db().from("loans").update(fila).eq("id", existente.id), "loans");
     return existente.id;
   }
 
@@ -392,7 +543,10 @@ async function refrescarPrestamo(onchainId: bigint, ev: Evento): Promise<string 
   if (error || !nuevo) throw new Error(`No se pudo guardar el préstamo: ${error?.message}`);
 
   if (solicitud) {
-    await db().from("loan_applications").update({ status: "opened", updated_at: new Date().toISOString() }).eq("id", solicitud.id);
+    exigir(
+      await db().from("loan_applications").update({ status: "opened", updated_at: new Date().toISOString() }).eq("id", solicitud.id),
+      "loan_applications",
+    );
   }
 
   // Calendario estimado: capital fijo por cuota; interés sobre el saldo previsto.
@@ -412,7 +566,7 @@ async function refrescarPrestamo(onchainId: bigint, ev: Evento): Promise<string 
     });
     saldo -= capital;
   }
-  await db().from("installments").insert(cuotas);
+  await insertarUnico("installments", cuotas, "loan_id,number");
   return nuevo.id;
 }
 
@@ -457,5 +611,6 @@ async function refrescarPerfilCrediticio(borrower: string) {
         updated_at: new Date().toISOString(),
       },
       { onConflict: "profile_id" },
-    );
+    )
+    .then((r) => exigir(r, "credit_profiles"));
 }
