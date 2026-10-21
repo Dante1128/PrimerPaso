@@ -189,6 +189,25 @@ export type Database = {
           },
         ]
       }
+      indexer_lock: {
+        Row: {
+          id: boolean
+          holder: string | null
+          locked_until: string | null
+        }
+        Insert: {
+          id?: boolean
+          holder?: string | null
+          locked_until?: string | null
+        }
+        Update: {
+          id?: boolean
+          holder?: string | null
+          locked_until?: string | null
+        }
+        Relationships: [
+        ]
+      }
       indexer_state: {
         Row: {
           contract_id: string
@@ -866,6 +885,8 @@ export type Database = {
       }
     }
     Functions: {
+      indexer_acquire_lock: { Args: { p_holder: string; p_seconds?: number }; Returns: boolean }
+      indexer_release_lock: { Args: { p_holder: string }; Returns: undefined }
       is_staff_platform: { Args: never; Returns: boolean }
       my_role: { Args: never; Returns: Database["public"]["Enums"]["user_role"] }
     }

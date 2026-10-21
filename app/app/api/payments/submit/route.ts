@@ -15,6 +15,6 @@ export const POST = manejar(async (req: Request) => {
   if (!r.ok) throw new ErrorApi(`El pago falló (${r.detail ?? "sin detalle"})`, 502);
 
   await auditar(user.id, "payment_submitted", "loan", String(parsed.data.loanId), { tx_hash: r.hash });
-  await sincronizar().catch((e) => console.error("[indexer]", e));
+  await sincronizar({ esperarMs: 5000 }).catch((e) => console.error("[indexer]", e));
   return Response.json({ ok: true, hash: r.hash, link: linkTx(r.hash) });
 });
