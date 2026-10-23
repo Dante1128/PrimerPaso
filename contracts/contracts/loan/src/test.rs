@@ -4,7 +4,7 @@ extern crate std;
 
 use super::*;
 use soroban_sdk::{
-    testutils::{Address as _, Ledger as _},
+    testutils::{storage::Persistent as _, Address as _, Ledger as _},
     token::{StellarAssetClient, TokenClient},
     Address, Env,
 };
@@ -542,4 +542,77 @@ fn sin_liquidez_en_el_pool_no_se_abre() {
         .loan
         .try_open_loan(&ctx.operator, &pos, &usdc(1_000), &10, &(T0 + MES), &MES);
     assert_eq!(res, Err(Ok(Error::PoolInsuficiente.into())));
+}
+
+// ---------------------------------------------------------------------------
+// Vida (TTL) del almacenamiento
+// ---------------------------------------------------------------------------
+
+impl Ctx<'_> {
+    /// Ledgers que le quedan de vida a una entrada del contrato de préstamo.
+    fn ttl(&self, key: &DataKey) -> u32 {
+        self.env
+            .as_contract(&self.loan_addr, || self.env.storage().persistent().get_ttl(key))
+    }
+
+    fn avanzar_ledgers(&self, n: u32) {
+        self.env.ledger().with_mut(|l| l.sequence_number += n);
+    }
+}
+
+/// Un préstamo activo vive hasta su último vencimiento + gracia (con tope
+/// en el máximo de la red), no solo 30 días.
+#[test]
+fn el_prestamo_activo_vive_hasta_su_ultimo_vencimiento() {
+    let ctx = setup();
+    let est = ctx.cuenta(usdc(1_250));
+    let pos = ctx.loan.deposit_collateral(&est, &est, &usdc(1_250));
+    let id = ctx.abrir(pos, usdc(1_000), 10);
+
+    // Última cuota en T0 + 10 meses; gracia de 1 mes.
+    let hasta_fin = ((10 * MES + MES) / SEGUNDOS_POR_LEDGER) as u32;
+    let maximo = ctx.env.as_contract(&ctx.loan_addr, || ctx.env.storage().max_ttl());
+    let esperado = (hasta_fin + TTL_EXTENDER_A).min(maximo);
+
+    assert!(ctx.ttl(&DataKey::Loan(id)) >= esperado - 1);
+    assert!(ctx.ttl(&DataKey::Position(pos)) >= esperado - 1);
+    assert!(esperado > TTL_EXTENDER_A);
+}
+
+/// `bump` renueva la vida de un préstamo sin movimiento; cualquiera puede
+/// llamarlo. A 12 cuotas la vida necesaria supera el máximo de la red, así
+/// que queda topada y hay que renovarla con el tiempo.
+#[test]
+fn bump_renueva_la_vida_de_un_prestamo_sin_movimiento() {
+    let ctx = setup();
+    let est = ctx.cuenta(usdc(1_250));
+    let pos = ctx.loan.deposit_collateral(&est, &est, &usdc(1_250));
+    let id = ctx.abrir(pos, usdc(1_000), 12);
+    let inicial = ctx.ttl(&DataKey::Loan(id));
+    let maximo = ctx.env.as_contract(&ctx.loan_addr, || ctx.env.storage().max_ttl());
+    assert_eq!(inicial, maximo);
+
+    // Pasan 20 días sin pagos: la vida restante baja.
+    ctx.avanzar_ledgers(20 * DIA_EN_LEDGERS);
+    ctx.ir_a(T0 + 20 * 86_400);
+    let antes = ctx.ttl(&DataKey::Loan(id));
+    assert_eq!(antes, inicial - 20 * DIA_EN_LEDGERS);
+
+    ctx.env.set_auths(&[]);
+    ctx.loan.bump(&id);
+    assert!(ctx.ttl(&DataKey::Loan(id)) > antes);
+    assert!(ctx.ttl(&DataKey::Position(pos)) > antes);
+
+    assert_eq!(ctx.loan.try_bump(&999), Err(Ok(Error::PrestamoNoExiste.into())));
+}
+
+/// Con la plataforma en pausa igual se puede renovar la vida.
+#[test]
+fn bump_funciona_en_pausa() {
+    let ctx = setup();
+    let est = ctx.cuenta(usdc(1_250));
+    let pos = ctx.loan.deposit_collateral(&est, &est, &usdc(1_250));
+    let id = ctx.abrir(pos, usdc(1_000), 10);
+    ctx.loan.pause();
+    ctx.loan.bump(&id);
 }

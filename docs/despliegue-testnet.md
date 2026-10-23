@@ -90,3 +90,25 @@ Con el estudiante de demo: garantía 1.250 → préstamo 1.000 en 10 cuotas
 > `open_loan` requiere dos firmas (operator y estudiante): la CLI solo firma
 > con la cuenta fuente, así que la app firma la autorización del estudiante
 > con su wallet y el servidor firma como operator.
+
+## Actualizar el contrato `loan` sin redesplegar
+
+La dirección y los datos se conservan; solo cambia el código.
+
+1. En `/contracts`: `stellar contract build`.
+2. Subir el código: `stellar contract upload --wasm target/wasm32v1-none/release/loan.wasm --source primerpaso-admin --network testnet` (devuelve el hash).
+3. `stellar contract invoke --id <loan> --source primerpaso-admin --network testnet -- upgrade --wasm_hash <hash>`.
+
+## Vida (TTL) de los préstamos
+
+En Soroban cada dato vive un número limitado de ledgers; si nadie lo toca, se
+archiva y ya no se puede leer ni liquidar sin restaurarlo.
+
+- Al abrir y en cada pago, el contrato extiende el préstamo y su garantía
+  hasta el **último vencimiento + gracia + 30 días** (con tope en el máximo de
+  la red, ~6 meses).
+- `bump(loan_id)` renueva esa vida; cualquiera puede llamarlo y no cambia datos.
+- El cron (`/api/cron/indexer`) llama `bump` a los préstamos activos con menos
+  de 7 días de vida. A mano: `npm run renovar` en `/app`.
+- Desde la CLI, `bump` necesita `--send=yes`: como no escribe datos, la CLI
+  por defecto solo lo simula.
