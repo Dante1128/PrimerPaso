@@ -37,6 +37,8 @@ const MESES_POR_ANIO: i128 = 12;
 const DIA_EN_LEDGERS: u32 = 17_280;
 const TTL_EXTENDER_A: u32 = 30 * DIA_EN_LEDGERS;
 const TTL_UMBRAL: u32 = TTL_EXTENDER_A - DIA_EN_LEDGERS;
+/// Tiempo aproximado de cierre de un ledger.
+const SEGUNDOS_POR_LEDGER: u64 = 5;
 
 #[contractclient(name = "HistoryClient")]
 pub trait HistoryInterface {
@@ -713,6 +715,19 @@ impl LoanContract {
         }
     }
 
+    /// Renueva la vida (TTL) de un préstamo y su garantía para que no se
+    /// archiven mientras siga activo. Cualquiera puede llamarlo; no cambia
+    /// ningún dato. Funciona también con la plataforma en pausa.
+    pub fn bump(env: Env, loan_id: u64) {
+        let loan: Loan = env
+            .storage()
+            .persistent()
+            .get(&DataKey::Loan(loan_id))
+            .unwrap_or_else(|| panic_with_error!(&env, Error::PrestamoNoExiste));
+        Self::extender_prestamo(&env, &loan);
+        Self::extender_instancia(&env);
+    }
+
     // --- Lecturas ---
 
     pub fn get_loan(env: Env, loan_id: u64) -> Option<Loan> {
@@ -979,15 +994,37 @@ impl LoanContract {
     }
 
     fn guardar_prestamo(env: &Env, l: &Loan) {
-        let key = DataKey::Loan(l.id);
-        env.storage().persistent().set(&key, l);
-        Self::extender(env, &key);
+        env.storage().persistent().set(&DataKey::Loan(l.id), l);
+        Self::extender_prestamo(env, l);
     }
 
     fn extender(env: &Env, key: &DataKey) {
+        Self::extender_hasta(env, key, TTL_EXTENDER_A);
+    }
+
+    fn extender_hasta(env: &Env, key: &DataKey, ledgers: u32) {
         env.storage()
             .persistent()
-            .extend_ttl(key, TTL_UMBRAL, TTL_EXTENDER_A);
+            .extend_ttl(key, ledgers.saturating_sub(DIA_EN_LEDGERS), ledgers);
+    }
+
+    /// Préstamo y posición viven al menos hasta el último vencimiento más la
+    /// gracia (+30 días), con tope en el máximo de la red. Así un préstamo en
+    /// mora sin movimiento sigue legible y liquidable.
+    fn extender_prestamo(env: &Env, l: &Loan) {
+        let ledgers = Self::ttl_prestamo(env, l);
+        Self::extender_hasta(env, &DataKey::Loan(l.id), ledgers);
+        Self::extender_hasta(env, &DataKey::Position(l.position_id), ledgers);
+    }
+
+    fn ttl_prestamo(env: &Env, l: &Loan) -> u32 {
+        if l.status != LoanStatus::Active {
+            return TTL_EXTENDER_A;
+        }
+        let fin = Self::vencimiento_cuota(l, l.installments).saturating_add(l.terms.grace_seconds);
+        let restante = fin.saturating_sub(env.ledger().timestamp()) / SEGUNDOS_POR_LEDGER;
+        let ledgers = (restante.min(u32::MAX as u64) as u32).saturating_add(TTL_EXTENDER_A);
+        ledgers.min(env.storage().max_ttl())
     }
 
     fn extender_instancia(env: &Env) {
