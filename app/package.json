@@ -7,6 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
     "db:seed": "tsx --env-file=.env.local scripts/seed.ts",
     "db:types": "npx supabase gen types typescript --project-id bgactooctcxesjxpvwam > lib/database.types.ts",
     "indexar": "tsx --conditions=react-server --env-file=.env.local scripts/indexar.ts",
@@ -33,6 +35,7 @@
     "eslint-config-next": "16.4.2",
     "tailwindcss": "^4",
     "tsx": "^4.23.15",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vitest": "^4.1.12"
   }
 }
