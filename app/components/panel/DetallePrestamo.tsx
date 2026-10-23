@@ -58,13 +58,10 @@ export default function DetallePrestamo({ loanId, wallet, onCambio }: { loanId: 
   const [ok, setOk] = useState<{ link?: string } | null>(null);
   const { actualizando, recargarTras } = useRecargarTrasIndexar();
 
-  const cargar = useCallback(async () => {
-    try {
-      setD(await api<Detalle>(`/api/loans/status?loanId=${loanId}`));
-    } catch (e) {
-      setError((e as Error).message);
-    }
-  }, [loanId]);
+  const cargar = useCallback(
+    () => api<Detalle>(`/api/loans/status?loanId=${loanId}`).then(setD, (e) => setError((e as Error).message)),
+    [loanId],
+  );
 
   useEffect(() => {
     cargar();
