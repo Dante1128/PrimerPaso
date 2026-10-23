@@ -3,6 +3,7 @@
 // (Vercel Cron envía ese header automáticamente si CRON_SECRET está definido.)
 import { timingSafeEqual } from "crypto";
 import { sincronizar } from "@/lib/indexer";
+import { renovarPrestamos } from "@/lib/renovacion";
 
 function autorizado(req: Request): boolean {
   const secreto = process.env.CRON_SECRET;
@@ -17,7 +18,8 @@ async function correr(req: Request) {
   if (!autorizado(req)) return Response.json({ error: "No autorizado" }, { status: 401 });
   try {
     const r = await sincronizar();
-    return Response.json({ ok: true, ...r });
+    const vida = await renovarPrestamos();
+    return Response.json({ ok: true, ...r, vida });
   } catch (e) {
     console.error("[cron/indexer]", e);
     return Response.json({ ok: false, error: (e as Error).message }, { status: 500 });
