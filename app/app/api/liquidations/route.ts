@@ -6,7 +6,7 @@ import { z } from "zod";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { exigirUsuario, manejar, ErrorApi, auditar, notificar, linkTx } from "@/lib/api";
 import { LOAN_ID, aUsdc, adminKeypair, arg, cotizarPago, ejecutarComoServidor } from "@/lib/soroban";
-import { sincronizar } from "@/lib/indexer";
+import { sincronizarEnSegundoPlano } from "@/lib/indexer";
 
 export const GET = manejar(async () => {
   await exigirUsuario(["admin"]);
@@ -49,7 +49,7 @@ export const POST = manejar(async (req: Request) => {
   if (!r.ok) throw new ErrorApi(`La liquidación falló (${r.detail ?? "sin detalle"})`, 502);
 
   await auditar(user.id, "loan_liquidated", "loan", String(loanId), { tx_hash: r.hash });
-  await sincronizar({ esperarMs: 5000 }).catch((e) => console.error("[indexer]", e));
+  sincronizarEnSegundoPlano();
 
   const { data: loan } = await supabaseAdmin()
     .from("loans")

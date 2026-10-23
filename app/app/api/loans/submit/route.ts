@@ -1,11 +1,11 @@
 // Envía a la red la transacción de un paso del préstamo, ya firmada con la
-// wallet, y actualiza la caché con el indexador.
+// wallet. La caché la actualiza el indexador en segundo plano.
 import { exigirUsuario, manejar, ErrorApi, auditar, linkTx } from "@/lib/api";
 import { pasoPrestamoSchema } from "@/lib/validation";
 import { solicitudParaActuar } from "@/lib/prestamos";
 import { LOAN_ID, validarXdr } from "@/lib/soroban";
 import { enviarYEsperar } from "@/lib/stellar";
-import { sincronizar } from "@/lib/indexer";
+import { sincronizarEnSegundoPlano } from "@/lib/indexer";
 
 export const POST = manejar(async (req: Request) => {
   const user = await exigirUsuario(["student", "guarantor"]);
@@ -30,8 +30,7 @@ export const POST = manejar(async (req: Request) => {
     await auditar(user.id, "loan_opened", "loan_application", app.id, { loan_id: id, tx_hash: r.hash });
   }
 
-  // Refresca la caché ya (el cron lo haría igual en unos minutos).
-  await sincronizar({ esperarMs: 5000 }).catch((e) => console.error("[indexer]", e));
+  sincronizarEnSegundoPlano();
 
   return Response.json({
     ok: true,

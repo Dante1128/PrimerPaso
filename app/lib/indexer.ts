@@ -14,6 +14,7 @@
 //    medias, queda pendiente y se reintenta en la siguiente corrida.
 import "server-only";
 import { randomUUID } from "crypto";
+import { after } from "next/server";
 import { rpc, scValToNative } from "@stellar/stellar-sdk";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { conReintentos, rpcServer } from "@/lib/stellar";
@@ -56,6 +57,14 @@ async function tomarCandado(dueno: string): Promise<boolean> {
   const { data, error } = await db().rpc("indexer_acquire_lock", { p_holder: dueno, p_seconds: CANDADO_SEGUNDOS });
   if (error) throw new Error(`Candado del indexador: ${error.message} (¿aplicaste la migración 0003?)`);
   return data === true;
+}
+
+/**
+ * Sincroniza después de enviar la respuesta, para no hacer esperar al
+ * usuario. Si falla o no alcanza, el cron o `/api/sync` lo retoman.
+ */
+export function sincronizarEnSegundoPlano(esperarMs = 15_000) {
+  after(() => sincronizar({ esperarMs }).then(() => undefined, (e) => console.error("[indexer]", e)));
 }
 
 /**
