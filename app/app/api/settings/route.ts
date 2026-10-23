@@ -6,7 +6,7 @@ import { getSessionUser } from "@/lib/auth";
 import { exigirUsuario, manejar, ErrorApi, auditar, linkTx } from "@/lib/api";
 import { parametrosSchema } from "@/lib/validation";
 import { LOAN_ID, aStroops, aUsdc, adminKeypair, ejecutarComoServidor, leerParams, poolDisponible } from "@/lib/soroban";
-import { sincronizar } from "@/lib/indexer";
+import { sincronizarEnSegundoPlano } from "@/lib/indexer";
 import { nativeToScVal, xdr } from "@stellar/stellar-sdk";
 
 export const GET = manejar(async () => {
@@ -63,7 +63,7 @@ export const PUT = manejar(async (req: Request) => {
     .from("platform_settings")
     .update({ ...p, updated_at: new Date().toISOString() })
     .eq("id", true);
-  await sincronizar({ esperarMs: 5000 }).catch((e) => console.error("[indexer]", e));
+  sincronizarEnSegundoPlano();
   await auditar(user.id, "settings_updated", "platform_settings", "true", { ...p, tx_hash: r.hash });
   return Response.json({ ok: true, hash: r.hash, link: linkTx(r.hash) });
 });

@@ -1,9 +1,9 @@
-// Envía el pago ya firmado con la wallet y actualiza la caché.
+// Envía el pago ya firmado con la wallet; la caché se actualiza en segundo plano.
 import { exigirUsuario, manejar, ErrorApi, auditar, linkTx } from "@/lib/api";
 import { pagoSchema } from "@/lib/validation";
 import { LOAN_ID, validarXdr } from "@/lib/soroban";
 import { enviarYEsperar } from "@/lib/stellar";
-import { sincronizar } from "@/lib/indexer";
+import { sincronizarEnSegundoPlano } from "@/lib/indexer";
 
 export const POST = manejar(async (req: Request) => {
   const user = await exigirUsuario(["student", "guarantor"]);
@@ -15,6 +15,6 @@ export const POST = manejar(async (req: Request) => {
   if (!r.ok) throw new ErrorApi(`El pago falló (${r.detail ?? "sin detalle"})`, 502);
 
   await auditar(user.id, "payment_submitted", "loan", String(parsed.data.loanId), { tx_hash: r.hash });
-  await sincronizar({ esperarMs: 5000 }).catch((e) => console.error("[indexer]", e));
+  sincronizarEnSegundoPlano();
   return Response.json({ ok: true, hash: r.hash, link: linkTx(r.hash) });
 });

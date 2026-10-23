@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { api, firmarYEnviar } from "@/lib/cliente";
+import { api, firmarYEnviar, useRecargarTrasIndexar } from "@/lib/cliente";
 import { Alerta, Boton, Campo, Spinner, inputClase } from "@/components/ui";
 import SimuladorPrestamo from "@/components/SimuladorPrestamo";
 import DetallePrestamo from "@/components/panel/DetallePrestamo";
@@ -222,6 +222,7 @@ export function SolicitudEnCurso({
   const [cargando, setCargando] = useState<"" | "deposit" | "open">("");
   const [error, setError] = useState("");
   const [link, setLink] = useState("");
+  const { actualizando, recargarTras } = useRecargarTrasIndexar();
 
   async function paso(step: "deposit" | "open") {
     setError("");
@@ -230,7 +231,7 @@ export function SolicitudEnCurso({
     try {
       const r = await firmarYEnviar(wallet, "/api/loans/prepare", "/api/loans/submit", { applicationId: s.id, step });
       setLink(String(r.link ?? ""));
-      onCambio();
+      void recargarTras(r.hash, onCambio);
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -265,7 +266,7 @@ export function SolicitudEnCurso({
             }
           >
             {!s.garantiaDepositada && (
-              <Boton onClick={() => paso("deposit")} disabled={!!cargando}>
+              <Boton onClick={() => paso("deposit")} disabled={!!cargando || actualizando}>
                 {cargando === "deposit" && <Spinner />} Bloquear con Freighter
               </Boton>
             )}
@@ -277,7 +278,7 @@ export function SolicitudEnCurso({
               titulo="Firmar el préstamo y recibir el dinero"
               desc={`Recibes ${usdc(Number(s.amount_usd) * 0.99)} (monto menos la comisión del 1%). PrimerPaso co-firma la apertura.`}
             >
-              <Boton onClick={() => paso("open")} disabled={!s.garantiaDepositada || !!cargando}>
+              <Boton onClick={() => paso("open")} disabled={!s.garantiaDepositada || !!cargando || actualizando}>
                 {cargando === "open" && <Spinner />} Firmar y recibir
               </Boton>
             </Paso>
@@ -289,7 +290,7 @@ export function SolicitudEnCurso({
       {link && (
         <div className="mt-4">
           <Alerta tipo="success">
-            Listo, registrado on-chain.{" "}
+            Listo, registrado on-chain.{actualizando && " Actualizando datos…"}{" "}
             <a href={link} target="_blank" rel="noreferrer" className="font-semibold underline">
               Ver en stellar.expert
             </a>
