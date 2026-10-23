@@ -1,0 +1,58 @@
+# Verifica cada cambio: tests de los contratos y lint, tipos, tests y build de la app.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  contratos:
+    name: Contratos
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: contracts
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: contracts
+      - run: cargo test --locked
+
+  app:
+    name: App
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: app
+    # Valores de prueba: el build no se conecta a ningún servicio. Las
+    # direcciones de los contratos son públicas (testnet).
+    env:
+      NEXT_PUBLIC_SUPABASE_URL: https://ci.supabase.co
+      NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: sb_publishable_ci
+      NEXT_PUBLIC_STELLAR_NETWORK: TESTNET
+      NEXT_PUBLIC_STELLAR_RPC_URL: https://soroban-testnet.stellar.org
+      NEXT_PUBLIC_LOAN_CONTRACT_ID: CCTKZYY5P5BGBMEMARWD6C6GUUVHOXQDSFW55MV7SRZVLLDVHHIOSO65
+      NEXT_PUBLIC_HISTORY_CONTRACT_ID: CCZVHPN2ODQURHPNDFLDN5O5DHQTFGD4YMWQTPJWJ5FMSQ5JKPIFSQCM
+      NEXT_PUBLIC_USDC_CONTRACT_ID: CAPMNKFCRHNSIVOSQU3M65NEOYTYWT5VZJXQT5YAG3LYKKKMMZGKDX7J
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: app/package-lock.json
+      # npm 10 tiene un bug al resolver dependencias peer opcionales; el
+      # package-lock.json se genera con npm 11.
+      - run: npm install -g npm@11
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
