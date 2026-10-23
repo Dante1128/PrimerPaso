@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { api } from "@/lib/cliente";
+import { api, useRecargarTrasIndexar } from "@/lib/cliente";
 import { Alerta, Boton, Campo, Spinner, inputClase } from "@/components/ui";
 import { RevisionKyc, RevisionSolicitudes } from "@/components/panel/PanelOperador";
 import { Dato, Estado, LinkTx, Tarjeta, Vacio, fecha, usdc } from "@/components/panel/comunes";
@@ -185,6 +185,7 @@ function Mora() {
   const [error, setError] = useState("");
   const [ok, setOk] = useState<{ id: number; link?: string } | null>(null);
   const [ocupado, setOcupado] = useState<number | null>(null);
+  const { actualizando, recargarTras } = useRecargarTrasIndexar();
 
   const cargar = useCallback(() => {
     api<{ prestamos: EnCartera[] }>("/api/liquidations").then((d) => setLista(d.prestamos)).catch((e) => setError(e.message));
@@ -198,9 +199,9 @@ function Mora() {
     setError("");
     setOcupado(id);
     try {
-      const r = await api<{ link?: string }>("/api/liquidations", { loanId: id });
+      const r = await api<{ link?: string; hash?: string }>("/api/liquidations", { loanId: id });
       setOk({ id, link: r.link });
-      cargar();
+      void recargarTras(r.hash, cargar);
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -214,7 +215,7 @@ function Mora() {
       {ok && (
         <div className="mb-3">
           <Alerta tipo="success">
-            Préstamo #{ok.id} liquidado on-chain.{" "}
+            Préstamo #{ok.id} liquidado on-chain.{actualizando && " Actualizando datos…"}{" "}
             {ok.link && (
               <a href={ok.link} target="_blank" rel="noreferrer" className="font-semibold underline">
                 Ver en stellar.expert
@@ -256,7 +257,7 @@ function Mora() {
                   </td>
                   <td className="py-2.5 text-right">
                     {l.liquidable && (
-                      <Boton className="px-3 py-1.5" onClick={() => liquidar(l.onchain_loan_id)} disabled={ocupado !== null}>
+                      <Boton className="px-3 py-1.5" onClick={() => liquidar(l.onchain_loan_id)} disabled={ocupado !== null || actualizando}>
                         {ocupado === l.onchain_loan_id && <Spinner />} Liquidar
                       </Boton>
                     )}
@@ -306,6 +307,7 @@ function Parametros() {
   const [estado, setEstado] = useState<{ sincronizado: boolean; poolDisponible: number } | null>(null);
   const [msg, setMsg] = useState<{ tipo: "error" | "success"; t: string; link?: string } | null>(null);
   const [guardando, setGuardando] = useState(false);
+  const { actualizando, recargarTras } = useRecargarTrasIndexar();
 
   const cargar = useCallback(() => {
     api<{ settings: Ajustes; cadena: Ajustes; sincronizado: boolean; poolDisponible: number }>("/api/settings").then((d) => {
@@ -324,9 +326,9 @@ function Parametros() {
     setMsg(null);
     setGuardando(true);
     try {
-      const r = await api<{ link?: string }>("/api/settings", form, "PUT");
+      const r = await api<{ link?: string; hash?: string }>("/api/settings", form, "PUT");
       setMsg({ tipo: "success", t: "Parámetros actualizados en el contrato y en la base.", link: r.link });
-      cargar();
+      void recargarTras(r.hash, cargar);
     } catch (err) {
       setMsg({ tipo: "error", t: (err as Error).message });
     } finally {
@@ -363,7 +365,8 @@ function Parametros() {
         {msg && (
           <div className="sm:col-span-3">
             <Alerta tipo={msg.tipo}>
-              {msg.t}{" "}
+              {msg.t}
+              {msg.tipo === "success" && actualizando && " Actualizando datos…"}{" "}
               {msg.link && (
                 <a href={msg.link} target="_blank" rel="noreferrer" className="font-semibold underline">
                   Ver transacción
@@ -373,7 +376,7 @@ function Parametros() {
           </div>
         )}
         <div className="sm:col-span-3">
-          <Boton type="submit" disabled={guardando}>
+          <Boton type="submit" disabled={guardando || actualizando}>
             {guardando && <Spinner />} Guardar en el contrato
           </Boton>
           <p className="mt-2 text-xs text-ink/50">

@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { api, firmarYEnviar } from "@/lib/cliente";
+import { api, firmarYEnviar, useRecargarTrasIndexar } from "@/lib/cliente";
 import { Alerta, Boton, Spinner } from "@/components/ui";
 import { Barra, Dato, Estado, LinkTx, Tarjeta, fecha, usdc } from "@/components/panel/comunes";
 
@@ -56,6 +56,7 @@ export default function DetallePrestamo({ loanId, wallet, onCambio }: { loanId: 
   const [error, setError] = useState("");
   const [pagando, setPagando] = useState(false);
   const [ok, setOk] = useState<{ link?: string } | null>(null);
+  const { actualizando, recargarTras } = useRecargarTrasIndexar();
 
   const cargar = useCallback(async () => {
     try {
@@ -76,8 +77,10 @@ export default function DetallePrestamo({ loanId, wallet, onCambio }: { loanId: 
     try {
       const r = await firmarYEnviar(wallet, "/api/payments/prepare", "/api/payments/submit", { loanId });
       setOk({ link: r.link as string | undefined });
-      await cargar();
-      onCambio?.();
+      void recargarTras(r.hash, async () => {
+        await cargar();
+        onCambio?.();
+      });
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -149,7 +152,7 @@ export default function DetallePrestamo({ loanId, wallet, onCambio }: { loanId: 
                   </p>
                 )}
               </div>
-              <Boton onClick={pagar} disabled={pagando}>
+              <Boton onClick={pagar} disabled={pagando || actualizando}>
                 {pagando && <Spinner />} Pagar con Freighter
               </Boton>
             </div>
@@ -160,7 +163,7 @@ export default function DetallePrestamo({ loanId, wallet, onCambio }: { loanId: 
         {ok && (
           <div className="mt-4">
             <Alerta tipo="success">
-              Pago registrado on-chain.{" "}
+              Pago registrado on-chain.{actualizando && " Actualizando datos…"}{" "}
               {ok.link && (
                 <a href={ok.link} target="_blank" rel="noreferrer" className="font-semibold underline">
                   Ver en stellar.expert
