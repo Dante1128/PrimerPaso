@@ -10,7 +10,7 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "db:seed": "tsx --env-file=.env.local scripts/seed.ts",
-    "db:types": "npx supabase gen types typescript --project-id bgactooctcxesjxpvwam > lib/database.types.ts",
+    "db:types": "node --env-file=.env.local scripts/generar-tipos.mjs",
     "indexar": "tsx --conditions=react-server --env-file=.env.local scripts/indexar.ts",
     "indexar:probar": "tsx --conditions=react-server --env-file=.env.local scripts/probar-indexador.ts",
     "renovar": "tsx --conditions=react-server --env-file=.env.local scripts/renovar.ts"

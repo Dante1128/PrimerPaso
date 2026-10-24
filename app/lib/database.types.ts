@@ -1,920 +1,1022 @@
-// Tipos de la base de datos de Supabase (esquema `public`).
-// Generado desde el esquema real del proyecto con el mismo formato que
-// `supabase gen types typescript`. Para regenerar con la CLI:
-//   npx supabase gen types typescript --project-id bgactooctcxesjxpvwam > app/lib/database.types.ts
-// No editar a mano.
-
-export type Json =
-  | string
-  | number
-  | boolean
-  | null
-  | { [key: string]: Json | undefined }
-  | Json[]
+export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
 
 export type Database = {
   public: {
     Tables: {
       audit_logs: {
         Row: {
-          id: number
-          actor_id: string | null
-          action: string
-          entity: string
-          entity_id: string | null
-          data: Json | null
-          created_at: string
-        }
+          action: string;
+          actor_id: string | null;
+          created_at: string;
+          data: Json | null;
+          entity: string;
+          entity_id: string | null;
+          id: number;
+        };
+        ComputedFields: never;
         Insert: {
-          id?: number
-          actor_id?: string | null
-          action: string
-          entity: string
-          entity_id?: string | null
-          data?: Json | null
-          created_at?: string
-        }
+          action: string;
+          actor_id?: string | null;
+          created_at?: string;
+          data?: Json | null;
+          entity: string;
+          entity_id?: string | null;
+          id?: never;
+        };
         Update: {
-          id?: number
-          actor_id?: string | null
-          action?: string
-          entity?: string
-          entity_id?: string | null
-          data?: Json | null
-          created_at?: string
-        }
+          action?: string;
+          actor_id?: string | null;
+          created_at?: string;
+          data?: Json | null;
+          entity?: string;
+          entity_id?: string | null;
+          id?: never;
+        };
         Relationships: [
           {
-            foreignKeyName: "audit_logs_actor_id_fkey"
-            columns: ["actor_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
+            foreignKeyName: "audit_logs_actor_id_fkey";
+            columns: ["actor_id"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
           },
-        ]
-      }
+        ];
+      };
       collateral_events: {
         Row: {
-          id: string
-          loan_id: string | null
-          position_onchain_id: number | null
-          type: Database["public"]["Enums"]["collateral_event_type"]
-          amount: number
-          to_address: string | null
-          tx_hash: string
-          ledger: number
-          created_at: string
-        }
+          amount: number;
+          created_at: string;
+          id: string;
+          ledger: number;
+          loan_id: string | null;
+          position_onchain_id: number | null;
+          to_address: string | null;
+          tx_hash: string;
+          type: Database["public"]["Enums"]["collateral_event_type"];
+        };
+        ComputedFields: never;
         Insert: {
-          id?: string
-          loan_id?: string | null
-          position_onchain_id?: number | null
-          type: Database["public"]["Enums"]["collateral_event_type"]
-          amount: number
-          to_address?: string | null
-          tx_hash: string
-          ledger: number
-          created_at?: string
-        }
+          amount: number;
+          created_at?: string;
+          id?: string;
+          ledger: number;
+          loan_id?: string | null;
+          position_onchain_id?: number | null;
+          to_address?: string | null;
+          tx_hash: string;
+          type: Database["public"]["Enums"]["collateral_event_type"];
+        };
         Update: {
-          id?: string
-          loan_id?: string | null
-          position_onchain_id?: number | null
-          type?: Database["public"]["Enums"]["collateral_event_type"]
-          amount?: number
-          to_address?: string | null
-          tx_hash?: string
-          ledger?: number
-          created_at?: string
-        }
+          amount?: number;
+          created_at?: string;
+          id?: string;
+          ledger?: number;
+          loan_id?: string | null;
+          position_onchain_id?: number | null;
+          to_address?: string | null;
+          tx_hash?: string;
+          type?: Database["public"]["Enums"]["collateral_event_type"];
+        };
         Relationships: [
           {
-            foreignKeyName: "collateral_events_loan_id_fkey"
-            columns: ["loan_id"]
-            isOneToOne: false
-            referencedRelation: "loans"
-            referencedColumns: ["id"]
+            foreignKeyName: "collateral_events_loan_id_fkey";
+            columns: ["loan_id"];
+            isOneToOne: false;
+            referencedRelation: "loans";
+            referencedColumns: ["id"];
           },
-        ]
-      }
+        ];
+      };
       credit_profiles: {
         Row: {
-          profile_id: string
-          borrower_address: string
-          score: number
-          on_time_payments: number
-          late_payments: number
-          defaults: number
-          credential_id: string | null
-          credential_issued_at: string | null
-          updated_at: string
-        }
+          borrower_address: string;
+          credential_id: string | null;
+          credential_issued_at: string | null;
+          defaults: number;
+          late_payments: number;
+          on_time_payments: number;
+          profile_id: string;
+          score: number;
+          updated_at: string;
+        };
+        ComputedFields: never;
         Insert: {
-          profile_id: string
-          borrower_address: string
-          score?: number
-          on_time_payments?: number
-          late_payments?: number
-          defaults?: number
-          credential_id?: string | null
-          credential_issued_at?: string | null
-          updated_at?: string
-        }
+          borrower_address: string;
+          credential_id?: string | null;
+          credential_issued_at?: string | null;
+          defaults?: number;
+          late_payments?: number;
+          on_time_payments?: number;
+          profile_id: string;
+          score?: number;
+          updated_at?: string;
+        };
         Update: {
-          profile_id?: string
-          borrower_address?: string
-          score?: number
-          on_time_payments?: number
-          late_payments?: number
-          defaults?: number
-          credential_id?: string | null
-          credential_issued_at?: string | null
-          updated_at?: string
-        }
+          borrower_address?: string;
+          credential_id?: string | null;
+          credential_issued_at?: string | null;
+          defaults?: number;
+          late_payments?: number;
+          on_time_payments?: number;
+          profile_id?: string;
+          score?: number;
+          updated_at?: string;
+        };
         Relationships: [
           {
-            foreignKeyName: "credit_profiles_profile_id_fkey"
-            columns: ["profile_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
+            foreignKeyName: "credit_profiles_profile_id_fkey";
+            columns: ["profile_id"];
+            isOneToOne: true;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
           },
-        ]
-      }
+        ];
+      };
       guarantor_invitations: {
         Row: {
-          id: string
-          student_id: string
-          guarantor_email: string
-          guarantor_id: string | null
-          code: string
-          status: Database["public"]["Enums"]["invitation_status"]
-          expires_at: string
-          created_at: string
-        }
+          code: string;
+          created_at: string;
+          expires_at: string;
+          guarantor_email: string;
+          guarantor_id: string | null;
+          id: string;
+          status: Database["public"]["Enums"]["invitation_status"];
+          student_id: string;
+        };
+        ComputedFields: never;
         Insert: {
-          id?: string
-          student_id: string
-          guarantor_email: string
-          guarantor_id?: string | null
-          code?: string
-          status?: Database["public"]["Enums"]["invitation_status"]
-          expires_at?: string
-          created_at?: string
-        }
+          code?: string;
+          created_at?: string;
+          expires_at?: string;
+          guarantor_email: string;
+          guarantor_id?: string | null;
+          id?: string;
+          status?: Database["public"]["Enums"]["invitation_status"];
+          student_id: string;
+        };
         Update: {
-          id?: string
-          student_id?: string
-          guarantor_email?: string
-          guarantor_id?: string | null
-          code?: string
-          status?: Database["public"]["Enums"]["invitation_status"]
-          expires_at?: string
-          created_at?: string
-        }
+          code?: string;
+          created_at?: string;
+          expires_at?: string;
+          guarantor_email?: string;
+          guarantor_id?: string | null;
+          id?: string;
+          status?: Database["public"]["Enums"]["invitation_status"];
+          student_id?: string;
+        };
         Relationships: [
           {
-            foreignKeyName: "guarantor_invitations_student_id_fkey"
-            columns: ["student_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
+            foreignKeyName: "guarantor_invitations_guarantor_id_fkey";
+            columns: ["guarantor_id"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
           },
           {
-            foreignKeyName: "guarantor_invitations_guarantor_id_fkey"
-            columns: ["guarantor_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
+            foreignKeyName: "guarantor_invitations_student_id_fkey";
+            columns: ["student_id"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
           },
-        ]
-      }
+        ];
+      };
       indexer_lock: {
         Row: {
-          id: boolean
-          holder: string | null
-          locked_until: string | null
-        }
+          holder: string | null;
+          id: boolean;
+          locked_until: string | null;
+        };
+        ComputedFields: never;
         Insert: {
-          id?: boolean
-          holder?: string | null
-          locked_until?: string | null
-        }
+          holder?: string | null;
+          id?: boolean;
+          locked_until?: string | null;
+        };
         Update: {
-          id?: boolean
-          holder?: string | null
-          locked_until?: string | null
-        }
-        Relationships: [
-        ]
-      }
+          holder?: string | null;
+          id?: boolean;
+          locked_until?: string | null;
+        };
+        Relationships: [];
+      };
       indexer_state: {
         Row: {
-          contract_id: string
-          last_ledger: number
-          updated_at: string
-        }
+          contract_id: string;
+          last_ledger: number;
+          updated_at: string;
+        };
+        ComputedFields: never;
         Insert: {
-          contract_id: string
-          last_ledger?: number
-          updated_at?: string
-        }
+          contract_id: string;
+          last_ledger?: number;
+          updated_at?: string;
+        };
         Update: {
-          contract_id?: string
-          last_ledger?: number
-          updated_at?: string
-        }
-        Relationships: [
-        ]
-      }
+          contract_id?: string;
+          last_ledger?: number;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
       installments: {
         Row: {
-          id: string
-          loan_id: string
-          number: number
-          due_at: string
-          principal_due: number
-          interest_due: number
-          paid_at: string | null
-          status: Database["public"]["Enums"]["installment_status"]
-        }
+          due_at: string;
+          id: string;
+          interest_due: number;
+          loan_id: string;
+          number: number;
+          paid_at: string | null;
+          principal_due: number;
+          status: Database["public"]["Enums"]["installment_status"];
+        };
+        ComputedFields: never;
         Insert: {
-          id?: string
-          loan_id: string
-          number: number
-          due_at: string
-          principal_due: number
-          interest_due: number
-          paid_at?: string | null
-          status?: Database["public"]["Enums"]["installment_status"]
-        }
+          due_at: string;
+          id?: string;
+          interest_due: number;
+          loan_id: string;
+          number: number;
+          paid_at?: string | null;
+          principal_due: number;
+          status?: Database["public"]["Enums"]["installment_status"];
+        };
         Update: {
-          id?: string
-          loan_id?: string
-          number?: number
-          due_at?: string
-          principal_due?: number
-          interest_due?: number
-          paid_at?: string | null
-          status?: Database["public"]["Enums"]["installment_status"]
-        }
+          due_at?: string;
+          id?: string;
+          interest_due?: number;
+          loan_id?: string;
+          number?: number;
+          paid_at?: string | null;
+          principal_due?: number;
+          status?: Database["public"]["Enums"]["installment_status"];
+        };
         Relationships: [
           {
-            foreignKeyName: "installments_loan_id_fkey"
-            columns: ["loan_id"]
-            isOneToOne: false
-            referencedRelation: "loans"
-            referencedColumns: ["id"]
+            foreignKeyName: "installments_loan_id_fkey";
+            columns: ["loan_id"];
+            isOneToOne: false;
+            referencedRelation: "loans";
+            referencedColumns: ["id"];
           },
-        ]
-      }
+        ];
+      };
       kyc_submissions: {
         Row: {
-          id: string
-          profile_id: string
-          status: Database["public"]["Enums"]["kyc_status"]
-          sep12_fields: Json
-          document_paths: string[]
-          reviewed_by: string | null
-          reviewed_at: string | null
-          rejection_reason: string | null
-          created_at: string
-          updated_at: string
-        }
+          created_at: string;
+          document_paths: string[];
+          id: string;
+          profile_id: string;
+          rejection_reason: string | null;
+          reviewed_at: string | null;
+          reviewed_by: string | null;
+          sep12_fields: NonNullable<Json>;
+          status: Database["public"]["Enums"]["kyc_status"];
+          updated_at: string;
+        };
+        ComputedFields: never;
         Insert: {
-          id?: string
-          profile_id: string
-          status?: Database["public"]["Enums"]["kyc_status"]
-          sep12_fields: Json
-          document_paths: string[]
-          reviewed_by?: string | null
-          reviewed_at?: string | null
-          rejection_reason?: string | null
-          created_at?: string
-          updated_at?: string
-        }
+          created_at?: string;
+          document_paths?: string[];
+          id?: string;
+          profile_id: string;
+          rejection_reason?: string | null;
+          reviewed_at?: string | null;
+          reviewed_by?: string | null;
+          sep12_fields?: NonNullable<Json>;
+          status?: Database["public"]["Enums"]["kyc_status"];
+          updated_at?: string;
+        };
         Update: {
-          id?: string
-          profile_id?: string
-          status?: Database["public"]["Enums"]["kyc_status"]
-          sep12_fields?: Json
-          document_paths?: string[]
-          reviewed_by?: string | null
-          reviewed_at?: string | null
-          rejection_reason?: string | null
-          created_at?: string
-          updated_at?: string
-        }
+          created_at?: string;
+          document_paths?: string[];
+          id?: string;
+          profile_id?: string;
+          rejection_reason?: string | null;
+          reviewed_at?: string | null;
+          reviewed_by?: string | null;
+          sep12_fields?: NonNullable<Json>;
+          status?: Database["public"]["Enums"]["kyc_status"];
+          updated_at?: string;
+        };
         Relationships: [
           {
-            foreignKeyName: "kyc_submissions_profile_id_fkey"
-            columns: ["profile_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
+            foreignKeyName: "kyc_submissions_profile_id_fkey";
+            columns: ["profile_id"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
           },
           {
-            foreignKeyName: "kyc_submissions_reviewed_by_fkey"
-            columns: ["reviewed_by"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
+            foreignKeyName: "kyc_submissions_reviewed_by_fkey";
+            columns: ["reviewed_by"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
           },
-        ]
-      }
+        ];
+      };
       loan_applications: {
         Row: {
-          id: string
-          student_id: string
-          guarantor_id: string | null
-          purpose: Database["public"]["Enums"]["loan_purpose"]
-          purpose_detail: string | null
-          amount_usd: number
-          collateral_amount: number
-          asset_contract_id: string
-          rate_bps: number
-          installments: number
-          status: Database["public"]["Enums"]["application_status"]
-          reviewed_by: string | null
-          rejection_reason: string | null
-          created_at: string
-          updated_at: string
-        }
+          amount_usd: number;
+          asset_contract_id: string;
+          collateral_amount: number;
+          created_at: string;
+          guarantor_id: string | null;
+          id: string;
+          installments: number;
+          purpose: Database["public"]["Enums"]["loan_purpose"];
+          purpose_detail: string | null;
+          rate_bps: number;
+          rejection_reason: string | null;
+          reviewed_by: string | null;
+          status: Database["public"]["Enums"]["application_status"];
+          student_id: string;
+          updated_at: string;
+        };
+        ComputedFields: never;
         Insert: {
-          id?: string
-          student_id: string
-          guarantor_id?: string | null
-          purpose?: Database["public"]["Enums"]["loan_purpose"]
-          purpose_detail?: string | null
-          amount_usd: number
-          collateral_amount: number
-          asset_contract_id: string
-          rate_bps: number
-          installments: number
-          status?: Database["public"]["Enums"]["application_status"]
-          reviewed_by?: string | null
-          rejection_reason?: string | null
-          created_at?: string
-          updated_at?: string
-        }
+          amount_usd: number;
+          asset_contract_id: string;
+          collateral_amount: number;
+          created_at?: string;
+          guarantor_id?: string | null;
+          id?: string;
+          installments: number;
+          purpose?: Database["public"]["Enums"]["loan_purpose"];
+          purpose_detail?: string | null;
+          rate_bps: number;
+          rejection_reason?: string | null;
+          reviewed_by?: string | null;
+          status?: Database["public"]["Enums"]["application_status"];
+          student_id: string;
+          updated_at?: string;
+        };
         Update: {
-          id?: string
-          student_id?: string
-          guarantor_id?: string | null
-          purpose?: Database["public"]["Enums"]["loan_purpose"]
-          purpose_detail?: string | null
-          amount_usd?: number
-          collateral_amount?: number
-          asset_contract_id?: string
-          rate_bps?: number
-          installments?: number
-          status?: Database["public"]["Enums"]["application_status"]
-          reviewed_by?: string | null
-          rejection_reason?: string | null
-          created_at?: string
-          updated_at?: string
-        }
+          amount_usd?: number;
+          asset_contract_id?: string;
+          collateral_amount?: number;
+          created_at?: string;
+          guarantor_id?: string | null;
+          id?: string;
+          installments?: number;
+          purpose?: Database["public"]["Enums"]["loan_purpose"];
+          purpose_detail?: string | null;
+          rate_bps?: number;
+          rejection_reason?: string | null;
+          reviewed_by?: string | null;
+          status?: Database["public"]["Enums"]["application_status"];
+          student_id?: string;
+          updated_at?: string;
+        };
         Relationships: [
           {
-            foreignKeyName: "loan_applications_student_id_fkey"
-            columns: ["student_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
+            foreignKeyName: "loan_applications_guarantor_id_fkey";
+            columns: ["guarantor_id"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
           },
           {
-            foreignKeyName: "loan_applications_guarantor_id_fkey"
-            columns: ["guarantor_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
+            foreignKeyName: "loan_applications_reviewed_by_fkey";
+            columns: ["reviewed_by"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
           },
           {
-            foreignKeyName: "loan_applications_reviewed_by_fkey"
-            columns: ["reviewed_by"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
+            foreignKeyName: "loan_applications_student_id_fkey";
+            columns: ["student_id"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
           },
-        ]
-      }
+        ];
+      };
       loans: {
         Row: {
-          id: string
-          application_id: string | null
-          onchain_loan_id: number
-          onchain_position_id: number | null
-          loan_contract_id: string
-          student_id: string | null
-          borrower_address: string
-          depositor_address: string
-          asset_contract_id: string
-          principal: number
-          origination_fee: number
-          collateral_initial: number
-          collateral_locked: number
-          collateral_released: number
-          principal_paid: number
-          interest_paid: number
-          outstanding: number
-          yield_accrued: number
-          yield_to_depositor: number
-          rate_bps: number
-          installments: number
-          status: Database["public"]["Enums"]["loan_status"]
-          opened_tx_hash: string | null
-          opened_at: string | null
-          closed_at: string | null
-          updated_at: string
-        }
+          application_id: string | null;
+          asset_contract_id: string;
+          borrower_address: string;
+          closed_at: string | null;
+          collateral_initial: number;
+          collateral_locked: number;
+          collateral_released: number;
+          depositor_address: string;
+          id: string;
+          installments: number;
+          interest_paid: number;
+          loan_contract_id: string;
+          onchain_loan_id: number;
+          onchain_position_id: number | null;
+          opened_at: string | null;
+          opened_tx_hash: string | null;
+          origination_fee: number;
+          outstanding: number;
+          principal: number;
+          principal_paid: number;
+          rate_bps: number;
+          status: Database["public"]["Enums"]["loan_status"];
+          student_id: string | null;
+          updated_at: string;
+          yield_accrued: number;
+          yield_to_depositor: number;
+        };
+        ComputedFields: never;
         Insert: {
-          id?: string
-          application_id?: string | null
-          onchain_loan_id: number
-          onchain_position_id?: number | null
-          loan_contract_id: string
-          student_id?: string | null
-          borrower_address: string
-          depositor_address: string
-          asset_contract_id: string
-          principal: number
-          origination_fee?: number
-          collateral_initial: number
-          collateral_locked: number
-          collateral_released?: number
-          principal_paid?: number
-          interest_paid?: number
-          outstanding: number
-          yield_accrued?: number
-          yield_to_depositor?: number
-          rate_bps: number
-          installments: number
-          status?: Database["public"]["Enums"]["loan_status"]
-          opened_tx_hash?: string | null
-          opened_at?: string | null
-          closed_at?: string | null
-          updated_at?: string
-        }
+          application_id?: string | null;
+          asset_contract_id: string;
+          borrower_address: string;
+          closed_at?: string | null;
+          collateral_initial: number;
+          collateral_locked: number;
+          collateral_released?: number;
+          depositor_address: string;
+          id?: string;
+          installments: number;
+          interest_paid?: number;
+          loan_contract_id: string;
+          onchain_loan_id: number;
+          onchain_position_id?: number | null;
+          opened_at?: string | null;
+          opened_tx_hash?: string | null;
+          origination_fee?: number;
+          outstanding: number;
+          principal: number;
+          principal_paid?: number;
+          rate_bps: number;
+          status?: Database["public"]["Enums"]["loan_status"];
+          student_id?: string | null;
+          updated_at?: string;
+          yield_accrued?: number;
+          yield_to_depositor?: number;
+        };
         Update: {
-          id?: string
-          application_id?: string | null
-          onchain_loan_id?: number
-          onchain_position_id?: number | null
-          loan_contract_id?: string
-          student_id?: string | null
-          borrower_address?: string
-          depositor_address?: string
-          asset_contract_id?: string
-          principal?: number
-          origination_fee?: number
-          collateral_initial?: number
-          collateral_locked?: number
-          collateral_released?: number
-          principal_paid?: number
-          interest_paid?: number
-          outstanding?: number
-          yield_accrued?: number
-          yield_to_depositor?: number
-          rate_bps?: number
-          installments?: number
-          status?: Database["public"]["Enums"]["loan_status"]
-          opened_tx_hash?: string | null
-          opened_at?: string | null
-          closed_at?: string | null
-          updated_at?: string
-        }
+          application_id?: string | null;
+          asset_contract_id?: string;
+          borrower_address?: string;
+          closed_at?: string | null;
+          collateral_initial?: number;
+          collateral_locked?: number;
+          collateral_released?: number;
+          depositor_address?: string;
+          id?: string;
+          installments?: number;
+          interest_paid?: number;
+          loan_contract_id?: string;
+          onchain_loan_id?: number;
+          onchain_position_id?: number | null;
+          opened_at?: string | null;
+          opened_tx_hash?: string | null;
+          origination_fee?: number;
+          outstanding?: number;
+          principal?: number;
+          principal_paid?: number;
+          rate_bps?: number;
+          status?: Database["public"]["Enums"]["loan_status"];
+          student_id?: string | null;
+          updated_at?: string;
+          yield_accrued?: number;
+          yield_to_depositor?: number;
+        };
         Relationships: [
           {
-            foreignKeyName: "loans_application_id_fkey"
-            columns: ["application_id"]
-            isOneToOne: false
-            referencedRelation: "loan_applications"
-            referencedColumns: ["id"]
+            foreignKeyName: "loans_application_id_fkey";
+            columns: ["application_id"];
+            isOneToOne: true;
+            referencedRelation: "loan_applications";
+            referencedColumns: ["id"];
           },
           {
-            foreignKeyName: "loans_student_id_fkey"
-            columns: ["student_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
+            foreignKeyName: "loans_student_id_fkey";
+            columns: ["student_id"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
           },
-        ]
-      }
+        ];
+      };
       notifications: {
         Row: {
-          id: string
-          profile_id: string
-          type: string
-          channel: string
-          payload: Json
-          read_at: string | null
-          sent_at: string | null
-          created_at: string
-        }
+          channel: string;
+          created_at: string;
+          id: string;
+          payload: NonNullable<Json>;
+          profile_id: string;
+          read_at: string | null;
+          sent_at: string | null;
+          type: string;
+        };
+        ComputedFields: never;
         Insert: {
-          id?: string
-          profile_id: string
-          type: string
-          channel?: string
-          payload: Json
-          read_at?: string | null
-          sent_at?: string | null
-          created_at?: string
-        }
+          channel?: string;
+          created_at?: string;
+          id?: string;
+          payload?: NonNullable<Json>;
+          profile_id: string;
+          read_at?: string | null;
+          sent_at?: string | null;
+          type: string;
+        };
         Update: {
-          id?: string
-          profile_id?: string
-          type?: string
-          channel?: string
-          payload?: Json
-          read_at?: string | null
-          sent_at?: string | null
-          created_at?: string
-        }
+          channel?: string;
+          created_at?: string;
+          id?: string;
+          payload?: NonNullable<Json>;
+          profile_id?: string;
+          read_at?: string | null;
+          sent_at?: string | null;
+          type?: string;
+        };
         Relationships: [
           {
-            foreignKeyName: "notifications_profile_id_fkey"
-            columns: ["profile_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
+            foreignKeyName: "notifications_profile_id_fkey";
+            columns: ["profile_id"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
           },
-        ]
-      }
+        ];
+      };
       onchain_events: {
         Row: {
-          id: string
-          contract_id: string
-          event_type: string
-          ledger: number
-          tx_hash: string
-          event_index: number
-          payload: Json
-          processed: boolean
-          created_at: string
-        }
+          contract_id: string;
+          created_at: string;
+          event_index: number;
+          event_type: string;
+          id: string;
+          ledger: number;
+          payload: NonNullable<Json>;
+          processed: boolean;
+          tx_hash: string;
+        };
+        ComputedFields: never;
         Insert: {
-          id?: string
-          contract_id: string
-          event_type: string
-          ledger: number
-          tx_hash: string
-          event_index?: number
-          payload: Json
-          processed?: boolean
-          created_at?: string
-        }
+          contract_id: string;
+          created_at?: string;
+          event_index?: number;
+          event_type: string;
+          id?: string;
+          ledger: number;
+          payload: NonNullable<Json>;
+          processed?: boolean;
+          tx_hash: string;
+        };
         Update: {
-          id?: string
-          contract_id?: string
-          event_type?: string
-          ledger?: number
-          tx_hash?: string
-          event_index?: number
-          payload?: Json
-          processed?: boolean
-          created_at?: string
-        }
-        Relationships: [
-        ]
-      }
+          contract_id?: string;
+          created_at?: string;
+          event_index?: number;
+          event_type?: string;
+          id?: string;
+          ledger?: number;
+          payload?: NonNullable<Json>;
+          processed?: boolean;
+          tx_hash?: string;
+        };
+        Relationships: [];
+      };
       payments: {
         Row: {
-          id: string
-          loan_id: string
-          installment_id: string | null
-          principal: number
-          interest: number
-          on_time: boolean | null
-          tx_hash: string
-          ledger: number
-          created_at: string
-        }
+          created_at: string;
+          id: string;
+          installment_id: string | null;
+          interest: number;
+          ledger: number;
+          loan_id: string;
+          on_time: boolean | null;
+          principal: number;
+          tx_hash: string;
+        };
+        ComputedFields: never;
         Insert: {
-          id?: string
-          loan_id: string
-          installment_id?: string | null
-          principal: number
-          interest?: number
-          on_time?: boolean | null
-          tx_hash: string
-          ledger: number
-          created_at?: string
-        }
+          created_at?: string;
+          id?: string;
+          installment_id?: string | null;
+          interest?: number;
+          ledger: number;
+          loan_id: string;
+          on_time?: boolean | null;
+          principal: number;
+          tx_hash: string;
+        };
         Update: {
-          id?: string
-          loan_id?: string
-          installment_id?: string | null
-          principal?: number
-          interest?: number
-          on_time?: boolean | null
-          tx_hash?: string
-          ledger?: number
-          created_at?: string
-        }
+          created_at?: string;
+          id?: string;
+          installment_id?: string | null;
+          interest?: number;
+          ledger?: number;
+          loan_id?: string;
+          on_time?: boolean | null;
+          principal?: number;
+          tx_hash?: string;
+        };
         Relationships: [
           {
-            foreignKeyName: "payments_loan_id_fkey"
-            columns: ["loan_id"]
-            isOneToOne: false
-            referencedRelation: "loans"
-            referencedColumns: ["id"]
+            foreignKeyName: "payments_installment_id_fkey";
+            columns: ["installment_id"];
+            isOneToOne: false;
+            referencedRelation: "installments";
+            referencedColumns: ["id"];
           },
           {
-            foreignKeyName: "payments_installment_id_fkey"
-            columns: ["installment_id"]
-            isOneToOne: false
-            referencedRelation: "installments"
-            referencedColumns: ["id"]
+            foreignKeyName: "payments_loan_id_fkey";
+            columns: ["loan_id"];
+            isOneToOne: false;
+            referencedRelation: "loans";
+            referencedColumns: ["id"];
           },
-        ]
-      }
+        ];
+      };
       platform_revenue: {
         Row: {
-          id: string
-          loan_id: string | null
-          payment_id: string | null
-          type: Database["public"]["Enums"]["revenue_type"]
-          amount_usd: number
-          tx_hash: string | null
-          created_at: string
-        }
+          amount_usd: number;
+          created_at: string;
+          id: string;
+          loan_id: string | null;
+          payment_id: string | null;
+          tx_hash: string | null;
+          type: Database["public"]["Enums"]["revenue_type"];
+        };
+        ComputedFields: never;
         Insert: {
-          id?: string
-          loan_id?: string | null
-          payment_id?: string | null
-          type: Database["public"]["Enums"]["revenue_type"]
-          amount_usd: number
-          tx_hash?: string | null
-          created_at?: string
-        }
+          amount_usd: number;
+          created_at?: string;
+          id?: string;
+          loan_id?: string | null;
+          payment_id?: string | null;
+          tx_hash?: string | null;
+          type: Database["public"]["Enums"]["revenue_type"];
+        };
         Update: {
-          id?: string
-          loan_id?: string | null
-          payment_id?: string | null
-          type?: Database["public"]["Enums"]["revenue_type"]
-          amount_usd?: number
-          tx_hash?: string | null
-          created_at?: string
-        }
+          amount_usd?: number;
+          created_at?: string;
+          id?: string;
+          loan_id?: string | null;
+          payment_id?: string | null;
+          tx_hash?: string | null;
+          type?: Database["public"]["Enums"]["revenue_type"];
+        };
         Relationships: [
           {
-            foreignKeyName: "platform_revenue_loan_id_fkey"
-            columns: ["loan_id"]
-            isOneToOne: false
-            referencedRelation: "loans"
-            referencedColumns: ["id"]
+            foreignKeyName: "platform_revenue_loan_id_fkey";
+            columns: ["loan_id"];
+            isOneToOne: false;
+            referencedRelation: "loans";
+            referencedColumns: ["id"];
           },
           {
-            foreignKeyName: "platform_revenue_payment_id_fkey"
-            columns: ["payment_id"]
-            isOneToOne: false
-            referencedRelation: "payments"
-            referencedColumns: ["id"]
+            foreignKeyName: "platform_revenue_payment_id_fkey";
+            columns: ["payment_id"];
+            isOneToOne: false;
+            referencedRelation: "payments";
+            referencedColumns: ["id"];
           },
-        ]
-      }
+        ];
+      };
       platform_settings: {
         Row: {
-          id: boolean
-          max_ltv_bps: number
-          rate_bps: number
-          origination_fee_bps: number
-          late_fee_bps: number
-          yield_share_platform_bps: number
-          grace_seconds: number
-          min_amount_usd: number
-          max_amount_usd: number
-          max_installments: number
-          updated_at: string
-        }
+          grace_seconds: number;
+          id: boolean;
+          late_fee_bps: number;
+          max_amount_usd: number;
+          max_installments: number;
+          max_ltv_bps: number;
+          min_amount_usd: number;
+          origination_fee_bps: number;
+          rate_bps: number;
+          updated_at: string;
+          yield_share_platform_bps: number;
+        };
+        ComputedFields: never;
         Insert: {
-          id?: boolean
-          max_ltv_bps?: number
-          rate_bps?: number
-          origination_fee_bps?: number
-          late_fee_bps?: number
-          yield_share_platform_bps?: number
-          grace_seconds?: number
-          min_amount_usd?: number
-          max_amount_usd?: number
-          max_installments?: number
-          updated_at?: string
-        }
+          grace_seconds?: number;
+          id?: boolean;
+          late_fee_bps?: number;
+          max_amount_usd?: number;
+          max_installments?: number;
+          max_ltv_bps?: number;
+          min_amount_usd?: number;
+          origination_fee_bps?: number;
+          rate_bps?: number;
+          updated_at?: string;
+          yield_share_platform_bps?: number;
+        };
         Update: {
-          id?: boolean
-          max_ltv_bps?: number
-          rate_bps?: number
-          origination_fee_bps?: number
-          late_fee_bps?: number
-          yield_share_platform_bps?: number
-          grace_seconds?: number
-          min_amount_usd?: number
-          max_amount_usd?: number
-          max_installments?: number
-          updated_at?: string
-        }
-        Relationships: [
-        ]
-      }
+          grace_seconds?: number;
+          id?: boolean;
+          late_fee_bps?: number;
+          max_amount_usd?: number;
+          max_installments?: number;
+          max_ltv_bps?: number;
+          min_amount_usd?: number;
+          origination_fee_bps?: number;
+          rate_bps?: number;
+          updated_at?: string;
+          yield_share_platform_bps?: number;
+        };
+        Relationships: [];
+      };
       pool_movements: {
         Row: {
-          id: string
-          type: Database["public"]["Enums"]["pool_movement_type"]
-          amount: number
-          loan_id: string | null
-          tx_hash: string | null
-          ledger: number | null
-          note: string | null
-          created_at: string
-        }
+          amount: number;
+          created_at: string;
+          id: string;
+          ledger: number | null;
+          loan_id: string | null;
+          note: string | null;
+          tx_hash: string | null;
+          type: Database["public"]["Enums"]["pool_movement_type"];
+        };
+        ComputedFields: never;
         Insert: {
-          id?: string
-          type: Database["public"]["Enums"]["pool_movement_type"]
-          amount: number
-          loan_id?: string | null
-          tx_hash?: string | null
-          ledger?: number | null
-          note?: string | null
-          created_at?: string
-        }
+          amount: number;
+          created_at?: string;
+          id?: string;
+          ledger?: number | null;
+          loan_id?: string | null;
+          note?: string | null;
+          tx_hash?: string | null;
+          type: Database["public"]["Enums"]["pool_movement_type"];
+        };
         Update: {
-          id?: string
-          type?: Database["public"]["Enums"]["pool_movement_type"]
-          amount?: number
-          loan_id?: string | null
-          tx_hash?: string | null
-          ledger?: number | null
-          note?: string | null
-          created_at?: string
-        }
+          amount?: number;
+          created_at?: string;
+          id?: string;
+          ledger?: number | null;
+          loan_id?: string | null;
+          note?: string | null;
+          tx_hash?: string | null;
+          type?: Database["public"]["Enums"]["pool_movement_type"];
+        };
         Relationships: [
           {
-            foreignKeyName: "pool_movements_loan_id_fkey"
-            columns: ["loan_id"]
-            isOneToOne: false
-            referencedRelation: "loans"
-            referencedColumns: ["id"]
+            foreignKeyName: "pool_movements_loan_id_fkey";
+            columns: ["loan_id"];
+            isOneToOne: false;
+            referencedRelation: "loans";
+            referencedColumns: ["id"];
           },
-        ]
-      }
+        ];
+      };
       profiles: {
         Row: {
-          id: string
-          full_name: string | null
-          phone: string | null
-          role: Database["public"]["Enums"]["user_role"]
-          document_hash: string | null
-          created_at: string
-          updated_at: string
-        }
+          created_at: string;
+          document_hash: string | null;
+          full_name: string | null;
+          id: string;
+          phone: string | null;
+          role: Database["public"]["Enums"]["user_role"];
+          updated_at: string;
+        };
+        ComputedFields: never;
         Insert: {
-          id: string
-          full_name?: string | null
-          phone?: string | null
-          role?: Database["public"]["Enums"]["user_role"]
-          document_hash?: string | null
-          created_at?: string
-          updated_at?: string
-        }
+          created_at?: string;
+          document_hash?: string | null;
+          full_name?: string | null;
+          id: string;
+          phone?: string | null;
+          role?: Database["public"]["Enums"]["user_role"];
+          updated_at?: string;
+        };
         Update: {
-          id?: string
-          full_name?: string | null
-          phone?: string | null
-          role?: Database["public"]["Enums"]["user_role"]
-          document_hash?: string | null
-          created_at?: string
-          updated_at?: string
-        }
-        Relationships: [
-        ]
-      }
+          created_at?: string;
+          document_hash?: string | null;
+          full_name?: string | null;
+          id?: string;
+          phone?: string | null;
+          role?: Database["public"]["Enums"]["user_role"];
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
       student_profiles: {
         Row: {
-          profile_id: string
-          university_name: string
-          career: string | null
-          student_code: string | null
-          semester: number | null
-          enrollment_doc_path: string | null
-          verified_at: string | null
-          created_at: string
-        }
+          career: string | null;
+          created_at: string;
+          enrollment_doc_path: string | null;
+          profile_id: string;
+          semester: number | null;
+          student_code: string | null;
+          university_name: string;
+          verified_at: string | null;
+        };
+        ComputedFields: never;
         Insert: {
-          profile_id: string
-          university_name: string
-          career?: string | null
-          student_code?: string | null
-          semester?: number | null
-          enrollment_doc_path?: string | null
-          verified_at?: string | null
-          created_at?: string
-        }
+          career?: string | null;
+          created_at?: string;
+          enrollment_doc_path?: string | null;
+          profile_id: string;
+          semester?: number | null;
+          student_code?: string | null;
+          university_name: string;
+          verified_at?: string | null;
+        };
         Update: {
-          profile_id?: string
-          university_name?: string
-          career?: string | null
-          student_code?: string | null
-          semester?: number | null
-          enrollment_doc_path?: string | null
-          verified_at?: string | null
-          created_at?: string
-        }
+          career?: string | null;
+          created_at?: string;
+          enrollment_doc_path?: string | null;
+          profile_id?: string;
+          semester?: number | null;
+          student_code?: string | null;
+          university_name?: string;
+          verified_at?: string | null;
+        };
         Relationships: [
           {
-            foreignKeyName: "student_profiles_profile_id_fkey"
-            columns: ["profile_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
+            foreignKeyName: "student_profiles_profile_id_fkey";
+            columns: ["profile_id"];
+            isOneToOne: true;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
           },
-        ]
-      }
+        ];
+      };
       wallets: {
         Row: {
-          id: string
-          profile_id: string
-          address: string
-          sep10_verified_at: string | null
-          is_primary: boolean
-          created_at: string
-        }
+          address: string;
+          created_at: string;
+          id: string;
+          is_primary: boolean;
+          profile_id: string;
+          sep10_verified_at: string | null;
+        };
+        ComputedFields: never;
         Insert: {
-          id?: string
-          profile_id: string
-          address: string
-          sep10_verified_at?: string | null
-          is_primary?: boolean
-          created_at?: string
-        }
+          address: string;
+          created_at?: string;
+          id?: string;
+          is_primary?: boolean;
+          profile_id: string;
+          sep10_verified_at?: string | null;
+        };
         Update: {
-          id?: string
-          profile_id?: string
-          address?: string
-          sep10_verified_at?: string | null
-          is_primary?: boolean
-          created_at?: string
-        }
+          address?: string;
+          created_at?: string;
+          id?: string;
+          is_primary?: boolean;
+          profile_id?: string;
+          sep10_verified_at?: string | null;
+        };
         Relationships: [
           {
-            foreignKeyName: "wallets_profile_id_fkey"
-            columns: ["profile_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
+            foreignKeyName: "wallets_profile_id_fkey";
+            columns: ["profile_id"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
           },
-        ]
-      }
-    }
+        ];
+      };
+    };
     Views: {
       v_platform_revenue: {
         Row: {
-          month: string | null
-          type: Database["public"]["Enums"]["revenue_type"] | null
-          total_usd: number | null
-        }
-        Relationships: [
-        ]
-      }
+          month: string | null;
+          total_usd: number | null;
+          type: Database["public"]["Enums"]["revenue_type"];
+        };
+        ComputedFields: never;
+        Relationships: [];
+      };
       v_pool_balance: {
         Row: {
-          available_usd: number | null
-        }
-        Relationships: [
-        ]
-      }
-    }
+          available_usd: number | null;
+        };
+        ComputedFields: never;
+        Relationships: [];
+      };
+    };
     Functions: {
-      indexer_acquire_lock: { Args: { p_holder: string; p_seconds?: number }; Returns: boolean }
-      indexer_release_lock: { Args: { p_holder: string }; Returns: undefined }
-      is_staff_platform: { Args: never; Returns: boolean }
-      my_role: { Args: never; Returns: Database["public"]["Enums"]["user_role"] }
-    }
+      indexer_acquire_lock: { Args: { p_holder: string; p_seconds?: number }; Returns: boolean };
+      indexer_release_lock: { Args: { p_holder: string }; Returns: undefined };
+      is_staff_platform: { Args: Record<PropertyKey, never>; Returns: boolean };
+      my_role: {
+        Args: Record<PropertyKey, never>;
+        Returns: Database["public"]["Enums"]["user_role"];
+      };
+    };
     Enums: {
-      application_status: "draft" | "submitted" | "approved" | "rejected" | "cancelled" | "opened"
-      collateral_event_type: "deposit" | "release" | "liquidation" | "return" | "withdraw"
-      installment_status: "pending" | "paid" | "late" | "waived"
-      invitation_status: "pending" | "accepted" | "expired" | "revoked"
-      kyc_status: "draft" | "pending" | "approved" | "rejected"
-      loan_purpose: "tuition" | "laptop" | "course" | "materials" | "other"
-      loan_status: "active" | "repaid" | "defaulted" | "liquidated" | "cancelled"
-      pool_movement_type: "fund" | "withdraw" | "disburse" | "repay_principal"
-      revenue_type: "interest" | "origination" | "late_fee" | "yield_share"
-      user_role: "student" | "guarantor" | "operator" | "admin"
-    }
+      application_status: "draft" | "submitted" | "approved" | "rejected" | "cancelled" | "opened";
+      collateral_event_type: "deposit" | "release" | "liquidation" | "return" | "withdraw";
+      installment_status: "pending" | "paid" | "late" | "waived";
+      invitation_status: "pending" | "accepted" | "expired" | "revoked";
+      kyc_status: "draft" | "pending" | "approved" | "rejected";
+      loan_purpose: "tuition" | "laptop" | "course" | "materials" | "other";
+      loan_status: "active" | "repaid" | "defaulted" | "liquidated" | "cancelled";
+      pool_movement_type: "fund" | "withdraw" | "disburse" | "repay_principal";
+      revenue_type: "interest" | "origination" | "late_fee" | "yield_share";
+      user_role: "student" | "guarantor" | "operator" | "admin";
+    };
     CompositeTypes: {
-      [_ in never]: never
-    }
+      [_ in never]: never;
+    };
+  };
+};
+
+type DatabaseWithoutInternals = Omit<Database, "__InternalSupabase">;
+
+type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, "public">];
+
+export type Tables<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals;
   }
-}
+    ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+        DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
+    : never) = never,
+> = DefaultSchemaTableNameOrOptions extends { schema: keyof DatabaseWithoutInternals }
+  ? (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+      DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
+      Row: infer R;
+    }
+    ? R
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
+    ? (DefaultSchema["Tables"] & DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
+        Row: infer R;
+      }
+      ? R
+      : never
+    : never;
 
-type PublicSchema = Database["public"]
+export type TablesInsert<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals;
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    : never) = never,
+> = DefaultSchemaTableNameOrOptions extends { schema: keyof DatabaseWithoutInternals }
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+      Insert: infer I;
+    }
+    ? I
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+        Insert: infer I;
+      }
+      ? I
+      : never
+    : never;
 
-export type Tables<T extends keyof PublicSchema["Tables"]> = PublicSchema["Tables"][T]["Row"]
-export type TablesInsert<T extends keyof PublicSchema["Tables"]> = PublicSchema["Tables"][T]["Insert"]
-export type TablesUpdate<T extends keyof PublicSchema["Tables"]> = PublicSchema["Tables"][T]["Update"]
-export type Views<T extends keyof PublicSchema["Views"]> = PublicSchema["Views"][T]["Row"]
-export type Enums<T extends keyof PublicSchema["Enums"]> = PublicSchema["Enums"][T]
+export type TablesUpdate<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals;
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    : never) = never,
+> = DefaultSchemaTableNameOrOptions extends { schema: keyof DatabaseWithoutInternals }
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+      Update: infer U;
+    }
+    ? U
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+        Update: infer U;
+      }
+      ? U
+      : never
+    : never;
+
+export type Enums<
+  DefaultSchemaEnumNameOrOptions extends
+    | keyof DefaultSchema["Enums"]
+    | { schema: keyof DatabaseWithoutInternals },
+  EnumName extends (DefaultSchemaEnumNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals;
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
+    : never) = never,
+> = DefaultSchemaEnumNameOrOptions extends { schema: keyof DatabaseWithoutInternals }
+  ? DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"][EnumName]
+  : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema["Enums"]
+    ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
+    : never;
+
+export type CompositeTypes<
+  PublicCompositeTypeNameOrOptions extends
+    | keyof DefaultSchema["CompositeTypes"]
+    | { schema: keyof DatabaseWithoutInternals },
+  CompositeTypeName extends (PublicCompositeTypeNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals;
+  }
+    ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
+    : never) = never,
+> = PublicCompositeTypeNameOrOptions extends { schema: keyof DatabaseWithoutInternals }
+  ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
+  : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
+    ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
+    : never;
 
 export const Constants = {
   public: {
@@ -931,4 +1033,4 @@ export const Constants = {
       user_role: ["student", "guarantor", "operator", "admin"],
     },
   },
-} as const
+} as const;
