@@ -414,13 +414,17 @@ function PasoKyc({ onNext }: { onNext: () => void }) {
 }
 
 function SubidaArchivo({ label, archivo, onFile }: { label: string; archivo: File | null; onFile: (f: File) => void }) {
-  const [preview, setPreview] = useState<string | null>(null);
+  // La vista previa se crea al elegir el archivo y se libera al cambiarla.
+  const [vista, setVista] = useState<{ de: File; url: string } | null>(null);
+  const preview = vista && vista.de === archivo ? vista.url : null;
   useEffect(() => {
-    if (!archivo || !archivo.type.startsWith("image/")) return setPreview(null);
-    const url = URL.createObjectURL(archivo);
-    setPreview(url);
-    return () => URL.revokeObjectURL(url);
-  }, [archivo]);
+    if (vista) return () => URL.revokeObjectURL(vista.url);
+  }, [vista]);
+
+  function elegir(f: File) {
+    setVista(f.type.startsWith("image/") ? { de: f, url: URL.createObjectURL(f) } : null);
+    onFile(f);
+  }
 
   return (
     <Campo label={label}>
@@ -442,7 +446,7 @@ function SubidaArchivo({ label, archivo, onFile }: { label: string; archivo: Fil
           type="file"
           accept="image/jpeg,image/png,image/webp,application/pdf"
           className="hidden"
-          onChange={(e) => e.target.files?.[0] && onFile(e.target.files[0])}
+          onChange={(e) => e.target.files?.[0] && elegir(e.target.files[0])}
         />
       </label>
     </Campo>

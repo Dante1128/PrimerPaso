@@ -34,20 +34,22 @@ export default function PanelEstudiante({ user }: { user: Usuario }) {
   const [credito, setCredito] = useState<Credito | null>(null);
   const [error, setError] = useState("");
 
-  const cargar = useCallback(async () => {
-    try {
-      const [s, p, c] = await Promise.all([
+  const cargar = useCallback(
+    () =>
+      Promise.all([
         api<{ solicitudes: Solicitud[] }>("/api/applications"),
         api<{ prestamos: Prestamo[] }>("/api/loans/status"),
         api<Credito>("/api/credit").catch(() => null),
-      ]);
-      setSolicitudes(s.solicitudes);
-      setPrestamos(p.prestamos);
-      setCredito(c);
-    } catch (e) {
-      setError((e as Error).message);
-    }
-  }, []);
+      ]).then(
+        ([s, p, c]) => {
+          setSolicitudes(s.solicitudes);
+          setPrestamos(p.prestamos);
+          setCredito(c);
+        },
+        (e) => setError((e as Error).message),
+      ),
+    [],
+  );
 
   useEffect(() => {
     cargar();

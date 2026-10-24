@@ -16,20 +16,22 @@ export default function PanelGarante({ user }: { user: Usuario }) {
   const [saldo, setSaldo] = useState<number | null>(null);
   const [error, setError] = useState("");
 
-  const cargar = useCallback(async () => {
-    try {
-      const [s, p, c] = await Promise.all([
+  const cargar = useCallback(
+    () =>
+      Promise.all([
         api<{ solicitudes: Solicitud[] }>("/api/applications"),
         api<{ prestamos: Prestamo[] }>("/api/loans/status"),
         api<{ saldoUsdc: number }>("/api/credit").catch(() => null),
-      ]);
-      setSolicitudes(s.solicitudes);
-      setPrestamos(p.prestamos);
-      setSaldo(c?.saldoUsdc ?? null);
-    } catch (e) {
-      setError((e as Error).message);
-    }
-  }, []);
+      ]).then(
+        ([s, p, c]) => {
+          setSolicitudes(s.solicitudes);
+          setPrestamos(p.prestamos);
+          setSaldo(c?.saldoUsdc ?? null);
+        },
+        (e) => setError((e as Error).message),
+      ),
+    [],
+  );
 
   useEffect(() => {
     cargar();
