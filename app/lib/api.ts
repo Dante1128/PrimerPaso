@@ -56,7 +56,7 @@ export async function auditar(actorId: string | null, action: string, entity: st
 export async function notificar(profileId: string, type: string, payload: Record<string, unknown>) {
   await supabaseAdmin()
     .from("notifications")
-    .insert({ profile_id: profileId, type, channel: "in_app", payload: payload as Json });
+    .insert({ profile_id: profileId, type, channel: "in_app", payload: payload as NonNullable<Json> });
 }
 
 /**

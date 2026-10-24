@@ -112,3 +112,20 @@ archiva y ya no se puede leer ni liquidar sin restaurarlo.
   de 7 días de vida. A mano: `npm run renovar` en `/app`.
 - Desde la CLI, `bump` necesita `--send=yes`: como no escribe datos, la CLI
   por defecto solo lo simula.
+
+## Base de datos (Supabase)
+
+La estructura completa está versionada en `supabase/migrations/`:
+
+| Archivo | Contenido |
+| --- | --- |
+| `0001_init.sql` | Extensiones, enums, tablas, índices, funciones, vistas, triggers, RLS, políticas y la configuración inicial de la plataforma. |
+| `0002_auth_y_storage.sql` | Trigger que crea el perfil al registrarse, buckets `kyc-docs` y `receipts`, y la política de `kyc-docs`. |
+| `0003_indexer_idempotente.sql` | Índices únicos del indexador y el candado `indexer_lock`. |
+
+Proyecto nuevo: aplicarlas en orden desde el **SQL Editor** de Supabase. Los
+cambios futuros van en un archivo nuevo (`0004_...sql`), nunca editando uno ya
+aplicado.
+
+Tipos de TypeScript: `npm run db:types` en `/app` los genera desde la base real
+(usa `DATABASE_URL` de `.env.local`; no necesita `supabase login` ni Docker).

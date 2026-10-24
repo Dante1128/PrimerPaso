@@ -37,7 +37,7 @@ const usd = (v: unknown) => aUsdc(BigInt(v as bigint));
 const iso = (segundos: bigint | number) => new Date(Number(segundos) * 1000).toISOString();
 
 /** JSON seguro (los bigint pasan a string). */
-function aJson(v: unknown): Json {
+function aJson(v: unknown): NonNullable<Json> {
   return JSON.parse(JSON.stringify(v, (_k, x) => (typeof x === "bigint" ? x.toString() : x)));
 }
 
