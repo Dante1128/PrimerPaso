@@ -4,6 +4,8 @@ import { supabaseServidor } from "@/lib/supabase/server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { errorJson } from "@/lib/auth";
 import { limitarAuth } from "@/lib/limite";
+import { auditarIngresoStaff } from "@/lib/api";
+import { ipDe } from "@/lib/peticion";
 import { pedirCodigoSchema, verificarCodigoSchema } from "@/lib/validation";
 
 export async function POST(req: Request) {
@@ -40,5 +42,6 @@ export async function POST(req: Request) {
   } else if (fullName) {
     await db.from("profiles").update({ full_name: fullName }).eq("id", data.user.id).is("full_name", null);
   }
+  await auditarIngresoStaff(data.user.id, "codigo", ipDe(req));
   return Response.json({ ok: true });
 }

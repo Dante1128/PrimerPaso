@@ -66,6 +66,14 @@ export async function auditar(actorId: string | null, action: string, entity: st
     });
 }
 
+/** Registra el ingreso si la cuenta es de staff (operator o admin). */
+export async function auditarIngresoStaff(userId: string, metodo: "password" | "codigo", ip: string) {
+  const { data } = await supabaseAdmin().from("profiles").select("role").eq("id", userId).maybeSingle();
+  if (data?.role === "operator" || data?.role === "admin") {
+    await auditar(userId, "staff_login", "auth", userId, { metodo, ip, rol: data.role });
+  }
+}
+
 /** Notificación para un usuario (se muestra en su panel). */
 export async function notificar(profileId: string, type: string, payload: Record<string, unknown>) {
   await supabaseAdmin()

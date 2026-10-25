@@ -5,6 +5,7 @@ import { loginSchema } from "@/lib/validation";
 import { verificarCaptcha } from "@/lib/turnstile";
 import { ipDe } from "@/lib/peticion";
 import { limitarAuth } from "@/lib/limite";
+import { auditarIngresoStaff } from "@/lib/api";
 
 export async function POST(req: Request) {
   const body = await req.json().catch(() => null);
@@ -16,7 +17,7 @@ export async function POST(req: Request) {
   if (captcha) return errorJson(captcha, 400);
 
   const supabase = await supabaseServidor();
-  const { error } = await supabase.auth.signInWithPassword(parsed.data);
+  const { data, error } = await supabase.auth.signInWithPassword(parsed.data);
   if (error) {
     if (/banned/i.test(error.message)) {
       return errorJson("Tu cuenta está desactivada. Habla con un administrador de PrimerPaso.", 403);
@@ -26,5 +27,6 @@ export async function POST(req: Request) {
     }
     return errorJson("Email o contraseña incorrectos", 401);
   }
+  await auditarIngresoStaff(data.user.id, "password", ipDe(req));
   return Response.json({ ok: true });
 }

@@ -13,6 +13,7 @@ const PESTANAS = [
   { id: "kyc", txt: "KYC" },
   { id: "solicitudes", txt: "Solicitudes" },
   { id: "equipo", txt: "Equipo" },
+  { id: "auditoria", txt: "Auditoría" },
 ] as const;
 type Pestana = (typeof PESTANAS)[number]["id"];
 
@@ -41,6 +42,7 @@ export default function PanelAdmin({ nombre, adminId }: { nombre: string; adminI
       {tab === "kyc" && <RevisionKyc />}
       {tab === "solicitudes" && <RevisionSolicitudes />}
       {tab === "equipo" && <Equipo adminId={adminId} />}
+      {tab === "auditoria" && <Auditoria />}
     </div>
   );
 }
@@ -513,3 +515,86 @@ function Equipo({ adminId }: { adminId: string }) {
     </div>
   );
 }
+
+/* ---------------- Auditoría ---------------- */
+type Registro = {
+  id: number;
+  action: string;
+  entity: string;
+  entity_id: string | null;
+  created_at: string;
+  actor: { full_name: string | null; role: string } | null;
+};
+
+const ACCIONES: Record<string, string> = {
+  staff_login: "Ingreso del equipo",
+  staff_invited: "Invitó a un operador",
+  staff_deactivated: "Desactivó a un operador",
+  staff_reactivated: "Reactivó a un operador",
+  kyc_approved: "Aprobó un KYC",
+  kyc_rejected: "Rechazó un KYC",
+  application_approved: "Aprobó una solicitud",
+  application_rejected: "Rechazó una solicitud",
+  application_submitted: "Envió una solicitud",
+  loan_liquidated: "Liquidó un préstamo",
+  settings_updated: "Cambió los parámetros",
+  collateral_deposited: "Depositó garantía",
+  loan_opened: "Abrió un préstamo",
+  payment_submitted: "Pagó una cuota",
+};
+
+function Auditoria() {
+  const [lista, setLista] = useState<Registro[] | null>(null);
+  const [error, setError] = useState("");
+  const cargar = useCallback(() => {
+    api<{ registros: Registro[] }>("/api/admin/audit").then(
+      (d) => setLista(d.registros),
+      (e) => setError((e as Error).message),
+    );
+  }, []);
+  useEffect(() => {
+    cargar();
+  }, [cargar]);
+
+  return (
+    <Tarjeta titulo="Últimas 50 acciones" accion={<Boton variant="ghost" onClick={cargar}>Actualizar</Boton>}>
+      {error && <Alerta tipo="error">{error}</Alerta>}
+      {!lista ? (
+        !error && <Spinner className="h-5 w-5" />
+      ) : lista.length === 0 ? (
+        <Vacio>Todavía no hay acciones registradas.</Vacio>
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[640px] text-sm">
+            <thead>
+              <tr className="text-left text-xs uppercase tracking-wide text-ink/50">
+                <th className="pb-2 font-medium">Fecha</th>
+                <th className="pb-2 font-medium">Quién</th>
+                <th className="pb-2 font-medium">Acción</th>
+                <th className="pb-2 font-medium">Sobre</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-ink/10">
+              {lista.map((r) => (
+                <tr key={r.id} className="text-ink/80">
+                  <td className="whitespace-nowrap py-2.5">{new Date(r.created_at).toLocaleString("es-BO")}</td>
+                  <td className="py-2.5">
+                    {r.actor?.full_name ?? "Sistema"}
+                    {r.actor && <span className="text-ink/50"> · {ROLES[r.actor.role] ?? r.actor.role}</span>}
+                  </td>
+                  <td className="py-2.5">{ACCIONES[r.action] ?? r.action}</td>
+                  <td className="py-2.5 font-mono text-xs text-ink/60">
+                    {r.entity}
+                    {r.entity_id ? ` · ${r.entity_id.length > 12 ? r.entity_id.slice(0, 8) + "…" : r.entity_id}` : ""}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </Tarjeta>
+  );
+}
+
+const ROLES: Record<string, string> = { student: "Estudiante", guarantor: "Garante", operator: "Operador", admin: "Admin" };
