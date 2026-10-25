@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Logo from "@/components/Logo";
 import BotonGoogle from "@/components/BotonGoogle";
+import Turnstile, { CAPTCHA_ACTIVO } from "@/components/Turnstile";
 import { Campo, inputClase, Boton, Alerta, Spinner } from "@/components/ui";
 import { conectarFreighter, firmarXdr } from "@/lib/wallet";
 
@@ -125,6 +126,8 @@ function PasoCuenta({ onNext }: { onNext: (email: string) => void }) {
   const [form, setForm] = useState({ fullName: "", email: "", password: "" });
   const [error, setError] = useState("");
   const [cargando, setCargando] = useState(false);
+  const [captcha, setCaptcha] = useState("");
+  const [intento, setIntento] = useState(0);
   const set = (k: keyof typeof form, v: string) => setForm((f) => ({ ...f, [k]: v }));
 
   async function enviar(e: React.FormEvent) {
@@ -132,10 +135,12 @@ function PasoCuenta({ onNext }: { onNext: (email: string) => void }) {
     setError("");
     setCargando(true);
     try {
-      const d = await api("/api/auth/register", form);
+      const d = await api("/api/auth/register", { ...form, captchaToken: captcha });
       onNext(d.email);
     } catch (err) {
       setError((err as Error).message);
+      setCaptcha("");
+      setIntento((n) => n + 1);
     } finally {
       setCargando(false);
     }
@@ -158,9 +163,11 @@ function PasoCuenta({ onNext }: { onNext: (email: string) => void }) {
         <input id="password" type="password" className={inputClase} value={form.password} onChange={(e) => set("password", e.target.value)} required minLength={8} />
       </Campo>
 
+      <Turnstile key={intento} onToken={setCaptcha} />
+
       {error && <Alerta tipo="error">{error}</Alerta>}
 
-      <Boton type="submit" disabled={cargando} className="w-full">
+      <Boton type="submit" disabled={cargando || (CAPTCHA_ACTIVO && !captcha)} className="w-full">
         {cargando && <Spinner />} Crear cuenta
       </Boton>
       <p className="text-center text-sm text-ink/60">

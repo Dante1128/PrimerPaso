@@ -3,10 +3,15 @@
 import { supabaseServidor } from "@/lib/supabase/server";
 import { errorJson } from "@/lib/auth";
 import { pedirCodigoSchema } from "@/lib/validation";
+import { verificarCaptcha } from "@/lib/turnstile";
+import { ipDe } from "@/lib/peticion";
 
 export async function POST(req: Request) {
-  const parsed = pedirCodigoSchema.safeParse(await req.json().catch(() => null));
+  const body = await req.json().catch(() => null);
+  const parsed = pedirCodigoSchema.safeParse(body);
   if (!parsed.success) return errorJson("Email inválido", 400);
+  const captcha = await verificarCaptcha(body?.captchaToken, ipDe(req));
+  if (captcha) return errorJson(captcha, 400);
 
   const supabase = await supabaseServidor();
   const { error } = await supabase.auth.signInWithOtp({

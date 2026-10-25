@@ -2,15 +2,20 @@
 import { supabaseServidor } from "@/lib/supabase/server";
 import { errorJson } from "@/lib/auth";
 import { registroSchema } from "@/lib/validation";
+import { verificarCaptcha } from "@/lib/turnstile";
+import { ipDe } from "@/lib/peticion";
 
 export async function POST(req: Request) {
-  const parsed = registroSchema.safeParse(await req.json().catch(() => null));
+  const body = await req.json().catch(() => null);
+  const parsed = registroSchema.safeParse(body);
   if (!parsed.success) {
     return Response.json(
       { error: "Datos inválidos", detalles: parsed.error.flatten().fieldErrors },
       { status: 400 },
     );
   }
+  const captcha = await verificarCaptcha(body?.captchaToken, ipDe(req));
+  if (captcha) return errorJson(captcha, 400);
   const { fullName, email, password } = parsed.data;
 
   const supabase = await supabaseServidor();
