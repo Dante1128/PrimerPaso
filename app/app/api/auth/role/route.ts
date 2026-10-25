@@ -1,5 +1,5 @@
-// Elige el rol en el registro: estudiante o garante. Los roles de staff
-// (operator, admin) solo los asigna un administrador.
+// Elige el rol en el registro: estudiante o garante, una sola vez. Los roles
+// de staff (operator, admin) solo los asigna un administrador.
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { getSessionUser, errorJson } from "@/lib/auth";
 import { rolSchema } from "@/lib/validation";
@@ -7,7 +7,8 @@ import { rolSchema } from "@/lib/validation";
 export async function POST(req: Request) {
   const user = await getSessionUser();
   if (!user) return errorJson("No autenticado", 401);
-  if (user.esStaff) return errorJson("El personal de PrimerPaso no cambia de rol aquí", 403);
+  // Nunca se cambia de rol después del registro (incluye al staff).
+  if (user.rolElegido) return errorJson("El rol ya fue elegido", 409);
 
   const parsed = rolSchema.safeParse(await req.json().catch(() => ({})));
   if (!parsed.success) return errorJson("Rol inválido", 400);
@@ -33,6 +34,7 @@ export async function POST(req: Request) {
 
   const { error } = await db.from("profiles").update({ role }).eq("id", user.id);
   if (error) return errorJson(error.message, 500);
-  await db.auth.admin.updateUserById(user.id, { user_metadata: { role } });
+  // app_metadata no la puede editar el usuario: es la fuente que fija el rol.
+  await db.auth.admin.updateUserById(user.id, { app_metadata: { role }, user_metadata: { role } });
   return Response.json({ ok: true, role });
 }
