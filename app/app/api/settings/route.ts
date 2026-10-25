@@ -55,6 +55,11 @@ export const PUT = manejar(async (req: Request) => {
     ],
   );
 
+  // En producción la llave admin del contrato es multifirma y no está aquí:
+  // los parámetros se cambian firmando aparte (ver docs/seguridad.md).
+  if (!process.env.ADMIN_SECRET_KEY) {
+    throw new ErrorApi("En este entorno los parámetros se cambian con la multifirma del admin del contrato (ver docs/seguridad.md).", 403);
+  }
   const r = await ejecutarComoServidor(adminKeypair(), LOAN_ID, "set_params", [params]);
   if (!r.ok) throw new ErrorApi(`No se pudo actualizar el contrato (${r.detail ?? "sin detalle"})`, 502);
 
