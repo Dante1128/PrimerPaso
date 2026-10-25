@@ -7,8 +7,21 @@
 //
 // Uso (desde app/):  npm run db:seed
 // Requiere en .env.local: NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SECRET_KEY.
+//
+// SOLO TESTNET: se niega a correr si la red es la pública (mainnet). El
+// admin de producción se crea a mano (ver docs/seguridad.md).
 import { createClient } from "@supabase/supabase-js";
 import type { Database } from "../lib/database.types";
+
+const RED = (process.env.NEXT_PUBLIC_STELLAR_NETWORK ?? "").trim().toLowerCase();
+if (RED === "public" || RED === "mainnet") {
+  console.error(
+    "ERROR: el seed crea cuentas de prueba con una contraseña conocida y no se corre en mainnet " +
+      `(NEXT_PUBLIC_STELLAR_NETWORK=${process.env.NEXT_PUBLIC_STELLAR_NETWORK}). ` +
+      "El admin de producción se crea a mano: ver docs/seguridad.md.",
+  );
+  process.exit(1);
+}
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const secret = process.env.SUPABASE_SECRET_KEY;
@@ -39,6 +52,16 @@ async function check<T>(p: PromiseLike<{ data: T; error: { message: string } | n
   return data;
 }
 
+/** Lectura con un reintento ante cortes de red momentáneos. */
+async function leer<T>(consulta: () => PromiseLike<{ data: T; error: { message: string } | null }>, que: string) {
+  try {
+    return await check(consulta(), que);
+  } catch {
+    await new Promise((r) => setTimeout(r, 1000));
+    return check(consulta(), que);
+  }
+}
+
 async function usuario(email: string, fullName: string, role: Rol): Promise<string> {
   const { data } = await db.auth.admin.listUsers({ page: 1, perPage: 1000 });
   let id = data.users.find((u) => u.email === email)?.id;
@@ -52,6 +75,8 @@ async function usuario(email: string, fullName: string, role: Rol): Promise<stri
     if (creado.error) throw new Error(`crear ${email}: ${creado.error.message}`);
     id = creado.data.user.id;
   }
+  // El rol también va en app_metadata (solo el servidor la puede editar): fija el rol.
+  await db.auth.admin.updateUserById(id, { app_metadata: { role } });
   await check(
     db.from("profiles").upsert({ id, full_name: fullName, role }, { onConflict: "id" }),
     `perfil ${email}`,
@@ -74,6 +99,10 @@ async function insertarSiFalta<T extends keyof Database["public"]["Tables"]>(
 }
 
 async function main() {
+  console.log(
+    "AVISO: estas son cuentas SOLO DE PRUEBA para testnet, todas con la misma contraseña conocida. " +
+      "Nunca deben existir en la base de producción.\n",
+  );
   console.log("Usuarios:");
   const admin = await usuario("admin@primerpaso.test", "Admin PrimerPaso", "admin");
   await usuario("operador@primerpaso.test", "Operador PrimerPaso", "operator");
@@ -207,7 +236,39 @@ async function main() {
     }
   }
 
-  console.log(`Listo. Contraseña de las cuentas de prueba: ${PASSWORD}`);
+  await resumen();
+  console.log(`\nListo. Contraseña de las cuentas de prueba (solo testnet): ${PASSWORD}`);
+}
+
+/** Tabla final: las 7 cuentas, su rol y su estado real en la base. */
+async function resumen() {
+  const cuentas = ["admin", "operador", "carlos", "maria", "rosa", "lucia", "ana"].map((n) => `${n}@primerpaso.test`);
+  const { data } = await db.auth.admin.listUsers({ page: 1, perPage: 1000 });
+  const filas = [];
+  for (const email of cuentas) {
+    const u = data.users.find((x) => x.email === email);
+    if (!u) {
+      filas.push({ cuenta: email, rol: "—", estado: "NO EXISTE" });
+      continue;
+    }
+    const [perfil, kyc, wallet, prestamos] = await Promise.all([
+      leer(() => db.from("profiles").select("role").eq("id", u.id).maybeSingle(), `perfil ${email}`),
+      leer(() => db.from("kyc_submissions").select("status").eq("profile_id", u.id).order("created_at", { ascending: false }).limit(1).maybeSingle(), `kyc ${email}`),
+      leer(() => db.from("wallets").select("address").eq("profile_id", u.id).eq("is_primary", true).limit(1).maybeSingle(), `wallet ${email}`),
+      leer(() => db.from("loans").select("onchain_loan_id, status").eq("student_id", u.id).order("onchain_loan_id"), `préstamos ${email}`),
+    ]);
+    const rol = perfil?.role ?? "—";
+    const baneado = (u as { banned_until?: string }).banned_until;
+    const partes = [baneado && new Date(baneado) > new Date() ? "desactivada" : "activa"];
+    if (rol === "student" || rol === "guarantor") {
+      partes.push(`KYC ${kyc?.status ?? "sin enviar"}`);
+      partes.push(wallet ? `wallet ${wallet.address.slice(0, 4)}…${wallet.address.slice(-4)}` : "sin wallet");
+      for (const l of prestamos ?? []) partes.push(`préstamo #${l.onchain_loan_id} ${l.status}`);
+    }
+    filas.push({ cuenta: email, rol, estado: partes.join(" · ") });
+  }
+  console.log("\nCuentas de prueba:");
+  console.table(filas);
 }
 
 main().catch((e) => {
