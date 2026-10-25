@@ -1,5 +1,6 @@
 // Vuelta de Google (OAuth con PKCE: ?code=) y de los enlaces de email de
-// Supabase (?token_hash=&type=, ej. la invitación de un operador).
+// Supabase (?token_hash=&type=). Si la sesión viene en el #hash (invitación
+// de un operador), la abre /auth/confirmar en el navegador.
 // Abre la sesión y manda al panel, o al registro si falta un paso (ej. el rol).
 import { NextResponse } from "next/server";
 import type { EmailOtpType } from "@supabase/supabase-js";
@@ -14,11 +15,13 @@ export async function GET(req: Request) {
   const code = url.searchParams.get("code");
   const tokenHash = url.searchParams.get("token_hash");
   const type = url.searchParams.get("type") as EmailOtpType | null;
+  // El navegador conserva el #hash al seguir esta redirección.
+  if (!code && !tokenHash) return ir("/auth/confirmar");
   const { error } = code
     ? await supabase.auth.exchangeCodeForSession(code)
     : tokenHash && type
       ? await supabase.auth.verifyOtp({ token_hash: tokenHash, type })
-      : { error: new Error("sin código") };
+      : { error: new Error("enlace incompleto") };
   if (error) return ir("/ingresar?error=enlace");
 
   const user = await getSessionUser();

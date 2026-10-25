@@ -12,10 +12,11 @@ const PESTANAS = [
   { id: "parametros", txt: "Parámetros" },
   { id: "kyc", txt: "KYC" },
   { id: "solicitudes", txt: "Solicitudes" },
+  { id: "equipo", txt: "Equipo" },
 ] as const;
 type Pestana = (typeof PESTANAS)[number]["id"];
 
-export default function PanelAdmin({ nombre }: { nombre: string }) {
+export default function PanelAdmin({ nombre, adminId }: { nombre: string; adminId: string }) {
   const [tab, setTab] = useState<Pestana>("resumen");
   return (
     <div className="space-y-6">
@@ -39,6 +40,7 @@ export default function PanelAdmin({ nombre }: { nombre: string }) {
       {tab === "parametros" && <Parametros />}
       {tab === "kyc" && <RevisionKyc />}
       {tab === "solicitudes" && <RevisionSolicitudes />}
+      {tab === "equipo" && <Equipo adminId={adminId} />}
     </div>
   );
 }
@@ -385,5 +387,129 @@ function Parametros() {
         </div>
       </form>
     </Tarjeta>
+  );
+}
+
+/* ---------------- Equipo (staff) ---------------- */
+type MiembroStaff = {
+  id: string;
+  nombre: string | null;
+  email: string;
+  rol: "operator" | "admin";
+  activo: boolean;
+  mfa: boolean;
+  ultimoIngreso: string | null;
+  invitacionPendiente: boolean;
+};
+
+function Equipo({ adminId }: { adminId: string }) {
+  const [lista, setLista] = useState<MiembroStaff[] | null>(null);
+  const [form, setForm] = useState({ email: "", fullName: "" });
+  const [msg, setMsg] = useState<{ tipo: "error" | "success"; t: string } | null>(null);
+  const [ocupado, setOcupado] = useState<string | null>(null);
+
+  const cargar = useCallback(() => {
+    api<{ staff: MiembroStaff[] }>("/api/admin/staff").then(
+      (d) => setLista(d.staff),
+      (e) => setMsg({ tipo: "error", t: (e as Error).message }),
+    );
+  }, []);
+  useEffect(() => {
+    cargar();
+  }, [cargar]);
+
+  async function invitar(e: React.FormEvent) {
+    e.preventDefault();
+    setMsg(null);
+    setOcupado("invitar");
+    try {
+      await api("/api/admin/staff", form);
+      setMsg({ tipo: "success", t: `Invitación enviada a ${form.email}. Entrará como operador.` });
+      setForm({ email: "", fullName: "" });
+      cargar();
+    } catch (err) {
+      setMsg({ tipo: "error", t: (err as Error).message });
+    } finally {
+      setOcupado(null);
+    }
+  }
+
+  async function cambiarEstado(m: MiembroStaff) {
+    const accion = m.activo ? "desactivar" : "reactivar";
+    if (!window.confirm(`¿${accion[0].toUpperCase() + accion.slice(1)} a ${m.nombre ?? m.email}?`)) return;
+    setMsg(null);
+    setOcupado(m.id);
+    try {
+      await api("/api/admin/staff", { id: m.id, activo: !m.activo }, "PATCH");
+      cargar();
+    } catch (err) {
+      setMsg({ tipo: "error", t: (err as Error).message });
+    } finally {
+      setOcupado(null);
+    }
+  }
+
+  return (
+    <div className="space-y-6">
+      <Tarjeta titulo="Invitar operador">
+        <form onSubmit={invitar} className="grid gap-4 sm:grid-cols-3 sm:items-end">
+          <Campo label="Nombre completo" htmlFor="staff-nombre">
+            <input id="staff-nombre" className={inputClase} value={form.fullName} onChange={(e) => setForm((f) => ({ ...f, fullName: e.target.value }))} required minLength={3} />
+          </Campo>
+          <Campo label="Correo" htmlFor="staff-email">
+            <input id="staff-email" type="email" className={inputClase} value={form.email} onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))} required />
+          </Campo>
+          <Boton type="submit" disabled={ocupado === "invitar"}>
+            {ocupado === "invitar" && <Spinner />} Enviar invitación
+          </Boton>
+        </form>
+        <p className="mt-3 text-xs text-ink/50">
+          Le llega un correo de Supabase. Después ingresa con &quot;Con código&quot; y, si el MFA es obligatorio, configura su TOTP.
+        </p>
+      </Tarjeta>
+
+      {msg && <Alerta tipo={msg.tipo}>{msg.t}</Alerta>}
+
+      <Tarjeta titulo="Equipo" accion={<Boton variant="ghost" onClick={cargar}>Actualizar</Boton>}>
+        {!lista ? (
+          <Spinner className="h-5 w-5" />
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[640px] text-sm">
+              <thead>
+                <tr className="text-left text-xs uppercase tracking-wide text-ink/50">
+                  <th className="pb-2 font-medium">Nombre</th>
+                  <th className="pb-2 font-medium">Rol</th>
+                  <th className="pb-2 font-medium">MFA</th>
+                  <th className="pb-2 font-medium">Último ingreso</th>
+                  <th className="pb-2 font-medium">Estado</th>
+                  <th />
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-ink/10">
+                {lista.map((m) => (
+                  <tr key={m.id} className="text-ink/80">
+                    <td className="py-2.5">
+                      {m.nombre ?? "—"} <span className="text-ink/50">· {m.email}</span>
+                    </td>
+                    <td className="py-2.5">{m.rol === "admin" ? "Administrador" : "Operador"}</td>
+                    <td className="py-2.5">{m.mfa ? "Sí" : "No"}</td>
+                    <td className="py-2.5">{m.ultimoIngreso ? fecha(m.ultimoIngreso) : m.invitacionPendiente ? "Invitado" : "—"}</td>
+                    <td className="py-2.5">{m.activo ? "Activo" : "Desactivado"}</td>
+                    <td className="py-2.5 text-right">
+                      {m.rol === "operator" && m.id !== adminId && (
+                        <Boton variant={m.activo ? "coral" : "secondary"} className="px-3 py-1.5" onClick={() => cambiarEstado(m)} disabled={ocupado !== null}>
+                          {ocupado === m.id && <Spinner />} {m.activo ? "Desactivar" : "Reactivar"}
+                        </Boton>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </Tarjeta>
+    </div>
   );
 }

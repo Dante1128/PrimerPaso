@@ -1,7 +1,8 @@
 // Helpers comunes de las API routes.
 import "server-only";
 import { connection } from "next/server";
-import { getSessionUser, type Rol, type Usuario } from "@/lib/auth";
+import { supabaseServidor } from "@/lib/supabase/server";
+import { getSessionUser, revisarSesionStaff, type Rol, type Usuario } from "@/lib/auth";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import type { Json } from "@/lib/database.types";
 
@@ -9,15 +10,27 @@ export class ErrorApi extends Error {
   constructor(
     message: string,
     public status = 400,
+    /** Código para que el cliente reaccione (ej. MFA_REQUERIDO). */
+    public codigo?: string,
   ) {
     super(message);
   }
 }
 
-/** Usuario con sesión y, si se indica, con uno de los roles permitidos. */
+/**
+ * Usuario con sesión y, si se indica, con uno de los roles permitidos. Al
+ * staff además le aplica sus reglas: MFA (si REQUIRE_STAFF_MFA=true), sesión
+ * de 12 horas y nunca por Google.
+ */
 export async function exigirUsuario(roles?: Rol[]): Promise<Usuario> {
   const user = await getSessionUser();
   if (!user) throw new ErrorApi("No autenticado", 401);
+  const staff = revisarSesionStaff(user);
+  if (!staff.ok) {
+    if (staff.codigo === "MFA_REQUERIDO") throw new ErrorApi(staff.mensaje, 403, staff.codigo);
+    await (await supabaseServidor()).auth.signOut({ scope: "local" });
+    throw new ErrorApi(staff.mensaje, 401, staff.codigo);
+  }
   if (roles && !roles.includes(user.role)) throw new ErrorApi("No tienes permiso para esta acción", 403);
   return user;
 }
@@ -34,7 +47,8 @@ export function manejar<A extends unknown[]>(fn: (...args: A) => Promise<Respons
       const status = e instanceof ErrorApi ? e.status : 400;
       const mensaje = e instanceof Error ? e.message : "Ocurrió un error";
       if (!(e instanceof ErrorApi)) console.error("[api]", e);
-      return Response.json({ error: mensaje }, { status });
+      const codigo = e instanceof ErrorApi ? e.codigo : undefined;
+      return Response.json(codigo ? { error: mensaje, codigo } : { error: mensaje }, { status });
     }
   };
 }

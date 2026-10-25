@@ -10,6 +10,9 @@ export async function POST(req: Request) {
   const supabase = await supabaseServidor();
   const { error } = await supabase.auth.signInWithPassword(parsed.data);
   if (error) {
+    if (/banned/i.test(error.message)) {
+      return errorJson("Tu cuenta está desactivada. Habla con un administrador de PrimerPaso.", 403);
+    }
     if (/not confirmed/i.test(error.message)) {
       return errorJson("Tu email aún no está verificado. Ingresa con un código.", 403);
     }

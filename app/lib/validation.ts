@@ -105,3 +105,15 @@ export const parametrosSchema = z.object({
   max_amount_usd: z.coerce.number().positive(),
   max_installments: z.coerce.number().int().min(1).max(60),
 });
+
+/** Invitación de un operador (solo admin). */
+export const invitarStaffSchema = z.object({
+  email,
+  fullName: z.string().trim().min(3, "El nombre es obligatorio").max(120),
+});
+
+/** Activar o desactivar un operador (solo admin). */
+export const estadoStaffSchema = z.object({
+  id: z.string().uuid("Identificador inválido"),
+  activo: z.boolean(),
+});
