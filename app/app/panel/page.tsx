@@ -1,6 +1,9 @@
 import { redirect } from "next/navigation";
 import { connection } from "next/server";
-import { getSessionUser, pasoPendiente } from "@/lib/auth";
+import { getSessionUser, pasoPendiente, revisarSesionStaff } from "@/lib/auth";
+import { supabaseServidor } from "@/lib/supabase/server";
+import { exigeMfaStaff } from "@/lib/politica-staff";
+import { AvisoMfaTestnet, VerificacionMfa } from "@/components/panel/MfaStaff";
 import TopBar from "@/components/panel/TopBar";
 import PanelEstudiante from "@/components/panel/PanelEstudiante";
 import PanelGarante from "@/components/panel/PanelGarante";
@@ -20,14 +23,31 @@ export default async function PanelPage() {
   if (pasoPendiente(user)) redirect("/registro");
   const nombre = user.fullName ?? user.email;
 
+  // Reglas del staff: sesión de 12 h, sin Google y MFA si es obligatorio.
+  const exigirMfa = exigeMfaStaff();
+  const staff = revisarSesionStaff(user);
+  if (!staff.ok && staff.codigo !== "MFA_REQUERIDO") {
+    await (await supabaseServidor()).auth.signOut({ scope: "local" });
+    redirect(staff.codigo === "SESION_VENCIDA" ? "/ingresar?error=sesion_vencida" : "/ingresar?error=staff_google");
+  }
+  const mfaPendiente = !staff.ok;
+
   return (
     <main className="min-h-screen bg-cream">
       <TopBar nombre={nombre} rol={user.role} wallet={user.wallet} />
       <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
+        {mfaPendiente && (
+          <div className="mx-auto max-w-md">
+            <VerificacionMfa obligatoria />
+          </div>
+        )}
+        {user.esStaff && !exigirMfa && (
+          <AvisoMfaTestnet configurado={user.mfaConfigurado} verificadoAhora={user.sesion.aal === "aal2"} />
+        )}
         {user.role === "student" && <PanelEstudiante user={user} />}
         {user.role === "guarantor" && <PanelGarante user={user} />}
-        {user.role === "operator" && <PanelOperador nombre={nombre} />}
-        {user.role === "admin" && <PanelAdmin nombre={nombre} />}
+        {user.role === "operator" && !mfaPendiente && <PanelOperador nombre={nombre} />}
+        {user.role === "admin" && !mfaPendiente && <PanelAdmin nombre={nombre} adminId={user.id} />}
       </div>
     </main>
   );

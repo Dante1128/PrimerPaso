@@ -7,6 +7,7 @@ import "server-only";
 import { supabaseServidor } from "@/lib/supabase/server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import type { Enums, Tables } from "@/lib/database.types";
+import { evaluarSesionStaff, exigeMfaStaff, leerSesionDelToken, type SesionAuth } from "@/lib/politica-staff";
 
 export type Rol = Enums<"user_role">;
 
@@ -15,12 +16,16 @@ export type Usuario = {
   email: string;
   fullName: string | null;
   role: Rol;
-  /** El usuario ya eligió rol en el registro (o es staff). */
+  /** El usuario ya eligió rol en el registro (o es staff). Nunca se cambia. */
   rolElegido: boolean;
   esStaff: boolean;
   estudiante: Tables<"student_profiles"> | null;
   kycStatus: Enums<"kyc_status"> | null;
   wallet: string | null;
+  /** aal y métodos de ingreso de esta sesión (para las reglas del staff). */
+  sesion: SesionAuth;
+  /** Tiene un TOTP verificado en Supabase MFA. */
+  mfaConfigurado: boolean;
 };
 
 /** Devuelve el usuario de la sesión actual, o null. */
@@ -30,6 +35,13 @@ export async function getSessionUser(): Promise<Usuario | null> {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) return null;
+  // Cuenta desactivada por un admin (ban de Supabase).
+  const baneadoHasta = (user as { banned_until?: string }).banned_until;
+  if (baneadoHasta && new Date(baneadoHasta) > new Date()) return null;
+  // El token ya lo validó getUser; de él leemos aal y amr.
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
 
   const db = supabaseAdmin();
   const [perfil, estudiante, kyc, wallet] = await Promise.all([
@@ -58,12 +70,32 @@ export async function getSessionUser(): Promise<Usuario | null> {
     email: user.email ?? "",
     fullName: perfil.data?.full_name ?? (user.user_metadata?.full_name as string | undefined) ?? null,
     role,
-    rolElegido: esStaff || Boolean(user.user_metadata?.role),
+    rolElegido: rolYaElegido(esStaff, user, Boolean(estudiante.data || kyc.data || wallet.data)),
     esStaff,
     estudiante: estudiante.data ?? null,
     kycStatus: kyc.data?.status ?? null,
     wallet: wallet.data?.address ?? null,
+    sesion: leerSesionDelToken(session?.access_token),
+    mfaConfigurado: (user.factors ?? []).some((f) => f.factor_type === "totp" && f.status === "verified"),
   };
+}
+
+/**
+ * El rol se fija una sola vez. `app_metadata` solo lo escribe el servidor;
+ * `user_metadata` lo traen las cuentas del seed y las anteriores a este
+ * cambio. Si ya avanzó en el registro (universidad, KYC o wallet), también.
+ */
+function rolYaElegido(
+  esStaff: boolean,
+  user: { app_metadata?: Record<string, unknown>; user_metadata?: Record<string, unknown> },
+  avanzoRegistro: boolean,
+): boolean {
+  return esStaff || Boolean(user.app_metadata?.role) || Boolean(user.user_metadata?.role) || avanzoRegistro;
+}
+
+/** Reglas del staff aplicadas a la sesión actual (ver lib/politica-staff). */
+export function revisarSesionStaff(u: Usuario) {
+  return evaluarSesionStaff({ esStaff: u.esStaff, sesion: u.sesion, exigirMfa: exigeMfaStaff(), ahora: Math.floor(Date.now() / 1000) });
 }
 
 /** Siguiente paso pendiente del registro, o null si ya terminó. */

@@ -42,6 +42,25 @@ export type Database = {
           },
         ];
       };
+      auth_rate_limits: {
+        Row: {
+          hits: number;
+          key: string;
+          window_start: string;
+        };
+        ComputedFields: never;
+        Insert: {
+          hits?: number;
+          key: string;
+          window_start?: string;
+        };
+        Update: {
+          hits?: number;
+          key?: string;
+          window_start?: string;
+        };
+        Relationships: [];
+      };
       collateral_events: {
         Row: {
           amount: number;
@@ -887,6 +906,10 @@ export type Database = {
       };
     };
     Functions: {
+      auth_rate_limit_hit: {
+        Args: { p_key: string; p_max: number; p_window_seconds: number };
+        Returns: boolean;
+      };
       indexer_acquire_lock: { Args: { p_holder: string; p_seconds?: number }; Returns: boolean };
       indexer_release_lock: { Args: { p_holder: string }; Returns: undefined };
       is_staff_platform: { Args: Record<PropertyKey, never>; Returns: boolean };

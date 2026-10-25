@@ -4,6 +4,8 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Logo from "@/components/Logo";
+import BotonGoogle from "@/components/BotonGoogle";
+import Turnstile, { CAPTCHA_ACTIVO } from "@/components/Turnstile";
 import { Campo, inputClase, Boton, Alerta, Spinner } from "@/components/ui";
 
 type Modo = "password" | "codigo";
@@ -19,15 +21,19 @@ async function api(url: string, body: unknown) {
   return data;
 }
 
-export default function LoginForm() {
+export default function LoginForm({ errorInicial }: { errorInicial?: string }) {
   const router = useRouter();
   const [modo, setModo] = useState<Modo>("password");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [code, setCode] = useState("");
   const [codigoEnviado, setCodigoEnviado] = useState(false);
-  const [error, setError] = useState("");
+  const [error, setError] = useState(errorInicial ?? "");
   const [cargando, setCargando] = useState(false);
+  // CAPTCHA (solo si Turnstile está configurado): un token por intento.
+  const [captcha, setCaptcha] = useState("");
+  const [intento, setIntento] = useState(0);
+  const pideCaptcha = CAPTCHA_ACTIVO && (modo === "password" || !codigoEnviado);
 
   /** Tras abrir sesión: al panel, o al registro si falta algún paso. */
   async function entrar() {
@@ -42,10 +48,10 @@ export default function LoginForm() {
     setCargando(true);
     try {
       if (modo === "password") {
-        await api("/api/auth/login", { email, password });
+        await api("/api/auth/login", { email, password, captchaToken: captcha });
         await entrar();
       } else if (!codigoEnviado) {
-        await api("/api/auth/code", { email });
+        await api("/api/auth/code", { email, captchaToken: captcha });
         setCodigoEnviado(true);
       } else {
         await api("/api/auth/verify-email", { email, code });
@@ -55,6 +61,8 @@ export default function LoginForm() {
       setError((err as Error).message);
     } finally {
       setCargando(false);
+      setCaptcha("");
+      setIntento((n) => n + 1);
     }
   }
 
@@ -73,6 +81,8 @@ export default function LoginForm() {
         </Link>
         <form onSubmit={enviar} className="mt-6 space-y-4 rounded-3xl border-2 border-ink bg-white p-8 nb-shadow-sm">
           <h1 className="text-xl font-bold text-ink">Ingresar</h1>
+
+          <BotonGoogle />
 
           <div className="grid grid-cols-2 rounded-full bg-cream p-1 text-sm font-semibold">
             {(["password", "codigo"] as const).map((m) => (
@@ -115,9 +125,11 @@ export default function LoginForm() {
             </>
           )}
 
+          {pideCaptcha && <Turnstile key={intento} onToken={setCaptcha} />}
+
           {error && <Alerta tipo="error">{error}</Alerta>}
 
-          <Boton type="submit" disabled={cargando} className="w-full">
+          <Boton type="submit" disabled={cargando || (pideCaptcha && !captcha)} className="w-full">
             {cargando && <Spinner />}{" "}
             {modo === "password" ? "Ingresar" : codigoEnviado ? "Verificar e ingresar" : "Enviarme un código"}
           </Boton>

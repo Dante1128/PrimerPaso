@@ -5,7 +5,7 @@
 import { z } from "zod";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { exigirUsuario, manejar, ErrorApi, auditar, notificar, linkTx } from "@/lib/api";
-import { LOAN_ID, aUsdc, adminKeypair, arg, cotizarPago, ejecutarComoServidor } from "@/lib/soroban";
+import { LOAN_ID, aUsdc, arg, cotizarPago, ejecutarComoServidor, operatorKeypair } from "@/lib/soroban";
 import { sincronizarEnSegundoPlano } from "@/lib/indexer";
 
 export const GET = manejar(async () => {
@@ -44,8 +44,10 @@ export const POST = manejar(async (req: Request) => {
   if (!q) throw new ErrorApi("El préstamo no está activo");
   if (!q.liquidatable) throw new ErrorApi("El préstamo aún no está en mora o la gracia no terminó");
 
-  const admin = adminKeypair();
-  const r = await ejecutarComoServidor(admin, LOAN_ID, "liquidate", [arg.address(admin.publicKey()), arg.u64(loanId)]);
+  // Firma la llave del operador (el contrato acepta admin u operator): la
+  // llave admin del contrato no vive en el servidor de producción.
+  const operador = operatorKeypair();
+  const r = await ejecutarComoServidor(operador, LOAN_ID, "liquidate", [arg.address(operador.publicKey()), arg.u64(loanId)]);
   if (!r.ok) throw new ErrorApi(`La liquidación falló (${r.detail ?? "sin detalle"})`, 502);
 
   await auditar(user.id, "loan_liquidated", "loan", String(loanId), { tx_hash: r.hash });
