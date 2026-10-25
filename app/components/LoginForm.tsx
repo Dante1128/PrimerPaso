@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Logo from "@/components/Logo";
+import BotonGoogle from "@/components/BotonGoogle";
 import { Campo, inputClase, Boton, Alerta, Spinner } from "@/components/ui";
 
 type Modo = "password" | "codigo";
@@ -19,14 +20,14 @@ async function api(url: string, body: unknown) {
   return data;
 }
 
-export default function LoginForm() {
+export default function LoginForm({ errorInicial }: { errorInicial?: string }) {
   const router = useRouter();
   const [modo, setModo] = useState<Modo>("password");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [code, setCode] = useState("");
   const [codigoEnviado, setCodigoEnviado] = useState(false);
-  const [error, setError] = useState("");
+  const [error, setError] = useState(errorInicial ?? "");
   const [cargando, setCargando] = useState(false);
 
   /** Tras abrir sesión: al panel, o al registro si falta algún paso. */
@@ -73,6 +74,8 @@ export default function LoginForm() {
         </Link>
         <form onSubmit={enviar} className="mt-6 space-y-4 rounded-3xl border-2 border-ink bg-white p-8 nb-shadow-sm">
           <h1 className="text-xl font-bold text-ink">Ingresar</h1>
+
+          <BotonGoogle />
 
           <div className="grid grid-cols-2 rounded-full bg-cream p-1 text-sm font-semibold">
             {(["password", "codigo"] as const).map((m) => (

@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Logo from "@/components/Logo";
+import BotonGoogle from "@/components/BotonGoogle";
 import { Campo, inputClase, Boton, Alerta, Spinner } from "@/components/ui";
 import { conectarFreighter, firmarXdr } from "@/lib/wallet";
 
@@ -144,6 +145,8 @@ function PasoCuenta({ onNext }: { onNext: (email: string) => void }) {
     <form onSubmit={enviar} className="space-y-4">
       <h1 className="text-xl font-bold text-ink">Crea tu cuenta</h1>
       <p className="text-sm text-ink/60">Te enviaremos un código a tu email para verificarlo.</p>
+
+      <BotonGoogle texto="Registrarme con Google" />
 
       <Campo label="Nombre completo" htmlFor="fullName">
         <input id="fullName" className={inputClase} value={form.fullName} onChange={(e) => set("fullName", e.target.value)} required />
