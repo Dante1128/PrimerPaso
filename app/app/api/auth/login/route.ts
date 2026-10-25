@@ -4,9 +4,12 @@ import { errorJson } from "@/lib/auth";
 import { loginSchema } from "@/lib/validation";
 import { verificarCaptcha } from "@/lib/turnstile";
 import { ipDe } from "@/lib/peticion";
+import { limitarAuth } from "@/lib/limite";
 
 export async function POST(req: Request) {
   const body = await req.json().catch(() => null);
+  const limite = await limitarAuth(req, "login", body?.email);
+  if (limite) return limite;
   const parsed = loginSchema.safeParse(body);
   if (!parsed.success) return errorJson("Datos inválidos", 400);
   const captcha = await verificarCaptcha(body?.captchaToken, ipDe(req));

@@ -4,9 +4,12 @@ import { errorJson } from "@/lib/auth";
 import { registroSchema } from "@/lib/validation";
 import { verificarCaptcha } from "@/lib/turnstile";
 import { ipDe } from "@/lib/peticion";
+import { limitarAuth } from "@/lib/limite";
 
 export async function POST(req: Request) {
   const body = await req.json().catch(() => null);
+  const limite = await limitarAuth(req, "register", body?.email);
+  if (limite) return limite;
   const parsed = registroSchema.safeParse(body);
   if (!parsed.success) {
     return Response.json(

@@ -3,10 +3,13 @@
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { getSessionUser, errorJson } from "@/lib/auth";
 import { rolSchema } from "@/lib/validation";
+import { limitarAuth } from "@/lib/limite";
 
 export async function POST(req: Request) {
   const user = await getSessionUser();
   if (!user) return errorJson("No autenticado", 401);
+  const limite = await limitarAuth(req, "role", user.email);
+  if (limite) return limite;
   // Nunca se cambia de rol después del registro (incluye al staff).
   if (user.rolElegido) return errorJson("El rol ya fue elegido", 409);
 

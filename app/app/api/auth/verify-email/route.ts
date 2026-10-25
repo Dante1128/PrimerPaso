@@ -3,10 +3,14 @@
 import { supabaseServidor } from "@/lib/supabase/server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { errorJson } from "@/lib/auth";
+import { limitarAuth } from "@/lib/limite";
 import { pedirCodigoSchema, verificarCodigoSchema } from "@/lib/validation";
 
 export async function POST(req: Request) {
   const body = await req.json().catch(() => ({}));
+  // Frena también el adivinar códigos de 6 dígitos.
+  const limite = await limitarAuth(req, "verify-email", body?.email);
+  if (limite) return limite;
   const supabase = await supabaseServidor();
 
   if (body?.resend) {
