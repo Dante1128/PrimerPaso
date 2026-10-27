@@ -2,7 +2,7 @@
 //  GET  → estudiante: las suyas · garante: las que respalda · staff: todas (?status=)
 //  POST → el estudiante crea una solicitud (queda "submitted").
 import { supabaseAdmin } from "@/lib/supabase/admin";
-import { exigirUsuario, manejar, ErrorApi, auditar } from "@/lib/api";
+import { exigirUsuario, manejar, ErrorApi, auditar, periodoSegundos } from "@/lib/api";
 import { solicitudSchema } from "@/lib/validation";
 import type { Enums, Tables } from "@/lib/database.types";
 import { posicionDeSolicitud } from "@/lib/prestamos";
@@ -32,7 +32,8 @@ export const GET = manejar(async (req: Request) => {
       return { ...s, posicion, garantiaDepositada: p?.status === "Open" };
     }),
   );
-  return Response.json({ solicitudes });
+  // Duración de cada cuota, para que el estudiante sepa cuándo paga antes de firmar.
+  return Response.json({ solicitudes, periodoSegundos: periodoSegundos() });
 });
 
 export const POST = manejar(async (req: Request) => {

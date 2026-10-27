@@ -7,6 +7,10 @@ import SimuladorPrestamo from "@/components/SimuladorPrestamo";
 import DetallePrestamo from "@/components/panel/DetallePrestamo";
 import AvisoKycRechazado from "@/components/panel/AvisoKyc";
 import ConseguirUsdc from "@/components/panel/ConseguirUsdc";
+import CaminoEstudiante from "@/components/panel/CaminoEstudiante";
+import { PARAMETROS_BASE, simular } from "@/lib/calculos";
+import { duracion } from "@/lib/tiempo";
+import Link from "next/link";
 import TarjetaCredito, { type Credito } from "@/components/panel/TarjetaCredito";
 import { Estado, PROPOSITOS, Tarjeta, fecha, usdc } from "@/components/panel/comunes";
 import type { Usuario } from "@/lib/auth";
@@ -34,17 +38,19 @@ export default function PanelEstudiante({ user }: { user: Usuario }) {
   const [solicitudes, setSolicitudes] = useState<Solicitud[] | null>(null);
   const [prestamos, setPrestamos] = useState<Prestamo[]>([]);
   const [credito, setCredito] = useState<Credito | null>(null);
+  const [periodo, setPeriodo] = useState<number | null>(null);
   const [error, setError] = useState("");
 
   const cargar = useCallback(
     () =>
       Promise.all([
-        api<{ solicitudes: Solicitud[] }>("/api/applications"),
+        api<{ solicitudes: Solicitud[]; periodoSegundos?: number }>("/api/applications"),
         api<{ prestamos: Prestamo[] }>("/api/loans/status"),
         api<Credito>("/api/credit").catch(() => null),
       ]).then(
         ([s, p, c]) => {
           setSolicitudes(s.solicitudes);
+          setPeriodo(s.periodoSegundos ?? null);
           setPrestamos(p.prestamos);
           setCredito(c);
         },
@@ -65,11 +71,26 @@ export default function PanelEstudiante({ user }: { user: Usuario }) {
   const cerrados = prestamos.filter((p) => p.status !== "active");
   const enCurso = solicitudes.find((s) => ["submitted", "approved"].includes(s.status));
   const ultimaRechazada = solicitudes.find((s) => s.status === "rejected");
+  // Terminó de pagar su último préstamo y no tiene otro en curso.
+  const recienPagado = activos.length === 0 && !enCurso && cerrados[0]?.status === "repaid" ? cerrados[0] : null;
 
   return (
     <div className="space-y-6">
       <Encabezado user={user} />
       {user.kycStatus === "rejected" && <AvisoKycRechazado motivo={user.kycMotivo} />}
+
+      <CaminoEstudiante
+        datos={{
+          kycStatus: user.kycStatus,
+          solicitud: enCurso
+            ? { status: enCurso.status, garantiaDepositada: enCurso.garantiaDepositada, garantia: Number(enCurso.collateral_amount) }
+            : null,
+          tienePrestamoActivo: activos.length > 0,
+          terminoDePagar: Boolean(recienPagado),
+        }}
+      />
+
+      {recienPagado && <TerminasteDePagar prestamo={recienPagado} wallet={user.wallet!} />}
 
       <div className="grid gap-4 lg:grid-cols-3">
         <div className="lg:col-span-2">
@@ -82,7 +103,7 @@ export default function PanelEstudiante({ user }: { user: Usuario }) {
         <DetallePrestamo key={p.id} loanId={p.onchain_loan_id} wallet={user.wallet!} onCambio={cargar} />
       ))}
 
-      {activos.length === 0 && enCurso && <SolicitudEnCurso s={enCurso} wallet={user.wallet!} onCambio={cargar} saldo={credito?.saldoUsdc ?? null} />}
+      {activos.length === 0 && enCurso && <SolicitudEnCurso s={enCurso} wallet={user.wallet!} onCambio={cargar} saldo={credito?.saldoUsdc ?? null} periodo={periodo} />}
 
       {activos.length === 0 && !enCurso && (
         <NuevaSolicitud kycStatus={user.kycStatus} rechazada={ultimaRechazada} onCreada={cargar} />
@@ -217,6 +238,7 @@ export function SolicitudEnCurso({
   onCambio,
   soloDeposito,
   saldo,
+  periodo,
 }: {
   s: Solicitud;
   wallet: string;
@@ -224,6 +246,8 @@ export function SolicitudEnCurso({
   soloDeposito?: boolean;
   /** USDC en la wallet de quien mira (null si aún no cargó). */
   saldo?: number | null;
+  /** Duración de cada cuota en segundos. */
+  periodo?: number | null;
 }) {
   const [cargando, setCargando] = useState<"" | "deposit" | "open">("");
   const [error, setError] = useState("");
@@ -251,10 +275,17 @@ export function SolicitudEnCurso({
       accion={<Estado status={s.status} />}
     >
       {s.status === "submitted" && (
-        <p className="text-sm text-ink/70">
-          Un operador está revisando la solicitud. Garantía necesaria: <strong>{usdc(s.collateral_amount)}</strong>
-          {s.guarantor?.full_name ? `, que puede aportar ${s.guarantor.full_name} (garante)` : ""}.
-        </p>
+        <div className="space-y-2 text-sm text-ink/70">
+          <p>Un operador revisa la solicitud, normalmente en menos de 24 h. Te avisamos en la campana de arriba.</p>
+          <p>
+            <strong className="text-ink">Mientras tanto:</strong>{" "}
+            {soloDeposito
+              ? `prepara ${usdc(s.collateral_amount)} en tu wallet para bloquear la garantía cuando la aprueben.`
+              : s.guarantor?.full_name
+                ? `junta ${usdc(s.collateral_amount)} de garantía, o pídele a ${s.guarantor.full_name} (tu garante) que la ponga.`
+                : `junta ${usdc(s.collateral_amount)} de garantía o invita a un garante para que la ponga por ti.`}
+          </p>
+        </div>
       )}
 
       {s.status === "approved" && (
@@ -287,12 +318,14 @@ export function SolicitudEnCurso({
               titulo="Firmar el préstamo y recibir el dinero"
               desc={`Recibes ${usdc(Number(s.amount_usd) * 0.99)} (el monto menos la comisión del 1%). PrimerPaso también firma para aprobar el desembolso.`}
             >
-              <Boton onClick={() => paso("open")} disabled={!s.garantiaDepositada || !!cargando || actualizando}>
-                {cargando === "open" && <Spinner />} Firmar y recibir
-              </Boton>
+              {!s.garantiaDepositada && <span className="text-xs text-ink/50">Primero bloquea la garantía</span>}
             </Paso>
           )}
         </ol>
+      )}
+
+      {s.status === "approved" && !soloDeposito && s.garantiaDepositada && (
+        <ResumenFirma s={s} periodo={periodo ?? null} ocupado={!!cargando || actualizando} firmando={cargando === "open"} onFirmar={() => paso("open")} />
       )}
 
       {error && <div className="mt-4"><Alerta tipo="error">{error}</Alerta></div>}
@@ -454,5 +487,89 @@ function InvitarGarante() {
         </div>
       )}
     </Tarjeta>
+  );
+}
+
+/* -------- Resumen antes de firmar -------- */
+function ResumenFirma({
+  s,
+  periodo,
+  ocupado,
+  firmando,
+  onFirmar,
+}: {
+  s: Solicitud;
+  periodo: number | null;
+  ocupado: boolean;
+  firmando: boolean;
+  onFirmar: () => void;
+}) {
+  const [acepto, setAcepto] = useState(false);
+  const sim = simular(Number(s.amount_usd), s.installments, { ...PARAMETROS_BASE, rate_bps: s.rate_bps });
+  const cada = periodo ? ` (una cada ${duracion(periodo)})` : "";
+
+  return (
+    <div className="mt-4 space-y-3 rounded-xl border-2 border-ink bg-cream p-4">
+      <p className="font-bold text-ink">Antes de firmar, revisa tu préstamo</p>
+      <dl className="space-y-1.5 text-sm">
+        <div className="flex flex-wrap justify-between gap-2">
+          <dt className="text-ink/70">Recibes en tu wallet</dt>
+          <dd className="font-bold text-ink">{usdc(sim.recibes)} <span className="font-normal text-ink/60">(el monto menos 1% de comisión)</span></dd>
+        </div>
+        <div className="flex flex-wrap justify-between gap-2">
+          <dt className="text-ink/70">Pagas</dt>
+          <dd className="text-right font-bold text-ink">
+            {s.installments} cuotas{cada}; la primera de {usdc(sim.calendario[0]?.total ?? 0)}
+          </dd>
+        </div>
+        <div className="flex flex-wrap justify-between gap-2">
+          <dt className="text-ink/70">Interés total si pagas a tiempo</dt>
+          <dd className="font-bold text-ink">{usdc(sim.interesTotal)}</dd>
+        </div>
+        <div className="flex flex-wrap justify-between gap-2">
+          <dt className="text-ink/70">Cada cuota te devuelve</dt>
+          <dd className="font-bold text-ink">una parte de la garantía</dd>
+        </div>
+      </dl>
+      <p className="rounded-lg border-2 border-ink/20 bg-white px-3 py-2 text-sm text-ink/80">
+        <strong className="text-ink">Si no pagas una cuota:</strong> pasado el plazo de gracia se cobra lo que debes (más un
+        recargo del 2% sobre lo vencido) de la garantía, y el resto vuelve a quien la depositó.
+      </p>
+      <label className="flex items-start gap-2 text-sm text-ink">
+        <input type="checkbox" className="mt-0.5 h-4 w-4 accent-[#0fb5a1]" checked={acepto} onChange={(e) => setAcepto(e.target.checked)} />
+        Entiendo y acepto estas condiciones.
+      </label>
+      <Boton onClick={onFirmar} disabled={!acepto || ocupado}>
+        {firmando && <Spinner />} Firmar y recibir el dinero
+      </Boton>
+    </div>
+  );
+}
+
+/* -------- Terminó de pagar -------- */
+function TerminasteDePagar({ prestamo, wallet }: { prestamo: Prestamo; wallet: string }) {
+  const [copiado, setCopiado] = useState(false);
+  return (
+    <section className="rounded-2xl border-2 border-ink bg-lime/40 p-5 nb-shadow-sm sm:p-6">
+      <p className="text-xl font-bold text-ink">Terminaste de pagar tu préstamo #{prestamo.onchain_loan_id}</p>
+      <p className="mt-1 text-sm text-ink/80">
+        Recuperaste toda tu garantía y ganaste tu credencial de buen pagador: cualquiera puede verificar que pagaste, y te
+        sirve como historial para tu próximo crédito.
+      </p>
+      <div className="mt-4 flex flex-wrap gap-2">
+        <Link
+          href={`/verificar/${wallet}`}
+          className="inline-flex items-center rounded-xl border-2 border-ink bg-white px-4 py-2 text-sm font-bold text-ink nb-shadow-sm"
+        >
+          Ver mi credencial
+        </Link>
+        <Boton
+          variant="secondary"
+          onClick={async () => setCopiado(await copiar(`${window.location.origin}/verificar/${wallet}`))}
+        >
+          {copiado ? "Link copiado" : "Copiar link para compartir"}
+        </Boton>
+      </div>
+    </section>
   );
 }

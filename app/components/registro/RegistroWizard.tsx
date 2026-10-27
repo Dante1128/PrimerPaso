@@ -271,6 +271,7 @@ function PasoRol({ onNext }: { onNext: (r: Rol) => void }) {
   return (
     <div className="space-y-4">
       <h1 className="text-xl font-bold text-ink">¿Cómo participas?</h1>
+      <p className="text-sm text-ink/60">Elige bien: el rol no se puede cambiar después.</p>
       <div className="grid gap-3">
         <RolCard activo={role === "student"} onClick={() => setRole("student")} titulo="Estudiante" desc="Pido mi primer crédito, respaldado por un ahorro en USDC." />
         <RolCard activo={role === "guarantor"} onClick={() => setRole("guarantor")} titulo="Garante" desc="Respaldo a un estudiante bloqueando USDC como garantía." />
