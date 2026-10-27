@@ -1,10 +1,12 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { api, firmarYEnviar, useRecargarTrasIndexar } from "@/lib/cliente";
+import { api, copiar, firmarYEnviar, useRecargarTrasIndexar } from "@/lib/cliente";
 import { Alerta, Boton, Campo, Spinner, inputClase } from "@/components/ui";
 import SimuladorPrestamo from "@/components/SimuladorPrestamo";
 import DetallePrestamo from "@/components/panel/DetallePrestamo";
+import AvisoKycRechazado from "@/components/panel/AvisoKyc";
+import ConseguirUsdc from "@/components/panel/ConseguirUsdc";
 import TarjetaCredito, { type Credito } from "@/components/panel/TarjetaCredito";
 import { Estado, PROPOSITOS, Tarjeta, fecha, usdc } from "@/components/panel/comunes";
 import type { Usuario } from "@/lib/auth";
@@ -56,7 +58,7 @@ export default function PanelEstudiante({ user }: { user: Usuario }) {
   }, [cargar]);
 
   if (!solicitudes) {
-    return error ? <Alerta tipo="error">{error}</Alerta> : <Spinner className="h-6 w-6 text-white0" />;
+    return error ? <Alerta tipo="error">{error}</Alerta> : <Spinner className="h-6 w-6 text-ink/40" />;
   }
 
   const activos = prestamos.filter((p) => p.status === "active");
@@ -67,6 +69,7 @@ export default function PanelEstudiante({ user }: { user: Usuario }) {
   return (
     <div className="space-y-6">
       <Encabezado user={user} />
+      {user.kycStatus === "rejected" && <AvisoKycRechazado motivo={user.kycMotivo} />}
 
       <div className="grid gap-4 lg:grid-cols-3">
         <div className="lg:col-span-2">
@@ -79,7 +82,7 @@ export default function PanelEstudiante({ user }: { user: Usuario }) {
         <DetallePrestamo key={p.id} loanId={p.onchain_loan_id} wallet={user.wallet!} onCambio={cargar} />
       ))}
 
-      {activos.length === 0 && enCurso && <SolicitudEnCurso s={enCurso} wallet={user.wallet!} onCambio={cargar} />}
+      {activos.length === 0 && enCurso && <SolicitudEnCurso s={enCurso} wallet={user.wallet!} onCambio={cargar} saldo={credito?.saldoUsdc ?? null} />}
 
       {activos.length === 0 && !enCurso && (
         <NuevaSolicitud kycStatus={user.kycStatus} rechazada={ultimaRechazada} onCreada={cargar} />
@@ -113,10 +116,8 @@ function Encabezado({ user }: { user: Usuario }) {
           {user.estudiante?.semester ? ` · ${user.estudiante.semester}º semestre` : ""}
         </p>
       </div>
-      {user.kycStatus !== "approved" && (
-        <span className="rounded-full bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-700">
-          {user.kycStatus === "rejected" ? "Identidad rechazada" : "Identidad en revisión"}
-        </span>
+      {user.kycStatus === "pending" && (
+        <span className="rounded-full border-2 border-ink bg-sun/40 px-3 py-1 text-xs font-bold text-ink">Identidad en revisión</span>
       )}
     </div>
   );
@@ -215,11 +216,14 @@ export function SolicitudEnCurso({
   wallet,
   onCambio,
   soloDeposito,
+  saldo,
 }: {
   s: Solicitud;
   wallet: string;
   onCambio: () => void;
   soloDeposito?: boolean;
+  /** USDC en la wallet de quien mira (null si aún no cargó). */
+  saldo?: number | null;
 }) {
   const [cargando, setCargando] = useState<"" | "deposit" | "open">("");
   const [error, setError] = useState("");
@@ -273,6 +277,9 @@ export function SolicitudEnCurso({
               </Boton>
             )}
           </Paso>
+          {!s.garantiaDepositada && saldo != null && (
+            <ConseguirUsdc wallet={wallet} saldo={saldo} necesario={Number(s.collateral_amount)} onListo={onCambio} />
+          )}
           {!soloDeposito && (
             <Paso
               n={2}
@@ -309,7 +316,7 @@ function Paso({ n, hecho, titulo, desc, children }: { n: number; hecho: boolean;
       <div className="flex items-start gap-3">
         <span
           className={`grid h-7 w-7 shrink-0 place-items-center rounded-full text-sm font-bold ${
-            hecho ? "bg-lime/300 text-white" : "bg-cream text-ink/70"
+            hecho ? "border-2 border-ink bg-lime text-ink" : "border-2 border-ink bg-cream text-ink/70"
           }`}
         >
           {hecho ? "✓" : n}
@@ -325,11 +332,45 @@ function Paso({ n, hecho, titulo, desc, children }: { n: number; hecho: boolean;
 }
 
 /* -------- Invitar garante -------- */
+/** Mensaje listo para mandar al garante por WhatsApp u otro chat. */
+function mensajeInvitacion(codigo: string) {
+  return (
+    `Te invito a ser mi garante en PrimerPaso. Crea tu cuenta en ${window.location.origin}/registro, ` +
+    `elige "Garante" y escribe este código: ${codigo}`
+  );
+}
+
+function CodigoParaCompartir({ codigo }: { codigo: string }) {
+  const [copiado, setCopiado] = useState(false);
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      <span className="font-mono text-lg font-bold tracking-wider text-brandink">{codigo}</span>
+      <Boton
+        type="button"
+        variant="secondary"
+        className="px-3 py-1.5"
+        onClick={async () => setCopiado(await copiar(mensajeInvitacion(codigo)))}
+      >
+        {copiado ? "Copiado" : "Copiar"}
+      </Boton>
+      <a
+        href={`https://wa.me/?text=${encodeURIComponent(mensajeInvitacion(codigo))}`}
+        target="_blank"
+        rel="noreferrer"
+        className="inline-flex items-center rounded-xl border-2 border-ink bg-lime px-3 py-1.5 text-sm font-bold text-ink nb-shadow-sm"
+      >
+        Enviar por WhatsApp
+      </a>
+    </div>
+  );
+}
+
 function InvitarGarante() {
   const [invitaciones, setInvitaciones] = useState<Invitacion[]>([]);
   const [email, setEmail] = useState("");
-  const [codigo, setCodigo] = useState("");
+  const [nuevo, setNuevo] = useState("");
   const [error, setError] = useState("");
+  const [creando, setCreando] = useState(false);
 
   const cargar = useCallback(() => {
     api<{ invitaciones: Invitacion[] }>("/api/invitations").then((d) => setInvitaciones(d.invitaciones)).catch(() => {});
@@ -338,64 +379,80 @@ function InvitarGarante() {
     cargar();
   }, [cargar]);
 
-  async function invitar(e: React.FormEvent) {
+  async function generar(e: React.FormEvent) {
     e.preventDefault();
     setError("");
+    setCreando(true);
     try {
       const d = await api<{ code: string }>("/api/invitations", { guarantorEmail: email });
-      setCodigo(d.code);
+      setNuevo(d.code);
       setEmail("");
       cargar();
     } catch (err) {
       setError((err as Error).message);
+    } finally {
+      setCreando(false);
     }
   }
 
   const aceptado = invitaciones.find((i) => i.status === "accepted");
+  const pendientes = invitaciones.filter((i) => i.status === "pending" && i.code !== nuevo);
 
   return (
     <Tarjeta titulo="Tu garante">
       {aceptado ? (
         <p className="text-sm text-ink/70">
-          <strong className="text-ink">{aceptado.guarantor?.full_name ?? aceptado.guarantor_email}</strong> respalda tus
-          préstamos y puede bloquear la garantía por ti.
+          <strong className="text-ink">{aceptado.guarantor?.full_name ?? aceptado.guarantor_email}</strong> es tu garante:
+          puede bloquear la garantía por ti desde su panel.
         </p>
       ) : (
-        <p className="text-sm text-ink/60">Un familiar puede bloquear la garantía por ti. Invítalo:</p>
+        <p className="text-sm text-ink/70">
+          Un familiar puede poner la garantía por ti. Genera un código y compártelo con él: lo escribe al crear su cuenta
+          como garante.
+        </p>
       )}
-      <form onSubmit={invitar} className="mt-3 flex gap-2">
-        <input
-          type="email"
-          aria-label="Email del garante"
-          placeholder="email@familia.com"
-          className={`${inputClase} py-2 text-sm`}
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          required
-        />
-        <Boton type="submit" variant="secondary" className="shrink-0 px-4">
-          Invitar
-        </Boton>
+
+      <form onSubmit={generar} className="mt-3 space-y-2">
+        <label htmlFor="email-garante" className="block text-xs font-semibold text-ink/60">
+          Email de tu garante (solo para reconocerlo; no le enviamos correo)
+        </label>
+        <div className="flex gap-2">
+          <input
+            id="email-garante"
+            type="email"
+            placeholder="email@familia.com"
+            className={`${inputClase} py-2 text-sm`}
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+          />
+          <Boton type="submit" variant="secondary" className="shrink-0 px-4" disabled={creando}>
+            {creando && <Spinner />} Generar código
+          </Boton>
+        </div>
       </form>
-      {error && <p className="mt-2 text-xs text-coral">{error}</p>}
-      {codigo && (
-        <div className="mt-3 rounded-xl border border-dashed border-ink bg-brand/15 p-3 text-center">
-          <p className="text-xs text-brandink">Comparte este código con tu garante:</p>
-          <p className="font-mono text-lg font-bold tracking-wider text-brandink">{codigo}</p>
+      {error && <p className="mt-2 text-xs font-semibold text-coral">{error}</p>}
+
+      {nuevo && (
+        <div className="mt-3 space-y-2 rounded-xl border-2 border-dashed border-ink bg-brand/15 p-3">
+          <p className="text-xs font-semibold text-ink/70">Compártelo con tu garante:</p>
+          <CodigoParaCompartir codigo={nuevo} />
         </div>
       )}
-      {invitaciones.filter((i) => i.status === "pending").length > 0 && (
-        <ul className="mt-3 space-y-1 text-xs text-ink/60">
-          {invitaciones
-            .filter((i) => i.status === "pending")
-            .map((i) => (
-              <li key={i.code}>
-                {i.guarantor_email} · código <span className="font-mono">{i.code}</span> · vence {fecha(i.expires_at)}
-              </li>
-            ))}
-        </ul>
+
+      {pendientes.length > 0 && (
+        <div className="mt-3 space-y-2">
+          <p className="text-xs font-semibold text-ink/60">Códigos sin usar</p>
+          {pendientes.map((i) => (
+            <div key={i.code} className="rounded-xl border-2 border-ink/20 p-2.5">
+              <p className="mb-1 text-xs text-ink/60">
+                Para {i.guarantor_email} · vence {fecha(i.expires_at)}
+              </p>
+              <CodigoParaCompartir codigo={i.code} />
+            </div>
+          ))}
+        </div>
       )}
     </Tarjeta>
   );
 }
-

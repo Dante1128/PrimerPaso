@@ -12,6 +12,9 @@ const TIPOS = new Set(["image/jpeg", "image/png", "image/webp", "application/pdf
 export async function POST(req: Request) {
   const user = await getSessionUser();
   if (!user) return errorJson("No autenticado", 401);
+  // Solo se envía de nuevo si no hay una en revisión o ya aprobada.
+  if (user.kycStatus === "pending") return errorJson("Tu identidad ya está en revisión", 409);
+  if (user.kycStatus === "approved") return errorJson("Tu identidad ya fue verificada", 409);
 
   const form = await req.formData().catch(() => null);
   if (!form) return errorJson("Formulario inválido", 400);

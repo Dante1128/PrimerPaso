@@ -7,6 +7,7 @@ import DetallePrestamo from "@/components/panel/DetallePrestamo";
 import { SolicitudEnCurso, type Solicitud } from "@/components/panel/PanelEstudiante";
 import { Estado, PROPOSITOS, Tarjeta, Vacio, usdc } from "@/components/panel/comunes";
 import type { Usuario } from "@/lib/auth";
+import AvisoKycRechazado from "@/components/panel/AvisoKyc";
 
 type Prestamo = { id: string; onchain_loan_id: number; status: string; principal: number; depositor_address: string };
 
@@ -37,7 +38,7 @@ export default function PanelGarante({ user }: { user: Usuario }) {
     cargar();
   }, [cargar]);
 
-  if (!solicitudes) return error ? <Alerta tipo="error">{error}</Alerta> : <Spinner className="h-6 w-6 text-white0" />;
+  if (!solicitudes) return error ? <Alerta tipo="error">{error}</Alerta> : <Spinner className="h-6 w-6 text-ink/40" />;
 
   const porDepositar = solicitudes.filter((s) => s.status === "approved");
   const activos = prestamos.filter((p) => p.status === "active");
@@ -56,10 +57,12 @@ export default function PanelGarante({ user }: { user: Usuario }) {
         {saldo !== null && <span className="rounded-full bg-cream px-3 py-1 text-sm text-ink/70">Saldo: {usdc(saldo)}</span>}
       </div>
 
+      {user.kycStatus === "rejected" && <AvisoKycRechazado motivo={user.kycMotivo} />}
+
       <VincularEstudiante onListo={cargar} />
 
       {porDepositar.map((s) => (
-        <SolicitudEnCurso key={s.id} s={s} wallet={user.wallet!} onCambio={cargar} soloDeposito />
+        <SolicitudEnCurso key={s.id} s={s} wallet={user.wallet!} onCambio={cargar} soloDeposito saldo={saldo} />
       ))}
 
       {enRevision.length > 0 && (

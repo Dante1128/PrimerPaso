@@ -88,7 +88,7 @@ export default function DetallePrestamo({ loanId, wallet, onCambio }: { loanId: 
   if (!d) {
     return (
       <Tarjeta>
-        {error ? <Alerta tipo="error">{error}</Alerta> : <Spinner className="h-5 w-5 text-white0" />}
+        {error ? <Alerta tipo="error">{error}</Alerta> : <Spinner className="h-5 w-5 text-ink/40" />}
       </Tarjeta>
     );
   }

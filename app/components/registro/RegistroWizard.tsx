@@ -8,6 +8,7 @@ import BotonGoogle from "@/components/BotonGoogle";
 import Turnstile, { CAPTCHA_ACTIVO } from "@/components/Turnstile";
 import { Campo, inputClase, Boton, Alerta, Spinner } from "@/components/ui";
 import { conectarFreighter, firmarXdr } from "@/lib/wallet";
+import { fondearPrueba, type PasoFondeo as PasoDelFondeo } from "@/lib/cliente";
 
 type Paso = "cuenta" | "email" | "rol" | "universidad" | "identidad" | "wallet" | "fondeo";
 type Rol = "student" | "guarantor";
@@ -61,7 +62,7 @@ export default function RegistroWizard() {
   if (cargandoInicial) {
     return (
       <div className="grid min-h-screen place-items-center text-ink/50">
-        <Spinner className="h-6 w-6 text-white0" />
+        <Spinner className="h-6 w-6 text-ink/40" />
       </div>
     );
   }
@@ -111,7 +112,7 @@ function Stepper({ etapas, paso }: { etapas: typeof ETAPAS; paso: Paso }) {
     <div className="mt-6 flex items-center gap-2">
       {etapas.map((e, i) => (
         <div key={e.id} className="flex flex-1 flex-col items-center gap-1.5">
-          <div className={`h-1.5 w-full rounded-full ${i <= actual ? "bg-brand/150" : "bg-slate-200"}`} />
+          <div className={`h-1.5 w-full rounded-full ${i <= actual ? "bg-brand" : "bg-ink/15"}`} />
           <span className={`text-[11px] font-medium ${i <= actual ? "text-brandink" : "text-ink/50"}`}>
             {e.txt}
           </span>
@@ -362,7 +363,7 @@ function PasoUniversidad({ onNext }: { onNext: () => void }) {
 }
 
 /* -------------------- KYC (SEP-12) -------------------- */
-function PasoKyc({ onNext }: { onNext: () => void }) {
+export function PasoKyc({ onNext, titulo = "Verifica tu identidad" }: { onNext: () => void; titulo?: string }) {
   const [form, setForm] = useState({ firstName: "", lastName: "", idNumber: "", birthDate: "" });
   const [carnet, setCarnet] = useState<File | null>(null);
   const [selfie, setSelfie] = useState<File | null>(null);
@@ -391,7 +392,7 @@ function PasoKyc({ onNext }: { onNext: () => void }) {
 
   return (
     <form onSubmit={enviar} className="space-y-4">
-      <h1 className="text-xl font-bold text-ink">Verifica tu identidad</h1>
+      <h1 className="text-xl font-bold text-ink">{titulo}</h1>
       <p className="text-sm text-ink/60">
         Tus documentos se guardan en un almacenamiento privado y los revisa un operador de PrimerPaso.
       </p>
@@ -536,22 +537,9 @@ function PasoFondeo({ onDone }: { onDone: () => void }) {
 
   async function fondear() {
     setError("");
+    const setters: Record<PasoDelFondeo, (e: EstadoFondeo) => void> = { xlm: setXlm, trust: setTrust, usdc: setUsdc };
     try {
-      setXlm("haciendo");
-      await api("/api/faucet", { action: "airdrop" });
-      setXlm("ok");
-
-      setTrust("haciendo");
-      const t = await api("/api/faucet", { action: "trustline" });
-      if (!t.yaExiste && t.xdr) {
-        const signed = await firmarXdr(t.xdr, address);
-        await api("/api/faucet", { action: "submit", xdr: signed });
-      }
-      setTrust("ok");
-
-      setUsdc("haciendo");
-      await api("/api/faucet", { action: "usdc" });
-      setUsdc("ok");
+      await fondearPrueba(address, (paso, estado) => setters[paso](estado));
     } catch (err) {
       setError((err as Error).message);
       setXlm((s) => (s === "haciendo" ? "error" : s));
@@ -592,7 +580,7 @@ function PasoFondeo({ onDone }: { onDone: () => void }) {
 function ItemFondeo({ estado, texto }: { estado: EstadoFondeo; texto: string }) {
   const iconos = {
     pendiente: <span className="h-4 w-4 rounded-full border-2 border-ink" />,
-    haciendo: <Spinner className="h-4 w-4 text-white0" />,
+    haciendo: <Spinner className="h-4 w-4 text-ink/50" />,
     ok: (
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" className="text-emerald-500">
         <path d="M5 12l5 5 9-9" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />

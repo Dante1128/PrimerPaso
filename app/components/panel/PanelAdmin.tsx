@@ -71,7 +71,7 @@ function Resumen() {
   }, [cargar]);
 
   if (error) return <Alerta tipo="error">{error}</Alerta>;
-  if (!d) return <Spinner className="h-6 w-6 text-white0" />;
+  if (!d) return <Spinner className="h-6 w-6 text-ink/40" />;
 
   return (
     <div className="space-y-4">
@@ -229,7 +229,7 @@ function Mora() {
         </div>
       )}
       {!lista ? (
-        <Spinner className="h-5 w-5 text-white0" />
+        <Spinner className="h-5 w-5 text-ink/40" />
       ) : lista.length === 0 ? (
         <Vacio>No hay préstamos activos.</Vacio>
       ) : (
@@ -340,7 +340,7 @@ function Parametros() {
     }
   }
 
-  if (!form) return <Spinner className="h-6 w-6 text-white0" />;
+  if (!form) return <Spinner className="h-6 w-6 text-ink/40" />;
 
   return (
     <Tarjeta
