@@ -1,7 +1,7 @@
 const preguntas = [
   {
     q: "¿Qué es la garantía y por qué la bloqueo?",
-    a: "Es un ahorro en USDC que bloqueas en un contrato inteligente. Sirve como respaldo del préstamo: nadie lo toca mientras pagas, y lo recuperas por completo al terminar. Es tuyo en todo momento.",
+    a: "Es un ahorro en USDC que bloqueas en un contrato inteligente. Sirve como respaldo del préstamo: nadie lo toca mientras pagas a tiempo, y lo recuperas por completo al terminar. Es tuyo: si no pagas, solo se cobra lo que debes.",
   },
   {
     q: "¿Cuánto puedo pedir prestado?",

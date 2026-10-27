@@ -66,3 +66,41 @@ export function useRecargarTrasIndexar() {
   }, []);
   return { actualizando, recargarTras };
 }
+
+/** Red de pruebas: hay faucet de USDC y dinero sin valor real. */
+export const ES_TESTNET = process.env.NEXT_PUBLIC_STELLAR_NETWORK !== "PUBLIC";
+
+export type PasoFondeo = "xlm" | "trust" | "usdc";
+
+/**
+ * Deja la wallet lista con USDC de prueba (solo testnet): activa la cuenta,
+ * habilita el USDC (lo aprueba el usuario en Freighter) y envía 1.500 USDC.
+ * Cada paso se puede repetir sin problema.
+ */
+export async function fondearPrueba(wallet: string, alAvanzar?: (paso: PasoFondeo, estado: "haciendo" | "ok") => void) {
+  alAvanzar?.("xlm", "haciendo");
+  await api("/api/faucet", { action: "airdrop" });
+  alAvanzar?.("xlm", "ok");
+
+  alAvanzar?.("trust", "haciendo");
+  const t = await api<{ yaExiste?: boolean; xdr?: string }>("/api/faucet", { action: "trustline" });
+  if (!t.yaExiste && t.xdr) {
+    const firmado = await firmarXdr(t.xdr, wallet);
+    await api("/api/faucet", { action: "submit", xdr: firmado });
+  }
+  alAvanzar?.("trust", "ok");
+
+  alAvanzar?.("usdc", "haciendo");
+  await api("/api/faucet", { action: "usdc" });
+  alAvanzar?.("usdc", "ok");
+}
+
+/** Copia un texto; false si el navegador no lo permite. */
+export async function copiar(texto: string): Promise<boolean> {
+  try {
+    await navigator.clipboard.writeText(texto);
+    return true;
+  } catch {
+    return false;
+  }
+}

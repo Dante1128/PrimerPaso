@@ -76,7 +76,11 @@ export const GET = manejar(async (req: Request) => {
       garantiaInicial: aUsdc(onchain.collateral_initial),
       cuotasPagadas: onchain.installments_paid,
     },
-    cotizacion: cot,
+    // Desde cuándo se puede cobrar de la garantía: vencimiento + la gracia de este préstamo.
+    cotizacion: cot && {
+      ...cot,
+      cobroDesde: onchain ? new Date(Date.parse(cot.vence) + Number(onchain.terms.grace_seconds) * 1000).toISOString() : null,
+    },
     cuotas: cuotas.data ?? [],
     pagos: pagos.data ?? [],
     garantia: garantia.data ?? [],

@@ -54,7 +54,7 @@ const ESTADOS: Record<string, { txt: string; clase: string }> = {
   // préstamos
   active: { txt: "Activo", clase: "bg-brand/20" },
   repaid: { txt: "Pagado", clase: "bg-lime/30" },
-  liquidated: { txt: "Liquidado", clase: "bg-black/10" },
+  liquidated: { txt: "Cobrado de la garantía", clase: "bg-black/10" },
   defaulted: { txt: "En default", clase: "bg-coral/25" },
   // solicitudes
   submitted: { txt: "En revisión", clase: "bg-sun/40" },
@@ -89,7 +89,7 @@ export function LinkTx({ hash, texto }: { hash?: string | null; texto?: string }
       rel="noreferrer"
       className="font-mono text-xs font-bold text-brandink hover:underline"
     >
-      {texto ?? `${hash.slice(0, 8)}…`} ↗
+      {texto ?? "Comprobante"} ↗
     </a>
   );
 }

@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Logo from "@/components/Logo";
 import { cortarDir } from "@/lib/format";
+import Notificaciones from "@/components/panel/Notificaciones";
 
 export default function TopBar({
   nombre,
@@ -28,6 +29,7 @@ export default function TopBar({
           <Logo />
         </Link>
         <div className="flex items-center gap-4">
+          <Notificaciones />
           <div className="hidden text-right sm:block">
             <p className="text-sm font-medium text-ink">{nombre}</p>
             <p className="text-xs text-ink/50">

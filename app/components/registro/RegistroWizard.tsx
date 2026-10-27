@@ -8,6 +8,7 @@ import BotonGoogle from "@/components/BotonGoogle";
 import Turnstile, { CAPTCHA_ACTIVO } from "@/components/Turnstile";
 import { Campo, inputClase, Boton, Alerta, Spinner } from "@/components/ui";
 import { conectarFreighter, firmarXdr } from "@/lib/wallet";
+import { ES_TESTNET, fondearPrueba, type PasoFondeo as PasoDelFondeo } from "@/lib/cliente";
 
 type Paso = "cuenta" | "email" | "rol" | "universidad" | "identidad" | "wallet" | "fondeo";
 type Rol = "student" | "guarantor";
@@ -61,7 +62,7 @@ export default function RegistroWizard() {
   if (cargandoInicial) {
     return (
       <div className="grid min-h-screen place-items-center text-ink/50">
-        <Spinner className="h-6 w-6 text-white0" />
+        <Spinner className="h-6 w-6 text-ink/40" />
       </div>
     );
   }
@@ -111,7 +112,7 @@ function Stepper({ etapas, paso }: { etapas: typeof ETAPAS; paso: Paso }) {
     <div className="mt-6 flex items-center gap-2">
       {etapas.map((e, i) => (
         <div key={e.id} className="flex flex-1 flex-col items-center gap-1.5">
-          <div className={`h-1.5 w-full rounded-full ${i <= actual ? "bg-brand/150" : "bg-slate-200"}`} />
+          <div className={`h-1.5 w-full rounded-full ${i <= actual ? "bg-brand" : "bg-ink/15"}`} />
           <span className={`text-[11px] font-medium ${i <= actual ? "text-brandink" : "text-ink/50"}`}>
             {e.txt}
           </span>
@@ -270,6 +271,7 @@ function PasoRol({ onNext }: { onNext: (r: Rol) => void }) {
   return (
     <div className="space-y-4">
       <h1 className="text-xl font-bold text-ink">¿Cómo participas?</h1>
+      <p className="text-sm text-ink/60">Elige bien: el rol no se puede cambiar después.</p>
       <div className="grid gap-3">
         <RolCard activo={role === "student"} onClick={() => setRole("student")} titulo="Estudiante" desc="Pido mi primer crédito, respaldado por un ahorro en USDC." />
         <RolCard activo={role === "guarantor"} onClick={() => setRole("guarantor")} titulo="Garante" desc="Respaldo a un estudiante bloqueando USDC como garantía." />
@@ -329,7 +331,7 @@ function PasoUniversidad({ onNext }: { onNext: () => void }) {
   return (
     <form onSubmit={enviar} className="space-y-4">
       <h1 className="text-xl font-bold text-ink">Tus datos universitarios</h1>
-      <p className="text-sm text-ink/60">Nos ayudan a evaluar tu solicitud. No se guardan en la blockchain.</p>
+      <p className="text-sm text-ink/60">Nos ayudan a evaluar tu solicitud. Son privados: no se publican en la red.</p>
 
       <Campo label="Universidad" htmlFor="uni">
         <input id="uni" className={inputClase} value={form.universityName} onChange={(e) => set("universityName", e.target.value)} placeholder="Ej. Universidad Mayor de San Andrés" required />
@@ -362,7 +364,7 @@ function PasoUniversidad({ onNext }: { onNext: () => void }) {
 }
 
 /* -------------------- KYC (SEP-12) -------------------- */
-function PasoKyc({ onNext }: { onNext: () => void }) {
+export function PasoKyc({ onNext, titulo = "Verifica tu identidad" }: { onNext: () => void; titulo?: string }) {
   const [form, setForm] = useState({ firstName: "", lastName: "", idNumber: "", birthDate: "" });
   const [carnet, setCarnet] = useState<File | null>(null);
   const [selfie, setSelfie] = useState<File | null>(null);
@@ -391,7 +393,7 @@ function PasoKyc({ onNext }: { onNext: () => void }) {
 
   return (
     <form onSubmit={enviar} className="space-y-4">
-      <h1 className="text-xl font-bold text-ink">Verifica tu identidad</h1>
+      <h1 className="text-xl font-bold text-ink">{titulo}</h1>
       <p className="text-sm text-ink/60">
         Tus documentos se guardan en un almacenamiento privado y los revisa un operador de PrimerPaso.
       </p>
@@ -489,7 +491,8 @@ function PasoWallet({ onNext }: { onNext: () => void }) {
     <div className="space-y-4">
       <h1 className="text-xl font-bold text-ink">Conecta tu wallet</h1>
       <p className="text-sm text-ink/60">
-        Vincula tu wallet Freighter y autentícala con SEP-10 (firmas un challenge, sin exponer tu llave).
+        Una <strong className="text-ink/80">wallet</strong> es tu billetera digital: ahí recibes el préstamo y desde ahí
+        pagas. Usamos <strong className="text-ink/80">Freighter</strong>, que es gratis.
       </p>
 
       {address ? (
@@ -503,16 +506,28 @@ function PasoWallet({ onNext }: { onNext: () => void }) {
         </>
       ) : (
         <>
+          <ol className="space-y-2 text-sm text-ink/80">
+            <li className="rounded-xl border-2 border-ink bg-cream px-4 py-3">
+              <strong>1.</strong> Instala Freighter en tu navegador:{" "}
+              <a href="https://www.freighter.app/" target="_blank" rel="noreferrer" className="font-semibold text-brandink underline">
+                freighter.app
+              </a>
+            </li>
+            <li className="rounded-xl border-2 border-ink bg-cream px-4 py-3">
+              <strong>2.</strong> Crea tu wallet y guarda tus 12 palabras en un lugar seguro: son la única forma de recuperarla.
+            </li>
+            {ES_TESTNET && (
+              <li className="rounded-xl border-2 border-ink bg-cream px-4 py-3">
+                <strong>3.</strong> En Freighter, cambia la red a <strong>Testnet</strong> (la red de pruebas).
+              </li>
+            )}
+          </ol>
           {error && <Alerta tipo="error">{error}</Alerta>}
           <Boton onClick={conectar} disabled={cargando} className="w-full">
-            {cargando && <Spinner />} Conectar con Freighter
+            {cargando && <Spinner />} Ya lo hice: conectar mi wallet
           </Boton>
           <p className="text-center text-xs text-ink/50">
-            ¿No tienes Freighter?{" "}
-            <a href="https://www.freighter.app/" target="_blank" rel="noreferrer" className="text-brandink">
-              Instálalo aquí
-            </a>{" "}
-            y elige la red Testnet.
+            Freighter te pedirá firmar un mensaje para comprobar que la wallet es tuya. No mueve dinero.
           </p>
         </>
       )}
@@ -536,22 +551,9 @@ function PasoFondeo({ onDone }: { onDone: () => void }) {
 
   async function fondear() {
     setError("");
+    const setters: Record<PasoDelFondeo, (e: EstadoFondeo) => void> = { xlm: setXlm, trust: setTrust, usdc: setUsdc };
     try {
-      setXlm("haciendo");
-      await api("/api/faucet", { action: "airdrop" });
-      setXlm("ok");
-
-      setTrust("haciendo");
-      const t = await api("/api/faucet", { action: "trustline" });
-      if (!t.yaExiste && t.xdr) {
-        const signed = await firmarXdr(t.xdr, address);
-        await api("/api/faucet", { action: "submit", xdr: signed });
-      }
-      setTrust("ok");
-
-      setUsdc("haciendo");
-      await api("/api/faucet", { action: "usdc" });
-      setUsdc("ok");
+      await fondearPrueba(address, (paso, estado) => setters[paso](estado));
     } catch (err) {
       setError((err as Error).message);
       setXlm((s) => (s === "haciendo" ? "error" : s));
@@ -564,14 +566,15 @@ function PasoFondeo({ onDone }: { onDone: () => void }) {
 
   return (
     <div className="space-y-4">
-      <h1 className="text-xl font-bold text-ink">Fondea tu cuenta</h1>
+      <h1 className="text-xl font-bold text-ink">Consigue dinero de prueba</h1>
       <p className="text-sm text-ink/60">
-        En Testnet, con dinero de prueba: crea tu cuenta en la red, agrega el USDC de prueba y te entrega 1.500 USDC.
+        Estamos en una red de pruebas: este dinero no tiene valor real. Estos tres pasos dejan tu wallet lista para
+        bloquear la garantía y pagar en USDC.
       </p>
 
       <ul className="space-y-2">
-        <ItemFondeo estado={xlm} texto="Fondear XLM (Friendbot)" />
-        <ItemFondeo estado={trust} texto="Crear trustline al USDC" />
+        <ItemFondeo estado={xlm} texto="Activar tu cuenta en la red" />
+        <ItemFondeo estado={trust} texto="Habilitar USDC en tu wallet (Freighter te pedirá aprobar)" />
         <ItemFondeo estado={usdc} texto="Recibir 1.500 USDC de prueba" />
       </ul>
 
@@ -579,7 +582,7 @@ function PasoFondeo({ onDone }: { onDone: () => void }) {
 
       <div className="flex gap-2">
         <Boton onClick={fondear} variant="secondary" className="flex-1" disabled={ocupado || !address}>
-          {ocupado && <Spinner />} {xlm === "pendiente" ? "Fondear ahora" : "Reintentar"}
+          {ocupado && <Spinner />} {xlm === "pendiente" ? "Conseguir dinero de prueba" : "Reintentar"}
         </Boton>
         <Boton onClick={onDone} className="flex-1">
           Ir a mi panel
@@ -592,7 +595,7 @@ function PasoFondeo({ onDone }: { onDone: () => void }) {
 function ItemFondeo({ estado, texto }: { estado: EstadoFondeo; texto: string }) {
   const iconos = {
     pendiente: <span className="h-4 w-4 rounded-full border-2 border-ink" />,
-    haciendo: <Spinner className="h-4 w-4 text-white0" />,
+    haciendo: <Spinner className="h-4 w-4 text-ink/50" />,
     ok: (
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" className="text-emerald-500">
         <path d="M5 12l5 5 9-9" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { api, useRecargarTrasIndexar } from "@/lib/cliente";
+import { paraContrato, paraEditar } from "@/lib/parametros";
 import { Alerta, Boton, Campo, Spinner, inputClase } from "@/components/ui";
 import { RevisionKyc, RevisionSolicitudes } from "@/components/panel/PanelOperador";
 import { Dato, Estado, LinkTx, Tarjeta, Vacio, fecha, usdc } from "@/components/panel/comunes";
@@ -71,7 +72,7 @@ function Resumen() {
   }, [cargar]);
 
   if (error) return <Alerta tipo="error">{error}</Alerta>;
-  if (!d) return <Spinner className="h-6 w-6 text-white0" />;
+  if (!d) return <Spinner className="h-6 w-6 text-ink/40" />;
 
   return (
     <div className="space-y-4">
@@ -219,17 +220,17 @@ function Mora() {
       {ok && (
         <div className="mb-3">
           <Alerta tipo="success">
-            Préstamo #{ok.id} liquidado on-chain.{actualizando && " Actualizando datos…"}{" "}
+            Préstamo #{ok.id} cobrado de la garantía.{actualizando && " Actualizando datos…"}{" "}
             {ok.link && (
               <a href={ok.link} target="_blank" rel="noreferrer" className="font-semibold underline">
-                Ver en stellar.expert
+                Ver comprobante público
               </a>
             )}
           </Alerta>
         </div>
       )}
       {!lista ? (
-        <Spinner className="h-5 w-5 text-white0" />
+        <Spinner className="h-5 w-5 text-ink/40" />
       ) : lista.length === 0 ? (
         <Vacio>No hay préstamos activos.</Vacio>
       ) : (
@@ -294,13 +295,14 @@ type Ajustes = Record<
   number
 >;
 
+/** Se editan en % y minutos; la conversión al contrato está en lib/parametros. */
 const CAMPOS: { k: keyof Ajustes; t: string; hint: string }[] = [
-  { k: "max_ltv_bps", t: "LTV máximo (bps)", hint: "8000 = 80% de la garantía" },
-  { k: "rate_bps", t: "Tasa anual (bps)", hint: "800 = 8% anual sobre saldo" },
-  { k: "origination_fee_bps", t: "Comisión de apertura (bps)", hint: "100 = 1%, se descuenta del desembolso" },
-  { k: "late_fee_bps", t: "Recargo por mora (bps)", hint: "200 = 2% sobre lo vencido" },
-  { k: "yield_share_platform_bps", t: "Rendimiento para la plataforma (bps)", hint: "Fase 2: 2500 = 25%" },
-  { k: "grace_seconds", t: "Gracia (segundos)", hint: "2592000 = 30 días · demo: 120" },
+  { k: "max_ltv_bps", t: "Préstamo máximo (% de la garantía)", hint: "80 = se presta hasta el 80% de lo bloqueado" },
+  { k: "rate_bps", t: "Tasa anual (%)", hint: "Interés simple sobre el saldo" },
+  { k: "origination_fee_bps", t: "Comisión de apertura (%)", hint: "Se descuenta del desembolso" },
+  { k: "late_fee_bps", t: "Recargo por mora (% de lo vencido)", hint: "Se cobra solo al liquidar" },
+  { k: "yield_share_platform_bps", t: "Rendimiento para la plataforma (%)", hint: "Fase 2, aún sin uso" },
+  { k: "grace_seconds", t: "Gracia antes de cobrar la garantía (minutos)", hint: "1 día = 1.440 · 30 días = 43.200" },
   { k: "min_amount_usd", t: "Monto mínimo (USDC)", hint: "" },
   { k: "max_amount_usd", t: "Monto máximo (USDC)", hint: "" },
   { k: "max_installments", t: "Máximo de cuotas", hint: "" },
@@ -316,7 +318,7 @@ function Parametros() {
   const cargar = useCallback(() => {
     api<{ settings: Ajustes; cadena: Ajustes; sincronizado: boolean; poolDisponible: number }>("/api/settings").then((d) => {
       const base = d.cadena ?? d.settings;
-      setForm(Object.fromEntries(CAMPOS.map(({ k }) => [k, Number(base[k])])) as Ajustes);
+      setForm(paraEditar(base));
       setEstado({ sincronizado: d.sincronizado, poolDisponible: d.poolDisponible });
     });
   }, []);
@@ -330,7 +332,7 @@ function Parametros() {
     setMsg(null);
     setGuardando(true);
     try {
-      const r = await api<{ link?: string; hash?: string }>("/api/settings", form, "PUT");
+      const r = await api<{ link?: string; hash?: string }>("/api/settings", paraContrato(form), "PUT");
       setMsg({ tipo: "success", t: "Parámetros actualizados en el contrato y en la base.", link: r.link });
       void recargarTras(r.hash, cargar);
     } catch (err) {
@@ -340,7 +342,7 @@ function Parametros() {
     }
   }
 
-  if (!form) return <Spinner className="h-6 w-6 text-white0" />;
+  if (!form) return <Spinner className="h-6 w-6 text-ink/40" />;
 
   return (
     <Tarjeta
@@ -384,7 +386,7 @@ function Parametros() {
             {guardando && <Spinner />} Guardar en el contrato
           </Boton>
           <p className="mt-2 text-xs text-ink/50">
-            Se firma como admin con set_params. Los préstamos ya abiertos conservan sus condiciones.
+            Se guardan en el contrato. Los préstamos ya abiertos conservan sus condiciones.
           </p>
         </div>
       </form>

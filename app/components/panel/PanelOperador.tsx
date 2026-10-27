@@ -57,7 +57,7 @@ export function RevisionKyc() {
     <Tarjeta titulo="Verificaciones de identidad pendientes" accion={<Boton variant="ghost" onClick={cargar}>Actualizar</Boton>}>
       {error && <Alerta tipo="error">{error}</Alerta>}
       {!lista ? (
-        <Spinner className="h-5 w-5 text-white0" />
+        <Spinner className="h-5 w-5 text-ink/40" />
       ) : lista.length === 0 ? (
         <Vacio>No hay KYC pendientes.</Vacio>
       ) : (
@@ -142,7 +142,7 @@ export function RevisionSolicitudes() {
       <Tarjeta titulo="Solicitudes por revisar" accion={<Boton variant="ghost" onClick={cargar}>Actualizar</Boton>}>
         {error && <Alerta tipo="error">{error}</Alerta>}
         {!lista ? (
-          <Spinner className="h-5 w-5 text-white0" />
+          <Spinner className="h-5 w-5 text-ink/40" />
         ) : pendientes.length === 0 ? (
           <Vacio>No hay solicitudes pendientes.</Vacio>
         ) : (
@@ -188,7 +188,7 @@ export function RevisionSolicitudes() {
             ))}
           </ul>
           <p className="mt-3 text-xs text-ink/50">
-            Al firmar el estudiante, el servidor co-firma como operator y la treasury desembolsa.
+            Cuando el estudiante firma, PrimerPaso firma también y el pool le envía el dinero.
           </p>
         </Tarjeta>
       )}

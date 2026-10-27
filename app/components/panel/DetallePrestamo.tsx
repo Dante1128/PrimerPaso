@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { api, firmarYEnviar, useRecargarTrasIndexar } from "@/lib/cliente";
 import { Alerta, Boton, Spinner } from "@/components/ui";
 import { Barra, Dato, Estado, LinkTx, Tarjeta, fecha, usdc } from "@/components/panel/comunes";
+import { restante } from "@/lib/tiempo";
 
 type Cotizacion = {
   interes: number;
@@ -15,6 +16,8 @@ type Cotizacion = {
   enMora: boolean;
   liquidable: boolean;
   recargo: number;
+  /** Desde cuándo se puede cobrar de la garantía (vencimiento + gracia). */
+  cobroDesde?: string | null;
 };
 
 type Detalle = {
@@ -45,8 +48,8 @@ type Detalle = {
 
 const TIPO_GARANTIA: Record<string, string> = {
   deposit: "Depósito",
-  release: "Liberada",
-  liquidation: "Tomada en liquidación",
+  release: "Devuelta al pagar",
+  liquidation: "Cobrada por falta de pago",
   return: "Remanente devuelto",
   withdraw: "Retirada",
 };
@@ -88,7 +91,7 @@ export default function DetallePrestamo({ loanId, wallet, onCambio }: { loanId: 
   if (!d) {
     return (
       <Tarjeta>
-        {error ? <Alerta tipo="error">{error}</Alerta> : <Spinner className="h-5 w-5 text-white0" />}
+        {error ? <Alerta tipo="error">{error}</Alerta> : <Spinner className="h-5 w-5 text-ink/40" />}
       </Tarjeta>
     );
   }
@@ -142,10 +145,14 @@ export default function DetallePrestamo({ loanId, wallet, onCambio }: { loanId: 
                   {usdc((q.capitalProximaCuota / Number(p.principal)) * Number(p.collateral_initial))} de garantía
                 </p>
                 {q.enMora && (
-                  <p className="mt-1 text-xs font-medium text-rose-700">
-                    {q.liquidable
-                      ? "Pasó el periodo de gracia: el préstamo puede liquidarse."
-                      : "Paga pronto: al terminar la gracia el préstamo puede liquidarse."}
+                  <p className="mt-1 text-sm font-semibold text-rose-700">
+                    {q.liquidable || !q.cobroDesde ? (
+                      "Pasó el plazo de gracia: si no pagas ahora, se puede cobrar lo que debes de tu garantía."
+                    ) : (
+                      <>
+                        Te quedan <CuentaRegresiva hasta={q.cobroDesde} /> para pagar antes de que se cobre de tu garantía.
+                      </>
+                    )}
                   </p>
                 )}
               </div>
@@ -160,10 +167,10 @@ export default function DetallePrestamo({ loanId, wallet, onCambio }: { loanId: 
         {ok && (
           <div className="mt-4">
             <Alerta tipo="success">
-              Pago registrado on-chain.{actualizando && " Actualizando datos…"}{" "}
+              Listo, tu pago quedó registrado.{actualizando && " Actualizando datos…"}{" "}
               {ok.link && (
                 <a href={ok.link} target="_blank" rel="noreferrer" className="font-semibold underline">
-                  Ver en stellar.expert
+                  Ver comprobante público
                 </a>
               )}
             </Alerta>
@@ -250,4 +257,20 @@ export default function DetallePrestamo({ loanId, wallet, onCambio }: { loanId: 
       </div>
     </div>
   );
+}
+
+/** Tiempo que falta hasta `hasta`, actualizado cada 15 segundos. */
+function CuentaRegresiva({ hasta }: { hasta: string }) {
+  const [ahora, setAhora] = useState<number | null>(null);
+  useEffect(() => {
+    const tick = () => setAhora(Date.now());
+    const primero = setTimeout(tick, 0);
+    const cada = setInterval(tick, 15_000);
+    return () => {
+      clearTimeout(primero);
+      clearInterval(cada);
+    };
+  }, []);
+  if (ahora === null) return <strong>…</strong>;
+  return <strong>{restante(Date.parse(hasta) - ahora) ?? "unos instantes"}</strong>;
 }

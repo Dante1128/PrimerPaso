@@ -21,6 +21,8 @@ export type Usuario = {
   esStaff: boolean;
   estudiante: Tables<"student_profiles"> | null;
   kycStatus: Enums<"kyc_status"> | null;
+  /** Motivo del último rechazo del KYC (lo escribe el operador). */
+  kycMotivo: string | null;
   wallet: string | null;
   /** aal y métodos de ingreso de esta sesión (para las reglas del staff). */
   sesion: SesionAuth;
@@ -49,7 +51,7 @@ export async function getSessionUser(): Promise<Usuario | null> {
     db.from("student_profiles").select("*").eq("profile_id", user.id).maybeSingle(),
     db
       .from("kyc_submissions")
-      .select("status")
+      .select("status, rejection_reason")
       .eq("profile_id", user.id)
       .order("created_at", { ascending: false })
       .limit(1)
@@ -74,6 +76,7 @@ export async function getSessionUser(): Promise<Usuario | null> {
     esStaff,
     estudiante: estudiante.data ?? null,
     kycStatus: kyc.data?.status ?? null,
+    kycMotivo: kyc.data?.status === "rejected" ? (kyc.data.rejection_reason ?? null) : null,
     wallet: wallet.data?.address ?? null,
     sesion: leerSesionDelToken(session?.access_token),
     mfaConfigurado: (user.factors ?? []).some((f) => f.factor_type === "totp" && f.status === "verified"),
