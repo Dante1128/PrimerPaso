@@ -1,4 +1,4 @@
-// Notificaciones del usuario (las últimas 20).
+// Notificaciones del usuario: GET las últimas 20, PATCH las marca como leídas.
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { exigirUsuario, manejar, ErrorApi } from "@/lib/api";
 
@@ -12,4 +12,15 @@ export const GET = manejar(async () => {
     .limit(20);
   if (error) throw new ErrorApi(error.message, 500);
   return Response.json({ notificaciones: data });
+});
+
+export const PATCH = manejar(async () => {
+  const user = await exigirUsuario();
+  const { error } = await supabaseAdmin()
+    .from("notifications")
+    .update({ read_at: new Date().toISOString() })
+    .eq("profile_id", user.id)
+    .is("read_at", null);
+  if (error) throw new ErrorApi(error.message, 500);
+  return Response.json({ ok: true });
 });
