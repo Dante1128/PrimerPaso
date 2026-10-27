@@ -24,9 +24,9 @@ export default function Hero() {
           </h1>
 
           <p className="mt-6 max-w-xl text-lg font-medium leading-relaxed text-ink/70">
-            Bloquea tus ahorros como garantía y recibe un préstamo al instante.
-            Cada cuota que pagas libera parte de tu ahorro y construye tu
-            historial crediticio. Pensado para estudiantes universitarios en
+            Bloquea tus ahorros como garantía y recibe tu préstamo apenas lo
+            aprobamos (normalmente en menos de 24 h). Cada cuota que pagas te
+            devuelve parte de tu ahorro y construye tu historial crediticio. Pensado para estudiantes universitarios en
             Bolivia.
           </p>
 
@@ -58,7 +58,7 @@ export default function Hero() {
             {[
               { n: "80%", t: "de tu ahorro como préstamo", bg: "bg-sun" },
               { n: "8%", t: "anual sobre saldo, sin sorpresas", bg: "bg-azure" },
-              { n: "100%", t: "verificable on-chain", bg: "bg-lime" },
+              { n: "100%", t: "verificable por cualquiera", bg: "bg-lime" },
             ].map((s) => (
               <div
                 key={s.t}

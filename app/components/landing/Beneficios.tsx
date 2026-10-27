@@ -1,14 +1,14 @@
 const estudiantes = [
   "Tu primer crédito sin historial previo ni aval bancario.",
-  "Liberas tu ahorro a medida que pagas: liquidez inmediata.",
+  "Cada cuota que pagas te devuelve una parte de tu ahorro.",
   "Construyes un puntaje crediticio real y portable.",
-  "Credencial de buen pagador verificable on-chain.",
+  "Credencial de buen pagador que cualquiera puede verificar.",
 ];
 
 const familias = [
   "Respaldas a tu estudiante sin regalar el dinero: sigue siendo tuyo.",
   "La garantía solo se usa si hay incumplimiento, y solo lo adeudado.",
-  "Ves en todo momento el estado del préstamo que respaldas.",
+  "Ves desde tu panel cómo va el préstamo que respaldas.",
   "Recuperas el ahorro completo cuando el préstamo se paga.",
 ];
 

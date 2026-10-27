@@ -4,7 +4,7 @@ const pasos = [
     color: "bg-sun",
     titulo: "Depositas tu ahorro",
     texto:
-      "Bloqueas USDC como garantía en un contrato Soroban. Tú o un familiar garante pueden aportarlo. Nadie más puede tocarlo.",
+      "Bloqueas USDC como garantía en un contrato público en la red Stellar. Tú o un familiar garante pueden aportarlo. Nadie puede usarlo mientras pagas a tiempo.",
     icono: (
       <path
         d="M12 3v12m0 0l-4-4m4 4l4-4M4 21h16"
@@ -20,7 +20,7 @@ const pasos = [
     color: "bg-azure",
     titulo: "Recibes tu préstamo",
     texto:
-      "Obtienes al instante un crédito por el 80% de tu garantía, directo en tu wallet. Sin papeleo ni historial previo.",
+      "Cuando aprobamos tu solicitud, recibes un crédito de hasta el 80% de tu garantía, directo en tu wallet. Sin historial previo.",
     icono: (
       <path
         d="M3 8h18v10H3zM3 8l3-4h12l3 4M8 13h.01M12 13h4"
@@ -52,7 +52,7 @@ const pasos = [
     color: "bg-lime",
     titulo: "Recuperas tu ahorro",
     texto:
-      "Al terminar de pagar, recuperas el 100% de tu garantía y recibes una credencial de buen pagador verificable on-chain.",
+      "Al terminar de pagar, recuperas el 100% de tu garantía y recibes una credencial de buen pagador que cualquiera puede verificar.",
     icono: (
       <path
         d="M12 15a3 3 0 100-6 3 3 0 000 6zm0 0v6m-7-9a7 7 0 1114 0"
@@ -77,8 +77,8 @@ export default function ComoFunciona() {
             Cuatro pasos simples
           </h2>
           <p className="mt-4 text-lg font-medium text-ink/70">
-            Tu ahorro nunca se pierde: trabaja como respaldo mientras construyes
-            tu reputación crediticia.
+            Tu ahorro vuelve a ti a medida que pagas. Si no pagas, solo se cobra
+            lo que debes y el resto también vuelve a ti.
           </p>
         </div>
 
