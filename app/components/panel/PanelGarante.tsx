@@ -113,7 +113,7 @@ function VincularEstudiante({ onListo }: { onListo: () => void }) {
     setMsg(null);
     setCargando(true);
     try {
-      await api("/api/auth/role", { role: "guarantor", invitationCode: codigo });
+      await api("/api/invitations/accept", { code: codigo });
       setMsg({ tipo: "success", t: "Listo: ahora respaldas a este estudiante." });
       setCodigo("");
       onListo();

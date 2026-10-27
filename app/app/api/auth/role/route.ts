@@ -4,6 +4,7 @@ import { supabaseAdmin } from "@/lib/supabase/admin";
 import { getSessionUser, errorJson } from "@/lib/auth";
 import { rolSchema } from "@/lib/validation";
 import { limitarAuth } from "@/lib/limite";
+import { aceptarInvitacion } from "@/lib/invitaciones";
 
 export async function POST(req: Request) {
   const user = await getSessionUser();
@@ -20,19 +21,8 @@ export async function POST(req: Request) {
 
   // Garante con código: se vincula a la invitación del estudiante.
   if (role === "guarantor" && invitationCode) {
-    const { data: inv } = await db
-      .from("guarantor_invitations")
-      .select("id, student_id, status, expires_at")
-      .eq("code", invitationCode.trim().toLowerCase())
-      .maybeSingle();
-    if (!inv || inv.status !== "pending" || new Date(inv.expires_at) < new Date()) {
-      return errorJson("Código de invitación inválido o vencido", 400);
-    }
-    if (inv.student_id === user.id) return errorJson("No puedes ser tu propio garante", 400);
-    await db
-      .from("guarantor_invitations")
-      .update({ guarantor_id: user.id, status: "accepted" })
-      .eq("id", inv.id);
+    const fallo = await aceptarInvitacion(user.id, invitationCode);
+    if (fallo) return errorJson(fallo, 400);
   }
 
   const { error } = await db.from("profiles").update({ role }).eq("id", user.id);
