@@ -46,7 +46,7 @@ export default function TarjetaCredito({ credito, wallet }: { credito: Credito |
       }
     >
       {!p ? (
-        <p className="text-sm text-ink/60">Cargando desde la blockchain…</p>
+        <p className="text-sm text-ink/60">Cargando tu historial…</p>
       ) : (
         <div className="grid gap-6 sm:grid-cols-3">
           <div>
@@ -80,7 +80,7 @@ export default function TarjetaCredito({ credito, wallet }: { credito: Credito |
           <div>
             {p.credencial ? (
               <div className="rounded-xl border border-emerald-200 bg-gradient-to-br from-emerald-50 to-teal-50 p-4">
-                <p className="text-xs font-semibold uppercase tracking-wide text-brandink">Credencial on-chain</p>
+                <p className="text-xs font-semibold uppercase tracking-wide text-brandink">Credencial pública</p>
                 <p className="mt-1 font-semibold text-ink">Buen pagador ✓</p>
                 <p className="mt-1 text-xs text-ink/60">
                   {p.credencial.prestamosPagados} préstamo(s) pagado(s) · emitida {fecha(p.credencial.emitida)}
@@ -90,7 +90,7 @@ export default function TarjetaCredito({ credito, wallet }: { credito: Credito |
             ) : (
               <div className="rounded-xl border border-dashed border-ink p-4 text-xs text-ink/60">
                 Al terminar de pagar tu primer préstamo recibes una <strong>credencial de buen pagador</strong>{" "}
-                verificable por cualquiera en la blockchain.
+                que cualquiera puede verificar.
               </div>
             )}
           </div>

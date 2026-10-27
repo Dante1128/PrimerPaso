@@ -45,8 +45,8 @@ type Detalle = {
 
 const TIPO_GARANTIA: Record<string, string> = {
   deposit: "Depósito",
-  release: "Liberada",
-  liquidation: "Tomada en liquidación",
+  release: "Devuelta al pagar",
+  liquidation: "Cobrada por falta de pago",
   return: "Remanente devuelto",
   withdraw: "Retirada",
 };
@@ -160,10 +160,10 @@ export default function DetallePrestamo({ loanId, wallet, onCambio }: { loanId: 
         {ok && (
           <div className="mt-4">
             <Alerta tipo="success">
-              Pago registrado on-chain.{actualizando && " Actualizando datos…"}{" "}
+              Listo, tu pago quedó registrado.{actualizando && " Actualizando datos…"}{" "}
               {ok.link && (
                 <a href={ok.link} target="_blank" rel="noreferrer" className="font-semibold underline">
-                  Ver en stellar.expert
+                  Ver comprobante público
                 </a>
               )}
             </Alerta>

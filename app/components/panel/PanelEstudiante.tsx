@@ -285,7 +285,7 @@ export function SolicitudEnCurso({
               n={2}
               hecho={false}
               titulo="Firmar el préstamo y recibir el dinero"
-              desc={`Recibes ${usdc(Number(s.amount_usd) * 0.99)} (monto menos la comisión del 1%). PrimerPaso co-firma la apertura.`}
+              desc={`Recibes ${usdc(Number(s.amount_usd) * 0.99)} (el monto menos la comisión del 1%). PrimerPaso también firma para aprobar el desembolso.`}
             >
               <Boton onClick={() => paso("open")} disabled={!s.garantiaDepositada || !!cargando || actualizando}>
                 {cargando === "open" && <Spinner />} Firmar y recibir
@@ -299,9 +299,9 @@ export function SolicitudEnCurso({
       {link && (
         <div className="mt-4">
           <Alerta tipo="success">
-            Listo, registrado on-chain.{actualizando && " Actualizando datos…"}{" "}
+            Listo, quedó registrado.{actualizando && " Actualizando datos…"}{" "}
             <a href={link} target="_blank" rel="noreferrer" className="font-semibold underline">
-              Ver en stellar.expert
+              Ver comprobante público
             </a>
           </Alerta>
         </div>
