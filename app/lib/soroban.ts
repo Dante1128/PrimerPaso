@@ -9,6 +9,7 @@
 import "server-only";
 import {
   Contract,
+  Address,
   Keypair,
   Operation,
   TransactionBuilder,
@@ -143,14 +144,14 @@ export const leerRegistro = async (address: string) =>
 // --- Escrituras ---
 
 /** Dirección (G...) que debe firmar una entrada de autorización. */
-function firmanteDe(entrada: xdr.SorobanAuthorizationEntry): string | null {
-  const j = JSON.parse(
-    JSON.stringify((entrada as unknown as { credentials: unknown }).credentials, (_k, v) =>
-      typeof v === "bigint" ? String(v) : v,
-    ),
-  );
-  const nodo = j?.address ?? j?.address_v2 ?? j?.address_with_delegates;
-  return typeof nodo?.address === "string" ? nodo.address : null;
+export function firmanteDe(entrada: Pick<xdr.SorobanAuthorizationEntry, "credentials">): string | null {
+  const credencial = entrada.credentials;
+  switch (credencial.type) {
+    case "sorobanCredentialsSourceAccount": return null;
+    case "sorobanCredentialsAddress": return Address.fromScAddress(credencial.address.address).toString();
+    case "sorobanCredentialsAddressV2": return Address.fromScAddress(credencial.addressV2.address).toString();
+    case "sorobanCredentialsAddressWithDelegates": return Address.fromScAddress(credencial.addressWithDelegates.addressCredentials.address).toString();
+  }
 }
 
 async function simular(fuente: string, contractId: string, metodo: string, args: xdr.ScVal[]) {
@@ -250,10 +251,11 @@ export function validarXdr(xdrFirmado: string, contractId: string, metodo: strin
   if (tx.operations.length !== 1 || tx.operations[0].type !== "invokeHostFunction") {
     throw new Error("Transacción inesperada");
   }
-  const j = JSON.stringify((tx.operations[0] as Operation.InvokeHostFunction).func, (_k, v) =>
-    typeof v === "bigint" ? String(v) : v,
-  );
-  if (!j.includes(contractId) || !j.includes(`"${metodo}"`)) {
+  const op = tx.operations[0] as Operation.InvokeHostFunction;
+  if (op.source && op.source !== fuente) throw new Error("Fuente de operación inesperada");
+  if (op.func.type !== "hostFunctionTypeInvokeContract") throw new Error("Invocación inesperada");
+  const llamada = op.func.invokeContract;
+  if (Address.fromScAddress(llamada.contractAddress).toString() !== contractId || llamada.functionName.toString() !== metodo) {
     throw new Error("La transacción no corresponde a esta operación");
   }
   return tx;

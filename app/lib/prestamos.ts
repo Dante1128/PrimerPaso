@@ -34,6 +34,12 @@ export async function solicitudParaActuar(applicationId: string, user: Usuario) 
 
 /** Posición de garantía depositada para la solicitud (registrada al enviar el depósito). */
 export async function posicionDeSolicitud(app: Tables<"loan_applications">): Promise<number | null> {
+  const { data: preparada, error } = await supabaseAdmin().from("prepared_transactions")
+    .select("result").eq("entity_id", app.id).eq("method", "deposit_collateral")
+    .not("confirmed_at", "is", null).order("confirmed_at", { ascending: false }).limit(1).maybeSingle();
+  if (error) throw new ErrorApi("No se pudo consultar la garantía", 503);
+  const positionId = (preparada?.result as { positionId?: number } | null)?.positionId;
+  if (positionId) return positionId;
   const { data } = await supabaseAdmin()
     .from("audit_logs")
     .select("data")

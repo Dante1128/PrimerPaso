@@ -8,6 +8,7 @@ import { pasoPrestamoSchema } from "@/lib/validation";
 import { solicitudParaActuar, posicionDeSolicitud } from "@/lib/prestamos";
 import { LOAN_ID, aStroops, arg, leerPosicion, operatorKeypair, prepararParaWallet } from "@/lib/soroban";
 import { tieneTrustlineUsdc, balanceUsdc } from "@/lib/stellar";
+import { registrarPreparada } from "@/lib/transacciones";
 
 export const POST = manejar(async (req: Request) => {
   const user = await exigirUsuario(["student", "guarantor"]);
@@ -32,6 +33,7 @@ export const POST = manejar(async (req: Request) => {
       arg.address(walletEstudiante),
       arg.i128(monto),
     ]);
+    await registrarPreparada(xdr, user.id, app.id, "deposit_collateral");
     return Response.json({ xdr, monto: Number(app.collateral_amount) });
   }
 
@@ -40,6 +42,7 @@ export const POST = manejar(async (req: Request) => {
   if (!posicion) throw new ErrorApi("Primero hay que depositar la garantía");
   const p = await leerPosicion(posicion);
   if (!p || p.status !== "Open") throw new ErrorApi("La garantía no está disponible para abrir el préstamo");
+  if (p.borrower !== wallet || aStroops(app.collateral_amount) !== p.amount) throw new ErrorApi("La garantía no corresponde a esta solicitud");
   if (!(await tieneTrustlineUsdc(wallet))) throw new ErrorApi("Tu wallet necesita trustline al USDC para recibir el préstamo");
 
   const periodo = periodoSegundos();
@@ -58,5 +61,6 @@ export const POST = manejar(async (req: Request) => {
     ],
     [operatorKeypair()],
   );
+  await registrarPreparada(xdr, user.id, app.id, "open_loan");
   return Response.json({ xdr, primerVencimiento, periodo });
 });

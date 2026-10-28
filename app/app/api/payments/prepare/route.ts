@@ -7,6 +7,7 @@ import { pagoSchema } from "@/lib/validation";
 import { puedeVerPrestamo } from "@/lib/prestamos";
 import { LOAN_ID, aStroops, aUsdc, arg, cotizarPago, prepararParaWallet } from "@/lib/soroban";
 import { balanceUsdc } from "@/lib/stellar";
+import { registrarPreparada } from "@/lib/transacciones";
 
 export const POST = manejar(async (req: Request) => {
   const user = await exigirUsuario(["student", "guarantor"]);
@@ -41,5 +42,6 @@ export const POST = manejar(async (req: Request) => {
     arg.i128(capital),
     arg.i128(interes),
   ]);
+  await registrarPreparada(xdr, user.id, String(loanId), "repay");
   return Response.json({ xdr, capital: aUsdc(capital), interes: aUsdc(interes), total: aUsdc(capital + interes) });
 });
