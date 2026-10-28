@@ -20,6 +20,7 @@ import { supabaseAdmin } from "@/lib/supabase/admin";
 import { conReintentos, rpcServer } from "@/lib/stellar";
 import { HISTORY_ID, LOAN_ID, aUsdc, leerCredencial, leerPrestamo, leerPuntaje, leerRegistro } from "@/lib/soroban";
 import type { Database, Json } from "@/lib/database.types";
+import { checkpointPagina, completarCuotas, type PagoHistorico } from "@/lib/proyeccion";
 
 type Evento = {
   contrato: string;
@@ -30,6 +31,7 @@ type Evento = {
   txHash: string;
   indice: number;
   fecha: string;
+  orden?: number;
 };
 
 const db = () => supabaseAdmin();
@@ -90,19 +92,20 @@ async function sincronizarConCandado(dueno: string): Promise<ResultadoSync> {
   const server = rpcServer();
   const contratos = [LOAN_ID, HISTORY_ID];
 
-  let nuevos = await reprocesarPendientes(contratos);
+  let nuevos = await reprocesarPendientes(contratos, dueno);
 
-  const { data: estados } = await db().from("indexer_state").select("contract_id, last_ledger").in("contract_id", contratos);
+  const { data: estados, error: errorEstado } = await db().from("indexer_state").select("contract_id, last_ledger, last_cursor").in("contract_id", contratos);
+  if (errorEstado) throw new Error(`indexer_state: ${errorEstado.message}`);
   const ultimo = Math.min(...contratos.map((c) => estados?.find((e) => e.contract_id === c)?.last_ledger ?? 0));
   const latest = (await conReintentos(() => server.getLatestLedger())).sequence;
 
   let inicio = Math.max(ultimo + 1, 1);
-  if (inicio > latest) return { eventos: nuevos, hastaLedger: ultimo, pendientes: await contarPendientes(contratos) };
+  let cursor = estados?.find((e) => e.last_ledger === ultimo)?.last_cursor ?? undefined;
+  if (!cursor && inicio > latest) return { eventos: nuevos, hastaLedger: ultimo, pendientes: await contarPendientes(contratos) };
 
-  let cursor: string | undefined;
   let hasta = ultimo;
   for (let pagina = 0; pagina < 50; pagina++) {
-    await tomarCandado(dueno); // renueva el lease
+    await renovarCandado(dueno);
     let resp: rpc.Api.GetEventsResponse;
     try {
       resp = await conReintentos(() => server.getEvents(
@@ -113,7 +116,8 @@ async function sincronizarConCandado(dueno: string): Promise<ResultadoSync> {
     } catch (e) {
       // El RPC solo guarda unos días: si el inicio quedó fuera, arrancamos en el más antiguo.
       const m = String((e as Error).message).match(/ledger range:?\s*(\d+)\s*-\s*(\d+)/i);
-      if (!cursor && m && Number(m[1]) > inicio) {
+      if (!cursor && ultimo === 0 && m && Number(m[1]) > inicio) {
+        console.warn("[indexer] Inicio sin historial previo; RPC disponible desde", m[1]);
         inicio = Number(m[1]);
         pagina--;
         continue;
@@ -122,23 +126,25 @@ async function sincronizarConCandado(dueno: string): Promise<ResultadoSync> {
     }
 
     for (const e of resp.events) {
+      if (!e.inSuccessfulContractCall) continue;
       const ev = decodificar(e);
       const id = await guardarEvento(ev);
+      await renovarCandado(dueno);
       if (id && (await proyectarYMarcar(id, ev))) nuevos++;
-      hasta = Math.max(hasta, ev.ledger);
     }
-    hasta = Math.max(hasta, resp.latestLedger - 1);
-    if (resp.events.length < 200 || !resp.cursor) break;
-    cursor = resp.cursor;
+    const checkpoint = checkpointPagina(resp.events, resp.cursor, resp.latestLedger, hasta);
+    hasta = checkpoint.ledger;
+    await renovarCandado(dueno);
+    const { error } = await db().from("indexer_state").upsert(contratos.map((c) => ({
+      contract_id: c, last_ledger: hasta, last_cursor: checkpoint.cursor, updated_at: new Date().toISOString(),
+    })), { onConflict: "contract_id" });
+    if (error) throw new Error(`indexer_state: ${error.message}`);
+    if (checkpoint.completa) break;
+    cursor = checkpoint.cursor!;
   }
 
   // Los eventos que fallaron quedan guardados como pendientes, así que avanzar
   // el ledger es seguro: no se pierden.
-  const ahora = new Date().toISOString();
-  const { error } = await db()
-    .from("indexer_state")
-    .upsert(contratos.map((c) => ({ contract_id: c, last_ledger: hasta, updated_at: ahora })), { onConflict: "contract_id" });
-  if (error) throw new Error(`indexer_state: ${error.message}`);
   return { eventos: nuevos, hastaLedger: hasta, pendientes: await contarPendientes(contratos) };
 }
 
@@ -156,7 +162,11 @@ async function proyectarYMarcar(id: string, ev: Evento): Promise<boolean> {
 }
 
 /** Reintenta los eventos guardados que no se llegaron a proyectar. */
-async function reprocesarPendientes(contratos: string[]): Promise<number> {
+async function renovarCandado(dueno: string) {
+  if (!(await tomarCandado(dueno))) throw new Error("Se perdió el candado del indexador; se retomará desde el último checkpoint");
+}
+
+async function reprocesarPendientes(contratos: string[], dueno: string): Promise<number> {
   const { data, error } = await db()
     .from("onchain_events")
     .select("id, contract_id, event_type, ledger, tx_hash, event_index, payload")
@@ -169,7 +179,8 @@ async function reprocesarPendientes(contratos: string[]): Promise<number> {
 
   let ok = 0;
   for (const fila of data ?? []) {
-    const p = (fila.payload ?? {}) as { topics?: unknown[]; datos?: Record<string, unknown>; fecha?: string };
+    await renovarCandado(dueno);
+    const p = (fila.payload ?? {}) as { topics?: unknown[]; datos?: Record<string, unknown>; fecha?: string; orden?: number };
     const ev: Evento = {
       contrato: fila.contract_id,
       tipo: fila.event_type,
@@ -179,6 +190,7 @@ async function reprocesarPendientes(contratos: string[]): Promise<number> {
       txHash: fila.tx_hash,
       indice: fila.event_index,
       fecha: p.fecha ?? new Date().toISOString(),
+      orden: p.orden ?? 0,
     };
     if (await proyectarYMarcar(fila.id, ev)) ok++;
   }
@@ -206,6 +218,7 @@ function decodificar(e: rpc.Api.EventResponse): Evento {
     txHash: e.txHash,
     indice: Number(e.id.split("-").pop() ?? 0),
     fecha: e.ledgerClosedAt,
+    orden: e.transactionIndex,
   };
 }
 
@@ -223,7 +236,7 @@ async function guardarEvento(ev: Evento): Promise<string | null> {
         ledger: ev.ledger,
         tx_hash: ev.txHash,
         event_index: ev.indice,
-        payload: aJson({ topics: ev.topics, datos: ev.datos, fecha: ev.fecha }),
+        payload: aJson({ topics: ev.topics, datos: ev.datos, fecha: ev.fecha, orden: ev.orden }),
         processed: false,
       },
       { onConflict: "contract_id,tx_hash,event_index", ignoreDuplicates: true },
@@ -268,7 +281,7 @@ async function proyectar(ev: Evento) {
   }
 
   switch (ev.tipo) {
-    case "collateral_deposited":
+    case "collateral_deposited": {
       await insertarUnico(
         "collateral_events",
         {
@@ -282,7 +295,9 @@ async function proyectar(ev: Evento) {
         },
         "tx_hash,type",
       );
+      exigir(await db().from("prepared_transactions").update({ confirmed_at: ev.fecha, result: { positionId: Number(ev.topics[0]) } }).eq("tx_hash", ev.txHash).eq("method", "deposit_collateral"), "prepared_transactions");
       break;
+    }
 
     case "loan_opened": {
       const loanUuid = await refrescarPrestamo(BigInt(ev.topics[0] as bigint), ev);
@@ -354,7 +369,8 @@ async function proyectar(ev: Evento) {
           "tx_hash,type",
         );
       }
-      await marcarCuotas(loanUuid, ev, Boolean(d.on_time), pago?.id ?? null);
+      await marcarCuotas(loanUuid, BigInt(ev.topics[0] as bigint));
+      exigir(await db().from("prepared_transactions").update({ confirmed_at: ev.fecha, result: {} }).eq("tx_hash", ev.txHash).eq("method", "repay"), "prepared_transactions");
       break;
     }
 
@@ -483,7 +499,8 @@ const minimo = (a: bigint, b: bigint) => (a < b ? a : b);
 
 /** Perfil (profiles.id) dueño de una wallet, si existe. */
 async function perfilDeWallet(address: string): Promise<string | null> {
-  const { data } = await db().from("wallets").select("profile_id").eq("address", address).limit(1).maybeSingle();
+  const { data, error } = await db().from("wallets").select("profile_id").eq("address", address).limit(1).maybeSingle();
+  if (error) throw new Error(error.message);
   return data?.profile_id ?? null;
 }
 
@@ -493,7 +510,7 @@ async function perfilDeWallet(address: string): Promise<string | null> {
  */
 async function refrescarPrestamo(onchainId: bigint, ev: Evento): Promise<string | null> {
   const l = await leerPrestamo(onchainId);
-  if (!l) return null;
+  if (!l) throw new Error(`Préstamo #${onchainId} no disponible; restaurar almacenamiento antes de reintentar`);
 
   const estado = l.status === "Repaid" ? "repaid" : l.status === "Liquidated" ? "liquidated" : "active";
   const bloqueada = estado === "active" ? l.collateral_initial - l.collateral_released : BigInt(0);
@@ -516,46 +533,51 @@ async function refrescarPrestamo(onchainId: bigint, ev: Evento): Promise<string 
     installments: l.installments,
     status: estado as "active" | "repaid" | "liquidated",
     opened_at: iso(l.opened_at),
-    closed_at: estado === "active" ? null : ev.fecha,
     updated_at: new Date().toISOString(),
   };
 
-  const { data: existente } = await db()
+  const { data: existente, error: errorExistente } = await db()
     .from("loans")
-    .select("id")
+    .select("id, application_id")
     .eq("loan_contract_id", LOAN_ID)
     .eq("onchain_loan_id", Number(l.id))
     .maybeSingle();
-  if (existente) {
-    exigir(await db().from("loans").update(fila).eq("id", existente.id), "loans");
-    return existente.id;
-  }
+  if (errorExistente) throw new Error(errorExistente.message);
 
-  // Primera vez: vincula estudiante y solicitud aprobada, y crea las cuotas.
+  // Cada intento completa también la asociación y el calendario.
   const studentId = await perfilDeWallet(l.borrower);
-  const { data: solicitud } = studentId
-    ? await db()
-        .from("loan_applications")
-        .select("id")
-        .eq("student_id", studentId)
-        .eq("status", "approved")
-        .order("updated_at", { ascending: false })
-        .limit(1)
-        .maybeSingle()
-    : { data: null };
-
-  const { data: nuevo, error } = await db()
-    .from("loans")
-    .insert({ ...fila, student_id: studentId, application_id: solicitud?.id ?? null, opened_tx_hash: ev.txHash })
-    .select("id")
-    .single();
-  if (error || !nuevo) throw new Error(`No se pudo guardar el préstamo: ${error?.message}`);
-
-  if (solicitud) {
+  // Solo la transacción preparada identifica la solicitud: nunca "la última aprobada".
+  const abiertos = await eventosPrestamo(onchainId, "loan_opened");
+  const apertura = abiertos[0];
+  const hashApertura = apertura?.tx_hash ?? (ev.tipo === "loan_opened" ? ev.txHash : null);
+  const { data: preparada, error: errorPreparada } = hashApertura
+    ? await db().from("prepared_transactions").select("entity_id").eq("tx_hash", hashApertura).eq("method", "open_loan").maybeSingle()
+    : { data: null, error: null };
+  if (errorPreparada) throw new Error(errorPreparada.message);
+  const applicationId = existente?.application_id ?? preparada?.entity_id ?? null;
+  let loanUuid = existente?.id;
+  if (loanUuid) {
+    exigir(await db().from("loans").update({ ...fila, application_id: applicationId }).eq("id", loanUuid), "loans");
+  } else {
+    const { data: nuevo, error } = await db().from("loans")
+      .insert({ ...fila, student_id: studentId, application_id: applicationId, opened_tx_hash: hashApertura })
+      .select("id").single();
+    if (error || !nuevo) throw new Error(`No se pudo guardar el préstamo: ${error?.message}`);
+    loanUuid = nuevo.id;
+  }
+  if (applicationId) {
     exigir(
-      await db().from("loan_applications").update({ status: "opened", updated_at: new Date().toISOString() }).eq("id", solicitud.id),
+      await db().from("loan_applications").update({ status: "opened", updated_at: new Date().toISOString() }).eq("id", applicationId),
       "loan_applications",
     );
+  }
+  if (hashApertura) exigir(await db().from("prepared_transactions").update({ confirmed_at: ev.fecha, result: { loanId: Number(l.id) } }).eq("tx_hash", hashApertura).eq("method", "open_loan"), "prepared_transactions");
+  if (estado !== "active") {
+    const cierre = (await eventosPrestamo(onchainId, estado === "repaid" ? "loan_repaid" : "loan_liquidated"))[0];
+    if (cierre) {
+      const payload = cierre.payload as { fecha: string };
+      exigir(await db().from("loans").update({ closed_at: payload.fecha }).eq("id", loanUuid), "loans");
+    }
   }
 
   // Calendario estimado: capital fijo por cuota; interés sobre el saldo previsto.
@@ -567,7 +589,7 @@ async function refrescarPrestamo(onchainId: bigint, ev: Evento): Promise<string 
     const capital = k === n ? saldo : porCuota;
     const interes = (saldo * BigInt(l.terms.rate_bps)) / BigInt(10_000) / BigInt(12);
     cuotas.push({
-      loan_id: nuevo.id,
+      loan_id: loanUuid,
       number: k,
       due_at: iso(l.first_due_ts + BigInt(k - 1) * l.period_seconds),
       principal_due: aUsdc(capital),
@@ -576,23 +598,40 @@ async function refrescarPrestamo(onchainId: bigint, ev: Evento): Promise<string 
     saldo -= capital;
   }
   await insertarUnico("installments", cuotas, "loan_id,number");
-  return nuevo.id;
+  return loanUuid;
 }
 
-/** Marca como pagadas las cuotas que la cadena da por completadas. */
-async function marcarCuotas(loanUuid: string, ev: Evento, aTiempo: boolean, pagoId: string | null) {
-  const { data: loan } = await db().from("loans").select("onchain_loan_id").eq("id", loanUuid).single();
-  const l = loan ? await leerPrestamo(loan.onchain_loan_id) : null;
-  if (!l) return;
-  const { data: pendientes } = await db()
-    .from("installments")
-    .select("id, number")
-    .eq("loan_id", loanUuid)
-    .is("paid_at", null)
-    .lte("number", l.installments_paid);
-  for (const c of pendientes ?? []) {
-    await db().from("installments").update({ paid_at: ev.fecha, status: aTiempo ? "paid" : "late" }).eq("id", c.id);
-    if (pagoId) await db().from("payments").update({ installment_id: c.id }).eq("id", pagoId).is("installment_id", null);
+/** Recupera también historiales mayores que el límite de filas de PostgREST. */
+async function eventosPrestamo(loanId: bigint, tipo: string) {
+  const filas: { tx_hash: string; ledger: number; event_index: number; payload: Json }[] = [];
+  for (let desde = 0; ; desde += 500) {
+    const { data, error } = await db().from("onchain_events").select("tx_hash, ledger, event_index, payload")
+      .eq("contract_id", LOAN_ID).eq("event_type", tipo)
+      .contains("payload", { topics: [loanId.toString()] }).order("ledger").order("tx_hash").order("event_index").range(desde, desde + 499);
+    if (error) throw new Error(error.message);
+    filas.push(...data);
+    if (data.length < 500) break;
+  }
+  return filas;
+}
+
+async function marcarCuotas(loanUuid: string, loanId: bigint) {
+  const l = await leerPrestamo(loanId);
+  if (!l) throw new Error("Préstamo no disponible para reconstruir cuotas");
+  const eventos = await eventosPrestamo(loanId, "payment_recorded");
+  const pagos: PagoHistorico[] = eventos.map((ev) => {
+    const p = ev.payload as { datos: { principal: string }; fecha: string; orden?: number };
+    return { capital: BigInt(p.datos.principal), fecha: p.fecha, ledger: ev.ledger, orden: p.orden ?? 0, indice: ev.event_index, hash: ev.tx_hash };
+  });
+  const { data: cuotas, error } = await db().from("installments").select("id, number, due_at").eq("loan_id", loanUuid).order("number");
+  if (error) throw new Error(error.message);
+  const completadas = completarCuotas(l.principal, l.installments, pagos, cuotas.map((c) => c.due_at));
+  // Repara también enlaces antiguos incorrectos: un pago se enlaza a su primera cuota completada.
+  exigir(await db().from("payments").update({ installment_id: null }).eq("loan_id", loanUuid), "payments");
+  for (const c of cuotas) {
+    const pago = completadas.find((p) => p.numero === c.number);
+    exigir(await db().from("installments").update({ paid_at: pago?.fecha ?? null, status: pago ? (pago.puntual ? "paid" : "late") : "pending" }).eq("id", c.id), "installments");
+    if (pago) exigir(await db().from("payments").update({ installment_id: c.id }).eq("tx_hash", pago.hash).is("installment_id", null), "payments");
   }
 }
 
