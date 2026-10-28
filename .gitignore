@@ -24,3 +24,6 @@ contracts/target/
 *.tsbuildinfo
 .DS_Store
 Thumbs.db
+app/test-results/
+app/playwright-report/
+app/audit-local.json
