@@ -55,7 +55,9 @@ fn setup() -> Ctx<'static> {
     let operator = Address::generate(&env);
     let treasury = Address::generate(&env);
 
-    let usdc_addr = env.register_stellar_asset_contract_v2(admin.clone()).address();
+    let usdc_addr = env
+        .register_stellar_asset_contract_v2(admin.clone())
+        .address();
     let token = TokenClient::new(&env, &usdc_addr);
     let token_admin = StellarAssetClient::new(&env, &usdc_addr);
 
@@ -102,15 +104,25 @@ impl Ctx<'_> {
 
     /// Abre un préstamo mensual con la primera cuota en un mes.
     fn abrir(&self, posicion: u64, capital: i128, cuotas: u32) -> u64 {
-        self.loan
-            .open_loan(&self.operator, &posicion, &capital, &cuotas, &(T0 + MES), &MES)
+        self.loan.open_loan(
+            &self.operator,
+            &posicion,
+            &capital,
+            &cuotas,
+            &(T0 + MES),
+            &MES,
+        )
     }
 
     /// Paga la próxima cuota completa (interés pendiente + capital de la cuota).
     fn pagar_cuota(&self, pagador: &Address, loan_id: u64) -> PaymentQuote {
         let q = self.loan.quote_next_payment(&loan_id);
-        self.loan
-            .repay(pagador, &loan_id, &q.next_installment_principal, &q.interest_due);
+        self.loan.repay(
+            pagador,
+            &loan_id,
+            &q.next_installment_principal,
+            &q.interest_due,
+        );
         q
     }
 
@@ -184,7 +196,9 @@ fn el_ultimo_pago_libera_el_remanente() {
     let estudiante = ctx.cuenta(usdc(2_000));
     // Garantía "impar" para forzar redondeo.
     let garantia = usdc(1_000) + 7;
-    let pos = ctx.loan.deposit_collateral(&estudiante, &estudiante, &garantia);
+    let pos = ctx
+        .loan
+        .deposit_collateral(&estudiante, &estudiante, &garantia);
     let capital = usdc(800);
     let id = ctx.abrir(pos, capital, 3);
     let por_cuota = capital / 3;
@@ -205,7 +219,10 @@ fn el_ultimo_pago_libera_el_remanente() {
     let l = ctx.loan.get_loan(&id).unwrap();
     assert_eq!(l.collateral_released, garantia);
     assert_eq!(ctx.token.balance(&ctx.loan_addr), 0);
-    assert_eq!(ctx.loan.get_position(&pos).unwrap().status, PositionStatus::Closed);
+    assert_eq!(
+        ctx.loan.get_position(&pos).unwrap().status,
+        PositionStatus::Closed
+    );
 }
 
 #[test]
@@ -216,9 +233,14 @@ fn rechaza_ltv_mayor_al_80_por_ciento() {
         .loan
         .deposit_collateral(&estudiante, &estudiante, &usdc(1_250));
 
-    let res = ctx
-        .loan
-        .try_open_loan(&ctx.operator, &pos, &(usdc(1_000) + 1), &10, &(T0 + MES), &MES);
+    let res = ctx.loan.try_open_loan(
+        &ctx.operator,
+        &pos,
+        &(usdc(1_000) + 1),
+        &10,
+        &(T0 + MES),
+        &MES,
+    );
     assert_eq!(res, Err(Ok(Error::ExcedeLtv.into())));
     // Exactamente el 80% sí se permite.
     ctx.abrir(pos, usdc(1_000), 10);
@@ -250,7 +272,9 @@ fn rechaza_montos_y_cuotas_fuera_de_limites() {
 fn la_comision_se_descuenta_del_desembolso() {
     let ctx = setup();
     let estudiante = ctx.cuenta(usdc(500));
-    let pos = ctx.loan.deposit_collateral(&estudiante, &estudiante, &usdc(500));
+    let pos = ctx
+        .loan
+        .deposit_collateral(&estudiante, &estudiante, &usdc(500));
     let id = ctx.abrir(pos, usdc(400), 4);
 
     // 1% de 400 = 4: recibe 396 y la treasury solo entrega 396.
@@ -321,9 +345,15 @@ fn liquidacion_falla_antes_de_la_gracia_y_funciona_despues() {
     assert_eq!(q.late_fee, recargo);
     let adeudado = usdc(1_000) + interes + recargo;
     assert_eq!(ctx.token.balance(&ctx.treasury), tesoreria_antes + adeudado);
-    assert_eq!(ctx.token.balance(&estudiante), usdc(990) + usdc(1_250) - adeudado);
+    assert_eq!(
+        ctx.token.balance(&estudiante),
+        usdc(990) + usdc(1_250) - adeudado
+    );
     assert_eq!(ctx.token.balance(&ctx.loan_addr), 0);
-    assert_eq!(ctx.loan.get_loan(&id).unwrap().status, LoanStatus::Liquidated);
+    assert_eq!(
+        ctx.loan.get_loan(&id).unwrap().status,
+        LoanStatus::Liquidated
+    );
     assert_eq!(ctx.history.get_record(&estudiante).defaults, 1);
 }
 
@@ -337,7 +367,9 @@ fn liquidacion_devuelve_el_remanente_al_garante() {
 
     let estudiante = ctx.cuenta(0);
     let garante = ctx.cuenta(usdc(1_250));
-    let pos = ctx.loan.deposit_collateral(&garante, &estudiante, &usdc(1_250));
+    let pos = ctx
+        .loan
+        .deposit_collateral(&garante, &estudiante, &usdc(1_250));
     let id = ctx
         .loan
         .open_loan(&ctx.operator, &pos, &usdc(1_000), &10, &(T0 + 60), &60);
@@ -373,7 +405,12 @@ fn la_pausa_global_bloquea_las_operaciones() {
     );
     assert_eq!(
         ctx.loan
-            .try_repay(&estudiante, &id, &q.next_installment_principal, &q.interest_due)
+            .try_repay(
+                &estudiante,
+                &id,
+                &q.next_installment_principal,
+                &q.interest_due
+            )
             .err(),
         pausado
     );
@@ -444,7 +481,9 @@ fn no_se_puede_pagar_de_mas() {
         .loan
         .try_repay(&estudiante, &id, &(usdc(1_000) + 1), &q.interest_due);
     assert_eq!(res, Err(Ok(Error::ExcedeDeuda.into())));
-    let res = ctx.loan.try_repay(&estudiante, &id, &0, &(q.interest_due + 1));
+    let res = ctx
+        .loan
+        .try_repay(&estudiante, &id, &0, &(q.interest_due + 1));
     assert_eq!(res, Err(Ok(Error::ExcedeDeuda.into())));
 }
 
@@ -468,7 +507,9 @@ fn retiro_de_garantia_sin_usar() {
     let ctx = setup();
     let garante = ctx.cuenta(usdc(1_250));
     let estudiante = ctx.cuenta(0);
-    let pos = ctx.loan.deposit_collateral(&garante, &estudiante, &usdc(625));
+    let pos = ctx
+        .loan
+        .deposit_collateral(&garante, &estudiante, &usdc(625));
 
     // Solo el depositante puede retirar.
     let res = ctx.loan.try_withdraw_unused(&estudiante, &pos);
@@ -477,7 +518,9 @@ fn retiro_de_garantia_sin_usar() {
     assert_eq!(ctx.token.balance(&garante), usdc(1_250));
 
     // Con el préstamo abierto, ya no se puede retirar.
-    let pos2 = ctx.loan.deposit_collateral(&garante, &estudiante, &usdc(625));
+    let pos2 = ctx
+        .loan
+        .deposit_collateral(&garante, &estudiante, &usdc(625));
     ctx.abrir(pos2, usdc(500), 5);
     let res = ctx.loan.try_withdraw_unused(&garante, &pos2);
     assert_eq!(res, Err(Ok(Error::EstadoInvalido.into())));
@@ -551,8 +594,9 @@ fn sin_liquidez_en_el_pool_no_se_abre() {
 impl Ctx<'_> {
     /// Ledgers que le quedan de vida a una entrada del contrato de préstamo.
     fn ttl(&self, key: &DataKey) -> u32 {
-        self.env
-            .as_contract(&self.loan_addr, || self.env.storage().persistent().get_ttl(key))
+        self.env.as_contract(&self.loan_addr, || {
+            self.env.storage().persistent().get_ttl(key)
+        })
     }
 
     fn avanzar_ledgers(&self, n: u32) {
@@ -571,7 +615,9 @@ fn el_prestamo_activo_vive_hasta_su_ultimo_vencimiento() {
 
     // Última cuota en T0 + 10 meses; gracia de 1 mes.
     let hasta_fin = ((10 * MES + MES) / SEGUNDOS_POR_LEDGER) as u32;
-    let maximo = ctx.env.as_contract(&ctx.loan_addr, || ctx.env.storage().max_ttl());
+    let maximo = ctx
+        .env
+        .as_contract(&ctx.loan_addr, || ctx.env.storage().max_ttl());
     let esperado = (hasta_fin + TTL_EXTENDER_A).min(maximo);
 
     assert!(ctx.ttl(&DataKey::Loan(id)) >= esperado - 1);
@@ -589,7 +635,9 @@ fn bump_renueva_la_vida_de_un_prestamo_sin_movimiento() {
     let pos = ctx.loan.deposit_collateral(&est, &est, &usdc(1_250));
     let id = ctx.abrir(pos, usdc(1_000), 12);
     let inicial = ctx.ttl(&DataKey::Loan(id));
-    let maximo = ctx.env.as_contract(&ctx.loan_addr, || ctx.env.storage().max_ttl());
+    let maximo = ctx
+        .env
+        .as_contract(&ctx.loan_addr, || ctx.env.storage().max_ttl());
     assert_eq!(inicial, maximo);
 
     // Pasan 20 días sin pagos: la vida restante baja.
@@ -603,7 +651,10 @@ fn bump_renueva_la_vida_de_un_prestamo_sin_movimiento() {
     assert!(ctx.ttl(&DataKey::Loan(id)) > antes);
     assert!(ctx.ttl(&DataKey::Position(pos)) > antes);
 
-    assert_eq!(ctx.loan.try_bump(&999), Err(Ok(Error::PrestamoNoExiste.into())));
+    assert_eq!(
+        ctx.loan.try_bump(&999),
+        Err(Ok(Error::PrestamoNoExiste.into()))
+    );
 }
 
 /// Con la plataforma en pausa igual se puede renovar la vida.

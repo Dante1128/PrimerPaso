@@ -399,7 +399,12 @@ impl LoanContract {
     /// Bloquea garantía en USDC a favor de `borrower`. Firma el depositante
     /// (estudiante o garante). El único activo aceptado es el USDC
     /// configurado al inicializar.
-    pub fn deposit_collateral(env: Env, depositor: Address, borrower: Address, amount: i128) -> u64 {
+    pub fn deposit_collateral(
+        env: Env,
+        depositor: Address,
+        borrower: Address,
+        amount: i128,
+    ) -> u64 {
         depositor.require_auth();
         Self::require_not_paused(&env);
         if amount <= 0 {
@@ -621,7 +626,8 @@ impl LoanContract {
 
         // Solo el capital libera garantía.
         let mut position = Self::cargar_posicion(&env, loan.position_id);
-        let liberar = Self::garantia_objetivo(&loan, loan.principal_paid) - loan.collateral_released;
+        let liberar =
+            Self::garantia_objetivo(&loan, loan.principal_paid) - loan.collateral_released;
         if liberar > 0 {
             Self::usdc(&env).transfer(&env.current_contract_address(), &loan.depositor, &liberar);
             loan.collateral_released += liberar;
@@ -680,10 +686,18 @@ impl LoanContract {
 
         let usdc = Self::usdc(&env);
         if tomar > 0 {
-            usdc.transfer(&env.current_contract_address(), &Self::read_treasury(&env), &tomar);
+            usdc.transfer(
+                &env.current_contract_address(),
+                &Self::read_treasury(&env),
+                &tomar,
+            );
         }
         if devolver > 0 {
-            usdc.transfer(&env.current_contract_address(), &position.depositor, &devolver);
+            usdc.transfer(
+                &env.current_contract_address(),
+                &position.depositor,
+                &devolver,
+            );
         }
 
         position.locked = 0;
@@ -870,7 +884,8 @@ impl LoanContract {
 
     /// Lo vencido: capital de cuotas vencidas e impagas + interés pendiente.
     fn vencido(loan: &Loan, now: u64) -> i128 {
-        let capital_exigible = Self::capital_acumulado_cuota(loan, Self::cuotas_vencidas(loan, now));
+        let capital_exigible =
+            Self::capital_acumulado_cuota(loan, Self::cuotas_vencidas(loan, now));
         let capital_vencido = (capital_exigible - loan.principal_paid).max(0);
         let interes = loan.interest_accrued - loan.interest_paid;
         if capital_vencido == 0 {
