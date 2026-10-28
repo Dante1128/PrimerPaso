@@ -47,9 +47,9 @@ export default function SimuladorPrestamo({
   const fueraDeRango = monto < p.min_amount_usd || monto > p.max_amount_usd;
 
   return (
-    <div className="grid gap-6 lg:grid-cols-5">
+    <div className="grid min-w-0 grid-cols-1 gap-6 lg:grid-cols-5">
       {/* Controles y resumen */}
-      <div className="lg:col-span-2">
+      <div className="min-w-0 lg:col-span-2">
         <div className="nb-card p-6">
           <label htmlFor="sim-monto" className="block text-sm font-bold text-ink">
             ¿Cuánto necesitas? (USDC)
@@ -135,7 +135,7 @@ export default function SimuladorPrestamo({
       </div>
 
       {/* Calendario */}
-      <div className="lg:col-span-3">
+      <div className="min-w-0 lg:col-span-3">
         <div className="h-full rounded-3xl border-2 border-ink bg-white p-6 nb-shadow-sm">
           <h3 className="text-lg font-bold text-ink">Tus cuotas y tu garantía</h3>
           <p className="mt-1 text-sm font-medium text-ink/60">Cada cuota paga capital e interés, y te devuelve parte de tu garantía.</p>

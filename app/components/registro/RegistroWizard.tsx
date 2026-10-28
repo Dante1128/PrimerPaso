@@ -109,15 +109,18 @@ export default function RegistroWizard() {
 function Stepper({ etapas, paso }: { etapas: typeof ETAPAS; paso: Paso }) {
   const actual = etapas.findIndex((e) => e.id === paso);
   return (
-    <div className="mt-6 flex items-center gap-2">
+    <div className="mt-6">
+      <p className="mb-2 text-sm text-ink/70 sm:hidden">Paso {actual + 1} de {etapas.length}: <strong>{etapas[actual]?.txt}</strong></p>
+      <div className="flex items-start gap-2">
       {etapas.map((e, i) => (
-        <div key={e.id} className="flex flex-1 flex-col items-center gap-1.5">
+        <div key={e.id} className="flex min-w-0 flex-1 flex-col items-center gap-1.5">
           <div className={`h-1.5 w-full rounded-full ${i <= actual ? "bg-brand" : "bg-ink/15"}`} />
-          <span className={`text-[11px] font-medium ${i <= actual ? "text-brandink" : "text-ink/50"}`}>
+          <span className={`hidden text-[11px] font-medium sm:block ${i <= actual ? "text-brandink" : "text-ink/50"}`}>
             {e.txt}
           </span>
         </div>
       ))}
+      </div>
     </div>
   );
 }
