@@ -104,7 +104,7 @@ select count(*) from auth.users where email like '%@primerpaso.test';
 
 ## Lista de verificación antes de salir al mercado
 
-- [ ] Base de producción nueva, creada con las migraciones `supabase/migrations/0001` a `0004`, **sin** correr el seed.
+- [ ] Base de producción nueva, creada con las migraciones `supabase/migrations/0001` a `0005`, **sin** correr el seed.
 - [ ] `select count(*) from auth.users where email like '%@primerpaso.test'` devuelve 0.
 - [ ] Admin creado a mano con correo real y TOTP verificado.
 - [ ] `REQUIRE_STAFF_MFA=true` y el panel del staff pide el código.

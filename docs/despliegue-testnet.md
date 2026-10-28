@@ -122,10 +122,17 @@ La estructura completa está versionada en `supabase/migrations/`:
 | `0001_init.sql` | Extensiones, enums, tablas, índices, funciones, vistas, triggers, RLS, políticas y la configuración inicial de la plataforma. |
 | `0002_auth_y_storage.sql` | Trigger que crea el perfil al registrarse, buckets `kyc-docs` y `receipts`, y la política de `kyc-docs`. |
 | `0003_indexer_idempotente.sql` | Índices únicos del indexador y el candado `indexer_lock`. |
+| `0004_limite_intentos_auth.sql` | Contador de intentos de autenticación en PostgreSQL. |
+| `0005_consistencia.sql` | Cursor persistente, transacciones preparadas y unicidad de solicitudes en curso. |
 
 Proyecto nuevo: aplicarlas en orden desde el **SQL Editor** de Supabase. Los
-cambios futuros van en un archivo nuevo (`0004_...sql`), nunca editando uno ya
+cambios futuros van en un archivo nuevo, nunca editando uno ya
 aplicado.
 
 Tipos de TypeScript: `npm run db:types` en `/app` los genera desde la base real
 (usa `DATABASE_URL` de `.env.local`; no necesita `supabase login` ni Docker).
+
+`history.bump(borrower)` requiere actualizar el WASM de history. Ver
+[operación, recuperación y pruebas](operacion-y-pruebas.md). Las direcciones y
+hashes anteriores documentan el despliegue histórico; no certifican que esta
+actualización ya esté desplegada.
