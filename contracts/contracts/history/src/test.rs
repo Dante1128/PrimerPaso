@@ -2,7 +2,44 @@
 #![cfg(test)]
 
 use super::*;
-use soroban_sdk::{testutils::Address as _, Address, Env};
+use soroban_sdk::{
+    testutils::{storage::Persistent, Address as _, Ledger},
+    Address, Env,
+};
+
+#[test]
+fn bump_renueva_historial_y_credencial_sin_cambiar_datos() {
+    let (env, client) = setup();
+    let estudiante = Address::generate(&env);
+    client.record_payment(&estudiante, &1, &true, &true);
+    let original = client.get_record(&estudiante);
+    let credencial = client.get_credential(&estudiante);
+    env.ledger()
+        .with_mut(|l| l.sequence_number += 2 * DIA_EN_LEDGERS);
+    let antes = env.as_contract(&client.address, || {
+        env.storage()
+            .persistent()
+            .get_ttl(&DataKey::Record(estudiante.clone()))
+    });
+    client.bump(&estudiante);
+    env.as_contract(&client.address, || {
+        assert!(
+            env.storage()
+                .persistent()
+                .get_ttl(&DataKey::Record(estudiante.clone()))
+                > antes
+        );
+        assert!(
+            env.storage()
+                .persistent()
+                .get_ttl(&DataKey::Credential(estudiante.clone()))
+                > antes
+        );
+    });
+    assert_eq!(client.get_record(&estudiante), original);
+    assert_eq!(client.get_credential(&estudiante), credencial);
+    client.bump(&Address::generate(&env));
+}
 
 /// Prepara un entorno con el historial inicializado.
 fn setup() -> (Env, HistoryContractClient<'static>) {
@@ -66,7 +103,10 @@ fn credencial_se_emite_al_saldar_y_no_es_transferible() {
     let c = client.get_credential(&estudiante).unwrap();
     // Queda ligada a la dirección: no existe función para transferirla.
     assert_eq!(c.borrower, estudiante);
-    assert_eq!((c.loans_repaid, c.on_time, c.late, c.last_loan_id), (1, 2, 0, 7));
+    assert_eq!(
+        (c.loans_repaid, c.on_time, c.late, c.last_loan_id),
+        (1, 2, 0, 7)
+    );
 
     // Un segundo préstamo saldado actualiza la misma credencial.
     client.record_payment(&estudiante, &9, &false, &true);

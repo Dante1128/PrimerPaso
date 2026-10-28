@@ -173,6 +173,22 @@ impl HistoryContract {
 
     // --- Lecturas ---
 
+    /// Cualquiera puede mantener vivos el historial y la credencial sin modificarlos.
+    /// Las entradas ya archivadas deben restaurarse antes de esta llamada.
+    pub fn bump(env: Env, borrower: Address) {
+        Self::extender_instancia(&env);
+        for key in [
+            DataKey::Record(borrower.clone()),
+            DataKey::Credential(borrower),
+        ] {
+            if env.storage().persistent().has(&key) {
+                env.storage()
+                    .persistent()
+                    .extend_ttl(&key, TTL_UMBRAL, TTL_EXTENDER_A);
+            }
+        }
+    }
+
     pub fn get_record(env: Env, borrower: Address) -> Record {
         env.storage()
             .persistent()
@@ -264,7 +280,11 @@ impl HistoryContract {
         Self::extender_instancia(env);
     }
 
-    fn guardar<V: soroban_sdk::IntoVal<Env, soroban_sdk::Val>>(env: &Env, key: &DataKey, value: &V) {
+    fn guardar<V: soroban_sdk::IntoVal<Env, soroban_sdk::Val>>(
+        env: &Env,
+        key: &DataKey,
+        value: &V,
+    ) {
         env.storage().persistent().set(key, value);
         env.storage()
             .persistent()
