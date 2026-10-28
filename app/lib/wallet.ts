@@ -1,49 +1,35 @@
 "use client";
-// Cliente de wallet (Stellar Wallets Kit, Freighter como principal).
-import { StellarWalletsKit, Networks } from "@creit.tech/stellar-wallets-kit";
-import {
-  FreighterModule,
-  FREIGHTER_ID,
-} from "@creit.tech/stellar-wallets-kit/modules/freighter";
+// Integración directa con la API oficial de Freighter.
+import { getNetwork, requestAccess, signTransaction } from "@stellar/freighter-api";
 
 const PASSPHRASE =
-  process.env.NEXT_PUBLIC_STELLAR_NETWORK === "PUBLIC" ? Networks.PUBLIC : Networks.TESTNET;
+  process.env.NEXT_PUBLIC_STELLAR_NETWORK === "PUBLIC" ? "Public Global Stellar Network ; September 2015" : "Test SDF Network ; September 2015";
 
-let inicializado = false;
-
-function initKit() {
-  if (inicializado) return;
-  StellarWalletsKit.init({
-    modules: [new FreighterModule()],
-    selectedWalletId: FREIGHTER_ID,
-    network: Networks.TESTNET,
-  });
-  inicializado = true;
+async function comprobarRed() {
+  const red = await getNetwork();
+  if (red.error) throw new Error("No se pudo leer la red de Freighter. Abre y desbloquea la extensión.");
+  if (red.networkPassphrase !== PASSPHRASE) throw new Error(`En Freighter selecciona la red ${process.env.NEXT_PUBLIC_STELLAR_NETWORK === "PUBLIC" ? "Mainnet" : "Testnet"}.`);
 }
 
 /**
  * Conecta Freighter y devuelve la dirección pública (G...) de la cuenta
- * activa. Usa fetchAddress: pide permiso y la cuenta a la extensión
- * (getAddress solo lee la memoria del kit y falla si aún no hay conexión).
+ * activa. Solicita permiso a la extensión y comprueba la red seleccionada.
  */
 export async function conectarFreighter(): Promise<string> {
-  initKit();
-  StellarWalletsKit.setWallet(FREIGHTER_ID);
-  try {
-    const { address } = await StellarWalletsKit.fetchAddress();
-    if (!address) throw new Error();
-    return address;
-  } catch {
-    throw new Error("No se pudo conectar Freighter. Ábrelo, desbloquéalo, elige la red Testnet y autoriza este sitio.");
-  }
+  const r = await requestAccess();
+  if (r.error || !r.address) throw new Error("No se pudo conectar Freighter. Abre la extensión, desbloquéala y autoriza este sitio.");
+  await comprobarRed();
+  return r.address;
 }
 
 /** Firma un XDR con la wallet y devuelve el XDR firmado. */
 export async function firmarXdr(xdr: string, address: string): Promise<string> {
-  initKit();
-  const { signedTxXdr } = await StellarWalletsKit.signTransaction(xdr, {
+  await comprobarRed();
+  const r = await signTransaction(xdr, {
     networkPassphrase: PASSPHRASE,
     address,
   });
-  return signedTxXdr;
+  if (r.error || !r.signedTxXdr) throw new Error("No se pudo firmar la transacción en Freighter.");
+  if (r.signerAddress !== address) throw new Error("Freighter firmó con otra cuenta. Selecciona tu wallet vinculada.");
+  return r.signedTxXdr;
 }
