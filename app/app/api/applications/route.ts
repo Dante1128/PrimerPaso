@@ -91,6 +91,7 @@ export const POST = manejar(async (req: Request) => {
     })
     .select("id, amount_usd, collateral_amount, installments, status")
     .single();
+  if (error?.code === "23505") throw new ErrorApi("Ya tienes una solicitud en curso", 409);
   if (error) throw new ErrorApi(error.message, 500);
   await auditar(user.id, "application_submitted", "loan_application", data.id, d);
   return Response.json({ ok: true, solicitud: data });

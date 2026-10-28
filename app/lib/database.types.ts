@@ -3,6 +3,12 @@ export type Json = string | number | boolean | null | { [key: string]: Json | un
 export type Database = {
   public: {
     Tables: {
+      prepared_transactions: {
+        Row: { tx_hash: string; profile_id: string; entity_id: string; method: string; expires_at: string; confirmed_at: string | null; result: Json | null; created_at: string };
+        Insert: { tx_hash: string; profile_id: string; entity_id: string; method: string; expires_at: string; confirmed_at?: string | null; result?: Json | null; created_at?: string };
+        Update: { confirmed_at?: string | null; result?: Json | null };
+        Relationships: [];
+      };
       audit_logs: {
         Row: {
           action: string;
@@ -221,17 +227,20 @@ export type Database = {
       };
       indexer_state: {
         Row: {
+          last_cursor: string | null;
           contract_id: string;
           last_ledger: number;
           updated_at: string;
         };
         ComputedFields: never;
         Insert: {
+          last_cursor?: string | null;
           contract_id: string;
           last_ledger?: number;
           updated_at?: string;
         };
         Update: {
+          last_cursor?: string | null;
           contract_id?: string;
           last_ledger?: number;
           updated_at?: string;
