@@ -117,6 +117,7 @@ export async function enviarXdrFirmado(xdrFirmado: string): Promise<{ ok: boolea
 
 /** Envía USDC de prueba desde el emisor (acuña). Solo testnet. */
 export async function enviarUsdcDePrueba(destino: string, monto: string) {
+  if (NETWORK_PASSPHRASE === Networks.PUBLIC) return { ok: false, detail: "El faucet solo está disponible en testnet" };
   const issuer = issuerKeypair();
   if (!issuer) return { ok: false, detail: "Falta USDC_ISSUER_SECRET (faucet de testnet)" };
   const cuenta = await conReintentos(() => rpcServer().getAccount(issuer.publicKey()));

@@ -90,4 +90,4 @@ export function periodoSegundos(): number {
   return Number.isFinite(v) && v >= 60 ? Math.floor(v) : 2_592_000;
 }
 
-export const linkTx = (hash?: string) => (hash ? `https://stellar.expert/explorer/testnet/tx/${hash}` : undefined);
+export const linkTx = (hash?: string) => (hash ? `https://stellar.expert/explorer/${process.env.NEXT_PUBLIC_STELLAR_NETWORK === "PUBLIC" ? "public" : "testnet"}/tx/${hash}` : undefined);
