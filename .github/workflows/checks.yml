@@ -44,9 +44,6 @@ jobs:
           workspaces: contracts
       - run: cargo test --locked
       - run: cargo fmt --all -- --check
-      - name: Instalar dependencias de Stellar CLI
-        run: |
-          sudo apt-get update
-          sudo apt-get install --yes libdbus-1-dev pkg-config
-      - run: cargo install --locked stellar-cli --version 28.1.0
+      - name: Instalar Stellar CLI
+        uses: stellar/stellar-cli@v28.1.0
       - run: stellar contract build
