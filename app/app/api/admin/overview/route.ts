@@ -1,4 +1,3 @@
-// Resumen para el admin: pool (en la cadena y en caché), ingresos y cartera.
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { exigirUsuario, manejar } from "@/lib/api";
 import { LOAN_ID, aUsdc, poolDisponible } from "@/lib/soroban";
