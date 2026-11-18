@@ -1,5 +1,5 @@
 import { connection } from "next/server";
-import LoginForm from "@/components/LoginForm";
+import LoginForm from "@/components/auth/LoginForm";
 
 export const metadata = { title: "Ingresar · PrimerPaso" };
 

@@ -3,7 +3,7 @@
 // on-chain: ningún dato personal.
 import Link from "next/link";
 import { connection } from "next/server";
-import Logo from "@/components/Logo";
+import Logo from "@/components/comun/Logo";
 import { Puntaje } from "@/components/panel/TarjetaCredito";
 import { esDireccionStellar, perfilCrediticio } from "@/lib/cadena/credito";
 

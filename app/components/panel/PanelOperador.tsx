@@ -4,7 +4,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { api } from "@/lib/comun/cliente";
-import { Alerta, Boton, Spinner } from "@/components/ui";
+import { Alerta, Boton, Spinner } from "@/components/comun/ui";
 import { Estado, PROPOSITOS, Tarjeta, Vacio, fecha, usdc } from "@/components/panel/comunes";
 import type { Solicitud } from "@/components/panel/PanelEstudiante";
 

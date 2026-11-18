@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { supabaseNavegador } from "@/lib/supabase/client";
-import { Alerta, Spinner } from "@/components/ui";
+import { Alerta, Spinner } from "@/components/comun/ui";
 
 async function abrirSesionDelHash(): Promise<string | null> {
   const p = new URLSearchParams(window.location.hash.slice(1));

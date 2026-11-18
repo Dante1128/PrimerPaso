@@ -3,10 +3,10 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import Logo from "@/components/Logo";
-import BotonGoogle from "@/components/BotonGoogle";
-import Turnstile, { CAPTCHA_ACTIVO } from "@/components/Turnstile";
-import { Campo, inputClase, Boton, Alerta, Spinner } from "@/components/ui";
+import Logo from "@/components/comun/Logo";
+import BotonGoogle from "@/components/auth/BotonGoogle";
+import Turnstile, { CAPTCHA_ACTIVO } from "@/components/auth/Turnstile";
+import { Campo, inputClase, Boton, Alerta, Spinner } from "@/components/comun/ui";
 
 type Modo = "password" | "codigo";
 

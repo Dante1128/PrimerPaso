@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import SimuladorPrestamo from "@/components/SimuladorPrestamo";
+import SimuladorPrestamo from "@/components/comun/SimuladorPrestamo";
 
 export default function Simulador() {
   const router = useRouter();

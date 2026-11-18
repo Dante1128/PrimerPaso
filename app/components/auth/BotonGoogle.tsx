@@ -3,7 +3,7 @@
 // únicamente si Google está configurado en Supabase.
 import { useState } from "react";
 import { supabaseNavegador } from "@/lib/supabase/client";
-import { Alerta, Boton, Spinner } from "@/components/ui";
+import { Alerta, Boton, Spinner } from "@/components/comun/ui";
 
 export const GOOGLE_HABILITADO = process.env.NEXT_PUBLIC_GOOGLE_AUTH_ENABLED === "true";
 

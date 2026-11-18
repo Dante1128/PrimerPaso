@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { api } from "@/lib/comun/cliente";
-import { Alerta, Boton, Spinner, inputClase } from "@/components/ui";
+import { Alerta, Boton, Spinner, inputClase } from "@/components/comun/ui";
 import DetallePrestamo from "@/components/panel/DetallePrestamo";
 import { SolicitudEnCurso, type Solicitud } from "@/components/panel/PanelEstudiante";
 import { Estado, PROPOSITOS, SaldoHero, Tarjeta, Vacio, usdc } from "@/components/panel/comunes";

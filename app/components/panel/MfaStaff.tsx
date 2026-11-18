@@ -4,7 +4,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabaseNavegador } from "@/lib/supabase/client";
-import { Alerta, Boton, Campo, Spinner, inputClase } from "@/components/ui";
+import { Alerta, Boton, Campo, Spinner, inputClase } from "@/components/comun/ui";
 import { Tarjeta } from "@/components/panel/comunes";
 
 type Estado =

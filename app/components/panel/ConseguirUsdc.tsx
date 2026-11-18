@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { usePollar } from "@pollar/react";
 import { ES_TESTNET, fondearPrueba, type PasoFondeo } from "@/lib/comun/cliente";
-import { Alerta, Boton, Spinner } from "@/components/ui";
+import { Alerta, Boton, Spinner } from "@/components/comun/ui";
 import { usdc } from "@/components/panel/comunes";
 
 const PASOS: Record<PasoFondeo, string> = {

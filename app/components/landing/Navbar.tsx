@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import Logo from "@/components/Logo";
+import Logo from "@/components/comun/Logo";
 
 const enlaces = [
   { href: "#como-funciona", label: "Cómo funciona" },

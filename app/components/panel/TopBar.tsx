@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import Logo from "@/components/Logo";
+import Logo from "@/components/comun/Logo";
 import { cortarDir } from "@/lib/comun/format";
 import Notificaciones from "@/components/panel/Notificaciones";
 

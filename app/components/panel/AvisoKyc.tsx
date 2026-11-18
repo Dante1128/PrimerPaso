@@ -2,7 +2,7 @@
 // Identidad rechazada: muestra el motivo y deja volver a enviarla sin salir del panel.
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Alerta, Boton } from "@/components/ui";
+import { Alerta, Boton } from "@/components/comun/ui";
 import { PasoKyc } from "@/components/registro/RegistroWizard";
 
 export default function AvisoKycRechazado({ motivo }: { motivo: string | null }) {

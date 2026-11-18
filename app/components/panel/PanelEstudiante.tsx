@@ -3,8 +3,8 @@
 import { useCallback, useEffect, useState } from "react";
 import { usePollar } from "@pollar/react";
 import { api, copiar, firmarYEnviar, useRecargarTrasIndexar } from "@/lib/comun/cliente";
-import { Alerta, Boton, Campo, Spinner, inputClase } from "@/components/ui";
-import SimuladorPrestamo from "@/components/SimuladorPrestamo";
+import { Alerta, Boton, Campo, Spinner, inputClase } from "@/components/comun/ui";
+import SimuladorPrestamo from "@/components/comun/SimuladorPrestamo";
 import DetallePrestamo from "@/components/panel/DetallePrestamo";
 import AvisoKycRechazado from "@/components/panel/AvisoKyc";
 import ConseguirUsdc from "@/components/panel/ConseguirUsdc";

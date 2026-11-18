@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { api, useRecargarTrasIndexar } from "@/lib/comun/cliente";
 import { paraContrato, paraEditar } from "@/lib/creditos/parametros";
-import { Alerta, Boton, Campo, Spinner, inputClase } from "@/components/ui";
+import { Alerta, Boton, Campo, Spinner, inputClase } from "@/components/comun/ui";
 import { RevisionKyc, RevisionSolicitudes } from "@/components/panel/PanelOperador";
 import { Dato, Estado, LinkTx, Tarjeta, Vacio, fecha, usdc } from "@/components/panel/comunes";
 
