@@ -8,7 +8,7 @@
 //  3. El servidor verifica que la cuenta firmó correctamente. (verifyChallenge)
 import "server-only";
 import { WebAuth } from "@stellar/stellar-sdk";
-import { NETWORK_PASSPHRASE, sep10ServerKeypair } from "@/lib/stellar";
+import { NETWORK_PASSPHRASE, sep10ServerKeypair } from "@/lib/cadena/stellar";
 
 export const HOME_DOMAIN = process.env.SEP10_HOME_DOMAIN ?? "localhost:3000";
 const WEB_AUTH_DOMAIN = HOME_DOMAIN;

@@ -6,7 +6,7 @@ import { exigirUsuario, manejar, ErrorApi, auditar, periodoSegundos } from "@/li
 import { solicitudSchema } from "@/lib/validation";
 import type { Enums, Tables } from "@/lib/database.types";
 import { posicionDeSolicitud } from "@/lib/prestamos";
-import { leerPosicion } from "@/lib/soroban";
+import { leerPosicion } from "@/lib/cadena/soroban";
 
 const CAMPOS =
   "id, student_id, guarantor_id, purpose, purpose_detail, amount_usd, collateral_amount, rate_bps, installments, status, rejection_reason, created_at, updated_at, student:profiles!loan_applications_student_id_fkey(full_name), guarantor:profiles!loan_applications_guarantor_id_fkey(full_name)";

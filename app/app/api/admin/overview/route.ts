@@ -1,7 +1,7 @@
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { exigirUsuario, manejar } from "@/lib/api";
-import { LOAN_ID, aUsdc, poolDisponible } from "@/lib/soroban";
-import { balanceUsdc } from "@/lib/stellar";
+import { LOAN_ID, aUsdc, poolDisponible } from "@/lib/cadena/soroban";
+import { balanceUsdc } from "@/lib/cadena/stellar";
 
 export const GET = manejar(async () => {
   await exigirUsuario(["admin"]);

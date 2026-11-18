@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { buildChallenge, HOME_DOMAIN } from "@/lib/sep10";
-import { NETWORK_PASSPHRASE } from "@/lib/stellar";
+import { buildChallenge, HOME_DOMAIN } from "@/lib/cadena/sep10";
+import { NETWORK_PASSPHRASE } from "@/lib/cadena/stellar";
 
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);

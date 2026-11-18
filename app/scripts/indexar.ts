@@ -1,5 +1,5 @@
 // Corre el indexador una vez desde la terminal: npm run indexar
-import { sincronizar } from "../lib/indexer";
+import { sincronizar } from "../lib/cadena/indexer";
 
 sincronizar({ esperarMs: 30_000 })
   .then((r) => {

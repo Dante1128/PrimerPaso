@@ -5,7 +5,7 @@ import Link from "next/link";
 import { connection } from "next/server";
 import Logo from "@/components/Logo";
 import { Puntaje } from "@/components/panel/TarjetaCredito";
-import { esDireccionStellar, perfilCrediticio } from "@/lib/credito";
+import { esDireccionStellar, perfilCrediticio } from "@/lib/cadena/credito";
 
 export const instant = false;
 

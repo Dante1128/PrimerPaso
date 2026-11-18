@@ -18,7 +18,7 @@ import {
   rpc,
   type xdr,
 } from "@stellar/stellar-sdk";
-import { NETWORK_PASSPHRASE, conReintentos, enviarYEsperar, rpcServer, simularLectura } from "@/lib/stellar";
+import { NETWORK_PASSPHRASE, conReintentos, enviarYEsperar, rpcServer, simularLectura } from "@/lib/cadena/stellar";
 
 export const LOAN_ID = process.env.NEXT_PUBLIC_LOAN_CONTRACT_ID ?? "";
 export const HISTORY_ID = process.env.NEXT_PUBLIC_HISTORY_CONTRACT_ID ?? "";

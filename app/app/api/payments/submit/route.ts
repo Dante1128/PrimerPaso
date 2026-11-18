@@ -1,10 +1,10 @@
 // Envía el pago ya firmado con la wallet; la caché se actualiza en segundo plano.
 import { exigirUsuario, manejar, ErrorApi, auditar, linkTx } from "@/lib/api";
 import { pagoSchema } from "@/lib/validation";
-import { LOAN_ID, validarXdr } from "@/lib/soroban";
-import { enviarYEsperar } from "@/lib/stellar";
-import { sincronizarEnSegundoPlano } from "@/lib/indexer";
-import { exigirPreparada, confirmarPreparada } from "@/lib/transacciones";
+import { LOAN_ID, validarXdr } from "@/lib/cadena/soroban";
+import { enviarYEsperar } from "@/lib/cadena/stellar";
+import { sincronizarEnSegundoPlano } from "@/lib/cadena/indexer";
+import { exigirPreparada, confirmarPreparada } from "@/lib/cadena/transacciones";
 
 export const POST = manejar(async (req: Request) => {
   const user = await exigirUsuario(["student", "guarantor"]);

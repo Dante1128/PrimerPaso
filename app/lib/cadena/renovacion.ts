@@ -6,8 +6,8 @@
 import "server-only";
 import { Address, xdr } from "@stellar/stellar-sdk";
 import { supabaseAdmin } from "@/lib/supabase/admin";
-import { HISTORY_ID, LOAN_ID, arg, ejecutarComoServidor, operatorKeypair } from "@/lib/soroban";
-import { conReintentos, rpcServer } from "@/lib/stellar";
+import { HISTORY_ID, LOAN_ID, arg, ejecutarComoServidor, operatorKeypair } from "@/lib/cadena/soroban";
+import { conReintentos, rpcServer } from "@/lib/cadena/stellar";
 
 const DIA_EN_LEDGERS = 17_280;
 /** Se renueva cuando quedan menos de 7 días de vida. */

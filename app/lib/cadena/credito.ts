@@ -1,7 +1,7 @@
 // Perfil crediticio de una dirección, leído en vivo del contrato `history`.
 // Solo datos on-chain (sin datos personales): sirve al panel y al verificador público.
 import "server-only";
-import { HISTORY_ID, leerCredencial, leerPuntaje, leerRegistro } from "@/lib/soroban";
+import { HISTORY_ID, leerCredencial, leerPuntaje, leerRegistro } from "@/lib/cadena/soroban";
 
 export type PerfilCrediticio = {
   address: string;

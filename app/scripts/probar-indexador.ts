@@ -3,7 +3,7 @@
 //  2. Marca como pendientes eventos ya proyectados y reprocesa: no debe
 //     duplicar pagos, ingresos, movimientos del pool ni de garantía.
 // Uso: npm run indexar:probar   (requiere la migración 0003 aplicada)
-import { sincronizar } from "../lib/indexer";
+import { sincronizar } from "../lib/cadena/indexer";
 import { supabaseAdmin } from "../lib/supabase/admin";
 
 const db = supabaseAdmin();

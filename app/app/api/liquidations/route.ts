@@ -5,8 +5,8 @@
 import { z } from "zod";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { exigirUsuario, manejar, ErrorApi, auditar, notificar, linkTx } from "@/lib/api";
-import { LOAN_ID, aUsdc, arg, cotizarPago, ejecutarComoServidor, operatorKeypair } from "@/lib/soroban";
-import { sincronizarEnSegundoPlano } from "@/lib/indexer";
+import { LOAN_ID, aUsdc, arg, cotizarPago, ejecutarComoServidor, operatorKeypair } from "@/lib/cadena/soroban";
+import { sincronizarEnSegundoPlano } from "@/lib/cadena/indexer";
 
 export const GET = manejar(async () => {
   await exigirUsuario(["admin"]);

@@ -6,9 +6,9 @@
 import { exigirUsuario, manejar, ErrorApi, periodoSegundos } from "@/lib/api";
 import { pasoPrestamoSchema } from "@/lib/validation";
 import { solicitudParaActuar, posicionDeSolicitud } from "@/lib/prestamos";
-import { LOAN_ID, aStroops, arg, leerPosicion, operatorKeypair, prepararParaWallet } from "@/lib/soroban";
-import { tieneTrustlineUsdc, balanceUsdc } from "@/lib/stellar";
-import { registrarPreparada } from "@/lib/transacciones";
+import { LOAN_ID, aStroops, arg, leerPosicion, operatorKeypair, prepararParaWallet } from "@/lib/cadena/soroban";
+import { tieneTrustlineUsdc, balanceUsdc } from "@/lib/cadena/stellar";
+import { registrarPreparada } from "@/lib/cadena/transacciones";
 
 export const POST = manejar(async (req: Request) => {
   const user = await exigirUsuario(["student", "guarantor"]);

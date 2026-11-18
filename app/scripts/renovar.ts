@@ -1,5 +1,5 @@
 // Renueva la vida (TTL) en la cadena de los préstamos activos: npm run renovar
-import { renovarPrestamos, renovarHistoriales } from "../lib/renovacion";
+import { renovarPrestamos, renovarHistoriales } from "../lib/cadena/renovacion";
 
 renovarPrestamos()
   .then(async (r) => {

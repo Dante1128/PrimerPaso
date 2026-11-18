@@ -2,8 +2,8 @@
 //   Authorization: Bearer <CRON_SECRET>
 // (Vercel Cron envía ese header automáticamente si CRON_SECRET está definido.)
 import { timingSafeEqual } from "crypto";
-import { sincronizar } from "@/lib/indexer";
-import { renovarPrestamos, renovarHistoriales } from "@/lib/renovacion";
+import { sincronizar } from "@/lib/cadena/indexer";
+import { renovarPrestamos, renovarHistoriales } from "@/lib/cadena/renovacion";
 
 function autorizado(req: Request): boolean {
   const secreto = process.env.CRON_SECRET;

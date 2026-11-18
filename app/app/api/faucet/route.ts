@@ -10,7 +10,7 @@ import {
   construirTrustlineXdr,
   enviarUsdcDePrueba,
   enviarXdrFirmado,
-} from "@/lib/stellar";
+} from "@/lib/cadena/stellar";
 
 /** USDC de prueba por solicitud: alcanza para la garantía del ejemplo (1.250) + intereses. */
 const MONTO_USDC = "1500";

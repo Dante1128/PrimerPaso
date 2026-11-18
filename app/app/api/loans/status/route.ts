@@ -5,7 +5,7 @@
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { exigirUsuario, manejar, ErrorApi } from "@/lib/api";
 import { puedeVerPrestamo } from "@/lib/prestamos";
-import { LOAN_ID, aUsdc, cotizarPago, leerPrestamo } from "@/lib/soroban";
+import { LOAN_ID, aUsdc, cotizarPago, leerPrestamo } from "@/lib/cadena/soroban";
 
 /** Cotización en USDC (número) para el cliente. */
 async function cotizacion(onchainId: number) {

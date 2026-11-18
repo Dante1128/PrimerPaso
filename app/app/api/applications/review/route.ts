@@ -3,7 +3,7 @@
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { exigirUsuario, manejar, ErrorApi, auditar, notificar } from "@/lib/api";
 import { revisionSchema } from "@/lib/validation";
-import { aStroops, poolDisponible } from "@/lib/soroban";
+import { aStroops, poolDisponible } from "@/lib/cadena/soroban";
 
 export const POST = manejar(async (req: Request) => {
   const user = await exigirUsuario(["operator", "admin"]);

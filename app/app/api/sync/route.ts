@@ -3,7 +3,7 @@
 // datos cuando la caché esté al día. Si aún no lo está, empuja el indexador.
 import { exigirUsuario, manejar, ErrorApi } from "@/lib/api";
 import { supabaseAdmin } from "@/lib/supabase/admin";
-import { sincronizarEnSegundoPlano } from "@/lib/indexer";
+import { sincronizarEnSegundoPlano } from "@/lib/cadena/indexer";
 
 export const GET = manejar(async (req: Request) => {
   await exigirUsuario();

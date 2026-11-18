@@ -1,9 +1,9 @@
 // Perfil crediticio propio (puntaje, historial y credencial) desde la cadena,
 // más el saldo USDC de la wallet.
 import { exigirUsuario, manejar, ErrorApi } from "@/lib/api";
-import { perfilCrediticio } from "@/lib/credito";
-import { balanceUsdc } from "@/lib/stellar";
-import { aUsdc } from "@/lib/soroban";
+import { perfilCrediticio } from "@/lib/cadena/credito";
+import { balanceUsdc } from "@/lib/cadena/stellar";
+import { aUsdc } from "@/lib/cadena/soroban";
 
 export const GET = manejar(async () => {
   const user = await exigirUsuario();

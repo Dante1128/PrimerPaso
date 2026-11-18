@@ -5,8 +5,8 @@ import { supabaseAdmin } from "@/lib/supabase/admin";
 import { getSessionUser } from "@/lib/auth";
 import { exigirUsuario, manejar, ErrorApi, auditar, linkTx } from "@/lib/api";
 import { parametrosSchema } from "@/lib/validation";
-import { LOAN_ID, aStroops, aUsdc, adminKeypair, ejecutarComoServidor, leerParams, poolDisponible } from "@/lib/soroban";
-import { sincronizarEnSegundoPlano } from "@/lib/indexer";
+import { LOAN_ID, aStroops, aUsdc, adminKeypair, ejecutarComoServidor, leerParams, poolDisponible } from "@/lib/cadena/soroban";
+import { sincronizarEnSegundoPlano } from "@/lib/cadena/indexer";
 import { nativeToScVal, xdr } from "@stellar/stellar-sdk";
 
 export const GET = manejar(async () => {

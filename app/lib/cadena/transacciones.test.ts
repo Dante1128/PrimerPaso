@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { Account, Address, Contract, Keypair, Networks, StrKey, TransactionBuilder, nativeToScVal, xdr } from "@stellar/stellar-sdk";
 
 const estado = vi.hoisted(() => ({ filas: new Map<string, Record<string, unknown>>() }));
-vi.mock("@/lib/stellar", () => ({ NETWORK_PASSPHRASE: "Test SDF Network ; September 2015" }));
+vi.mock("@/lib/cadena/stellar", () => ({ NETWORK_PASSPHRASE: "Test SDF Network ; September 2015" }));
 vi.mock("@/lib/api", () => ({ ErrorApi: class extends Error {} }));
 vi.mock("@/lib/supabase/admin", () => ({ supabaseAdmin: () => ({ from: () => ({
   upsert: async (fila: Record<string, unknown>) => { if (!estado.filas.has(String(fila.tx_hash))) estado.filas.set(String(fila.tx_hash), fila); return { error: null }; },

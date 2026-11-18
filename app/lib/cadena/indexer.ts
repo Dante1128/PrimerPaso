@@ -17,10 +17,10 @@ import { randomUUID } from "crypto";
 import { after } from "next/server";
 import { rpc, scValToNative } from "@stellar/stellar-sdk";
 import { supabaseAdmin } from "@/lib/supabase/admin";
-import { conReintentos, rpcServer } from "@/lib/stellar";
-import { HISTORY_ID, LOAN_ID, aUsdc, leerCredencial, leerPrestamo, leerPuntaje, leerRegistro } from "@/lib/soroban";
+import { conReintentos, rpcServer } from "@/lib/cadena/stellar";
+import { HISTORY_ID, LOAN_ID, aUsdc, leerCredencial, leerPrestamo, leerPuntaje, leerRegistro } from "@/lib/cadena/soroban";
 import type { Database, Json } from "@/lib/database.types";
-import { checkpointPagina, completarCuotas, type PagoHistorico } from "@/lib/proyeccion";
+import { checkpointPagina, completarCuotas, type PagoHistorico } from "@/lib/cadena/proyeccion";
 
 type Evento = {
   contrato: string;

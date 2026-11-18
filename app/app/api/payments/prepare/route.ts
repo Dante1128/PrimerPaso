@@ -5,9 +5,9 @@ import { supabaseAdmin } from "@/lib/supabase/admin";
 import { exigirUsuario, manejar, ErrorApi } from "@/lib/api";
 import { pagoSchema } from "@/lib/validation";
 import { puedeVerPrestamo } from "@/lib/prestamos";
-import { LOAN_ID, aStroops, aUsdc, arg, cotizarPago, prepararParaWallet } from "@/lib/soroban";
-import { balanceUsdc } from "@/lib/stellar";
-import { registrarPreparada } from "@/lib/transacciones";
+import { LOAN_ID, aStroops, aUsdc, arg, cotizarPago, prepararParaWallet } from "@/lib/cadena/soroban";
+import { balanceUsdc } from "@/lib/cadena/stellar";
+import { registrarPreparada } from "@/lib/cadena/transacciones";
 
 export const POST = manejar(async (req: Request) => {
   const user = await exigirUsuario(["student", "guarantor"]);

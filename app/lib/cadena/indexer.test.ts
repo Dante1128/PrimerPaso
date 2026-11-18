@@ -53,11 +53,11 @@ class Consulta implements PromiseLike<{ data: Fila[]; error: { message: string }
 }
 vi.mock("next/server", () => ({ after: vi.fn() }));
 vi.mock("@/lib/supabase/admin", () => ({ supabaseAdmin: () => ({ from: (tabla: string) => new Consulta(tabla), rpc: async () => ({ data: estado.candado, error: null }) }) }));
-vi.mock("@/lib/stellar", () => ({ conReintentos: (fn: () => unknown) => fn(), rpcServer: () => ({
+vi.mock("@/lib/cadena/stellar", () => ({ conReintentos: (fn: () => unknown) => fn(), rpcServer: () => ({
   getLatestLedger: async () => ({ sequence: 100 }),
   getEvents: async (req: Record<string, unknown>) => { estado.solicitudesRpc.push(req); return { events: estado.eventos, latestLedger: 100, cursor: "fin" }; },
 }) }));
-vi.mock("@/lib/soroban", () => ({
+vi.mock("@/lib/cadena/soroban", () => ({
   LOAN_ID: "loan", HISTORY_ID: "history", aUsdc: (v: bigint) => Number(v) / 1e7,
   leerPrestamo: async () => ({
     id: 1n, position_id: 1n, borrower: "wallet", depositor: "wallet", principal: 1000000000n, origination_fee: 10000000n,
