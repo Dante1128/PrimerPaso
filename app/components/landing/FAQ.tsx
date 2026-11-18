@@ -27,10 +27,10 @@ const preguntas = [
 
 export default function FAQ() {
   return (
-    <section id="faq" className="border-t-2 border-ink bg-cream py-20">
+    <section id="faq" className="border-t border-line bg-cream py-20">
       <div className="mx-auto max-w-3xl px-4 sm:px-6">
         <div className="text-center">
-          <p className="inline-block -rotate-1 border-2 border-ink bg-grape px-3 py-1 text-sm font-bold uppercase tracking-wide text-ink nb-shadow-sm">
+          <p className="inline-block rounded-full bg-grape/15 px-3 py-1 text-sm font-bold uppercase tracking-wide text-grape">
             Preguntas frecuentes
           </p>
           <h2 className="mt-4 text-3xl font-bold text-ink sm:text-4xl">
@@ -42,7 +42,7 @@ export default function FAQ() {
           {preguntas.map((p) => (
             <details
               key={p.q}
-              className="group rounded-xl border-2 border-ink bg-white p-5 nb-shadow-sm [&_svg]:open:rotate-45"
+              className="group rounded-xl bg-white p-5 nb-shadow-sm [&_svg]:open:rotate-45"
             >
               <summary className="flex cursor-pointer list-none items-center justify-between gap-4 text-base font-bold text-ink">
                 {p.q}
@@ -51,7 +51,7 @@ export default function FAQ() {
                   height="22"
                   viewBox="0 0 24 24"
                   fill="none"
-                  className="shrink-0 rounded-md border-2 border-ink bg-sun p-0.5 text-ink transition-transform"
+                  className="shrink-0 rounded-md bg-sun/20 p-0.5 text-sun transition-transform"
                 >
                   <path
                     d="M12 5v14M5 12h14"

@@ -2,7 +2,7 @@ import Logo from "@/components/Logo";
 
 export default function Footer() {
   return (
-    <footer className="border-t-2 border-ink bg-white">
+    <footer className="border-t border-line bg-white">
       <div className="mx-auto max-w-6xl px-4 py-12 sm:px-6">
         <div className="grid gap-8 md:grid-cols-4">
           <div className="md:col-span-2">
@@ -11,8 +11,8 @@ export default function Footer() {
               Créditos para estudiantes universitarios en Bolivia respaldados
               por tu ahorro en USDC. Construido sobre Stellar y Soroban.
             </p>
-            <span className="mt-4 inline-flex items-center gap-2 rounded-full border-2 border-ink bg-sun px-3 py-1 text-xs font-bold text-ink">
-              <span className="h-2 w-2 rounded-full bg-ink" />
+            <span className="mt-4 inline-flex items-center gap-2 rounded-full bg-sun/15 px-3 py-1 text-xs font-bold text-sun">
+              <span className="h-2 w-2 rounded-full bg-sun" />
               Demo en Stellar Testnet · sin dinero real
             </span>
           </div>
@@ -60,7 +60,7 @@ export default function Footer() {
           </div>
         </div>
 
-        <div className="mt-10 flex flex-col items-center justify-between gap-4 border-t-2 border-ink/10 pt-6 text-sm font-medium text-ink/50 sm:flex-row">
+        <div className="mt-10 flex flex-col items-center justify-between gap-4 border-t border-line pt-6 text-sm font-medium text-ink/50 sm:flex-row">
           <p>© 2026 PrimerPaso. Proyecto educativo.</p>
           <p>Hecho con Stellar · Soroban · Next.js</p>
         </div>

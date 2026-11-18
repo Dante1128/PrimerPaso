@@ -79,7 +79,7 @@ export default function LoginForm({ errorInicial }: { errorInicial?: string }) {
         <Link href="/" className="inline-block">
           <Logo />
         </Link>
-        <form onSubmit={enviar} className="mt-6 space-y-4 rounded-3xl border-2 border-ink bg-white p-8 nb-shadow-sm">
+        <form onSubmit={enviar} className="mt-6 space-y-4 rounded-3xl bg-white p-8 nb-shadow">
           <h1 className="text-xl font-bold text-ink">Ingresar</h1>
 
           <BotonGoogle />

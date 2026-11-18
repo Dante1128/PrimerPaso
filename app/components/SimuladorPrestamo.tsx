@@ -62,7 +62,7 @@ export default function SimuladorPrestamo({
             step={50}
             value={monto}
             onChange={(e) => setMonto(Number(e.target.value))}
-            className="mt-2 w-full rounded-xl border-2 border-ink px-3 py-2 text-lg font-bold text-ink outline-none transition focus:-translate-x-0.5 focus:-translate-y-0.5 focus:shadow-[3px_3px_0_0_#141414]"
+            className="mt-2 w-full rounded-xl border border-line px-3 py-2 text-lg font-bold text-ink outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/20"
           />
           <input
             type="range"
@@ -97,7 +97,7 @@ export default function SimuladorPrestamo({
             className="mt-2 w-full accent-brand"
           />
 
-          <dl className="mt-6 space-y-2.5 border-t-2 border-ink/10 pt-5 text-sm">
+          <dl className="mt-6 space-y-2.5 border-t border-line pt-5 text-sm">
             <Fila t={`Garantía a bloquear (${p.max_ltv_bps / 100}% LTV)`} v={`${fmt(s.garantia)} USDC`} />
             <Fila t={`Comisión de apertura (${p.origination_fee_bps / 100}%)`} v={`− ${fmt(s.comision)} USDC`} />
             <Fila t="Recibes en tu wallet" v={`${fmt(s.recibes)} USDC`} fuerte />
@@ -105,12 +105,12 @@ export default function SimuladorPrestamo({
           </dl>
 
           <div className="mt-5 grid grid-cols-2 gap-3">
-            <div className="rounded-xl border-2 border-ink bg-cream p-3">
+            <div className="rounded-xl bg-cream p-3">
               <p className="text-xs font-semibold text-ink/60">Costo bruto</p>
               <p className="text-lg font-bold text-ink">{fmt(s.totalPagado)}</p>
               <p className="text-[11px] text-ink/50">capital + interés que pagas</p>
             </div>
-            <div className="rounded-xl border-2 border-ink bg-brand/15 p-3">
+            <div className="rounded-xl bg-brand/15 p-3">
               <p className="text-xs font-semibold text-brandink">Costo neto</p>
               <p className="text-lg font-bold text-brandink">{fmt(s.costoNeto)}</p>
               <p className="text-[11px] text-brandink/70">interés + comisión · {fmt(s.costoNetoPct)}%</p>
@@ -126,7 +126,7 @@ export default function SimuladorPrestamo({
               type="button"
               disabled={fueraDeRango}
               onClick={() => onUsar(s.monto, s.cuotas)}
-              className="mt-5 w-full rounded-xl border-2 border-ink bg-brand px-5 py-2.5 text-sm font-bold text-white nb-shadow nb-press disabled:opacity-50"
+              className="mt-5 w-full rounded-xl bg-brand px-5 py-2.5 text-sm font-bold text-white nb-shadow nb-press disabled:opacity-50"
             >
               {textoUsar}
             </button>
@@ -136,10 +136,10 @@ export default function SimuladorPrestamo({
 
       {/* Calendario */}
       <div className="min-w-0 lg:col-span-3">
-        <div className="h-full rounded-3xl border-2 border-ink bg-white p-6 nb-shadow-sm">
+        <div className="h-full rounded-3xl bg-white p-6 nb-shadow">
           <h3 className="text-lg font-bold text-ink">Tus cuotas y tu garantía</h3>
           <p className="mt-1 text-sm font-medium text-ink/60">Cada cuota paga capital e interés, y te devuelve parte de tu garantía.</p>
-          <div className="mt-5 max-h-[420px] overflow-auto rounded-xl border-2 border-ink">
+          <div className="mt-5 max-h-[420px] overflow-auto rounded-xl border border-line">
             <table className="w-full text-sm">
               <thead className="sticky top-0">
                 <tr className="bg-cream text-left text-xs font-bold uppercase tracking-wide text-ink/60">

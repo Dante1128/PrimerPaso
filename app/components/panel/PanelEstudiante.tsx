@@ -139,7 +139,7 @@ function Encabezado({ user }: { user: Usuario }) {
         </p>
       </div>
       {user.kycStatus === "pending" && (
-        <span className="rounded-full border-2 border-ink bg-sun/40 px-3 py-1 text-xs font-bold text-ink">Identidad en revisión</span>
+        <span className="rounded-full bg-sun/15 px-3 py-1 text-xs font-bold text-sun">Identidad en revisión</span>
       )}
     </div>
   );
@@ -345,11 +345,11 @@ export function SolicitudEnCurso({
 
 function Paso({ n, hecho, titulo, desc, children }: { n: number; hecho: boolean; titulo: string; desc: string; children?: React.ReactNode }) {
   return (
-    <li className="flex flex-wrap items-center justify-between gap-3 rounded-xl border-2 border-ink p-4">
+    <li className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-line p-4">
       <div className="flex items-start gap-3">
         <span
           className={`grid h-7 w-7 shrink-0 place-items-center rounded-full text-sm font-bold ${
-            hecho ? "border-2 border-ink bg-lime text-ink" : "border-2 border-ink bg-cream text-ink/70"
+            hecho ? "bg-lime/15 text-lime" : "bg-cream text-ink/70"
           }`}
         >
           {hecho ? "✓" : n}
@@ -390,7 +390,7 @@ function CodigoParaCompartir({ codigo }: { codigo: string }) {
         href={`https://wa.me/?text=${encodeURIComponent(mensajeInvitacion(codigo))}`}
         target="_blank"
         rel="noreferrer"
-        className="inline-flex items-center rounded-xl border-2 border-ink bg-lime px-3 py-1.5 text-sm font-bold text-ink nb-shadow-sm"
+        className="inline-flex items-center rounded-xl bg-lime px-3 py-1.5 text-sm font-bold text-white nb-shadow-sm"
       >
         Enviar por WhatsApp
       </a>
@@ -467,7 +467,7 @@ function InvitarGarante() {
       {error && <p className="mt-2 text-xs font-semibold text-coral">{error}</p>}
 
       {nuevo && (
-        <div className="mt-3 space-y-2 rounded-xl border-2 border-dashed border-ink bg-brand/15 p-3">
+        <div className="mt-3 space-y-2 rounded-xl border border-dashed border-brand/30 bg-brand/5 p-3">
           <p className="text-xs font-semibold text-ink/70">Compártelo con tu garante:</p>
           <CodigoParaCompartir codigo={nuevo} />
         </div>
@@ -477,7 +477,7 @@ function InvitarGarante() {
         <div className="mt-3 space-y-2">
           <p className="text-xs font-semibold text-ink/60">Códigos sin usar</p>
           {pendientes.map((i) => (
-            <div key={i.code} className="rounded-xl border-2 border-ink/20 p-2.5">
+            <div key={i.code} className="rounded-xl border border-line p-2.5">
               <p className="mb-1 text-xs text-ink/60">
                 Para {i.guarantor_email} · vence {fecha(i.expires_at)}
               </p>
@@ -509,7 +509,7 @@ function ResumenFirma({
   const cada = periodo ? ` (una cada ${duracion(periodo)})` : "";
 
   return (
-    <div className="mt-4 space-y-3 rounded-xl border-2 border-ink bg-cream p-4">
+    <div className="mt-4 space-y-3 rounded-xl bg-cream p-4">
       <p className="font-bold text-ink">Antes de firmar, revisa tu préstamo</p>
       <dl className="space-y-1.5 text-sm">
         <div className="flex flex-wrap justify-between gap-2">
@@ -531,7 +531,7 @@ function ResumenFirma({
           <dd className="font-bold text-ink">una parte de la garantía</dd>
         </div>
       </dl>
-      <p className="rounded-lg border-2 border-ink/20 bg-white px-3 py-2 text-sm text-ink/80">
+      <p className="rounded-lg border border-line bg-white px-3 py-2 text-sm text-ink/80">
         <strong className="text-ink">Si no pagas una cuota:</strong> pasado el plazo de gracia se cobra lo que debes (más un
         recargo del 2% sobre lo vencido) de la garantía, y el resto vuelve a quien la depositó.
       </p>
@@ -550,7 +550,7 @@ function ResumenFirma({
 function TerminasteDePagar({ prestamo, wallet }: { prestamo: Prestamo; wallet: string }) {
   const [copiado, setCopiado] = useState(false);
   return (
-    <section className="rounded-2xl border-2 border-ink bg-lime/40 p-5 nb-shadow-sm sm:p-6">
+    <section className="rounded-2xl bg-lime/10 p-5 nb-shadow-sm sm:p-6">
       <p className="text-xl font-bold text-ink">Terminaste de pagar tu préstamo #{prestamo.onchain_loan_id}</p>
       <p className="mt-1 text-sm text-ink/80">
         Recuperaste toda tu garantía y ganaste tu credencial de buen pagador: cualquiera puede verificar que pagaste, y te
@@ -559,7 +559,7 @@ function TerminasteDePagar({ prestamo, wallet }: { prestamo: Prestamo; wallet: s
       <div className="mt-4 flex flex-wrap gap-2">
         <Link
           href={`/verificar/${wallet}`}
-          className="inline-flex items-center rounded-xl border-2 border-ink bg-white px-4 py-2 text-sm font-bold text-ink nb-shadow-sm"
+          className="inline-flex items-center rounded-xl border border-line bg-white px-4 py-2 text-sm font-bold text-ink nb-shadow-sm"
         >
           Ver mi credencial
         </Link>

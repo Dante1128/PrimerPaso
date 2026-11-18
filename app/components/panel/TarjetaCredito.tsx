@@ -72,7 +72,7 @@ export default function TarjetaCredito({ credito, wallet }: { credito: Credito |
               <dt className="text-ink/60">Liquidaciones</dt>
               <dd className={`font-semibold ${p.defaults ? "text-coral" : "text-ink/80"}`}>{p.defaults}</dd>
             </div>
-            <div className="flex justify-between border-t-2 border-ink/10 pt-1.5">
+            <div className="flex justify-between border-t border-line pt-1.5">
               <dt className="text-ink/60">Saldo en tu wallet</dt>
               <dd className="font-semibold text-ink">{usdc(credito?.saldoUsdc)}</dd>
             </div>
@@ -88,7 +88,7 @@ export default function TarjetaCredito({ credito, wallet }: { credito: Credito |
                 <p className="mt-1 text-[11px] text-ink/50">No transferible: queda ligada a tu wallet.</p>
               </div>
             ) : (
-              <div className="rounded-xl border border-dashed border-ink p-4 text-xs text-ink/60">
+              <div className="rounded-xl border border-dashed border-line p-4 text-xs text-ink/60">
                 Al terminar de pagar tu primer préstamo recibes una <strong>credencial de buen pagador</strong>{" "}
                 que cualquiera puede verificar.
               </div>

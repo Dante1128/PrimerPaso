@@ -19,7 +19,7 @@ export default function CaminoEstudiante({ datos }: { datos: DatosCamino }) {
             <li key={p.id} className="flex flex-1 items-start">
               <div className="flex flex-col items-center gap-1.5 text-center">
                 <span
-                  className={`grid h-8 w-8 place-items-center rounded-full border-2 border-ink text-sm font-bold text-ink ${e.circulo}`}
+                  className={`grid h-8 w-8 place-items-center rounded-full border border-line text-sm font-bold text-ink ${e.circulo}`}
                   aria-hidden="true"
                 >
                   {e.marca ?? i + 1}
@@ -36,7 +36,7 @@ export default function CaminoEstudiante({ datos }: { datos: DatosCamino }) {
           );
         })}
       </ol>
-      <p className="mt-4 rounded-xl border-2 border-ink bg-cream px-4 py-3 text-sm text-ink">
+      <p className="mt-4 rounded-xl bg-cream px-4 py-3 text-sm text-ink">
         <span className="font-bold">Ahora: </span>
         {ahora}
       </p>

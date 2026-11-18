@@ -71,7 +71,7 @@ export function VerificacionMfa({ obligatoria }: { obligatoria: boolean }) {
                 Escanea este QR con Google Authenticator, Authy o similar y escribe el código que aparece.
               </p>
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={estado.qr} alt="QR para tu app de autenticación" className="h-44 w-44 rounded-xl border-2 border-ink bg-white p-2" />
+              <img src={estado.qr} alt="QR para tu app de autenticación" className="h-44 w-44 rounded-xl border border-line bg-white p-2" />
               <p className="text-xs text-ink/60">
                 ¿No puedes escanear? Clave: <code className="break-all font-mono">{estado.secreto}</code>
               </p>

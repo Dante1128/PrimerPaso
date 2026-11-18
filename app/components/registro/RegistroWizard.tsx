@@ -73,7 +73,7 @@ export default function RegistroWizard() {
 
         <Stepper etapas={etapas} paso={paso} />
 
-        <div className="mt-6 rounded-3xl border-2 border-ink bg-white p-6 nb-shadow-sm sm:p-8">
+        <div className="mt-6 rounded-3xl bg-white p-6 nb-shadow sm:p-8">
           {paso === "cuenta" && <PasoCuenta onNext={() => setPaso("rol")} />}
           {paso === "rol" && (
             <PasoRol
@@ -229,7 +229,7 @@ function RolCard({ activo, onClick, titulo, desc }: { activo: boolean; onClick: 
       type="button"
       onClick={onClick}
       className={`rounded-2xl border p-4 text-left transition ${
-        activo ? "border-teal-500 bg-brand/15 ring-2 ring-sun" : "border-ink "
+        activo ? "border-brand bg-brand/10 ring-2 ring-brand/20" : "border-line hover:border-ink/20"
       }`}
     >
       <p className="font-semibold text-ink">{titulo}</p>
@@ -371,7 +371,7 @@ function SubidaArchivo({ label, archivo, onFile }: { label: string; archivo: Fil
 
   return (
     <Campo label={label}>
-      <label className="flex cursor-pointer items-center gap-3 rounded-xl border border-dashed border-ink bg-cream px-4 py-3 transition ">
+      <label className="flex cursor-pointer items-center gap-3 rounded-xl border border-dashed border-line bg-cream px-4 py-3 transition ">
         {preview ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={preview} alt="vista previa" className="h-12 w-12 rounded-lg object-cover" />
@@ -451,7 +451,7 @@ function PasoFondeo({ onDone }: { onDone: () => void }) {
 
 function ItemFondeo({ estado, texto }: { estado: EstadoFondeo; texto: string }) {
   const iconos = {
-    pendiente: <span className="h-4 w-4 rounded-full border-2 border-ink" />,
+    pendiente: <span className="h-4 w-4 rounded-full border border-line" />,
     haciendo: <Spinner className="h-4 w-4 text-ink/50" />,
     ok: (
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" className="text-emerald-500">
@@ -465,7 +465,7 @@ function ItemFondeo({ estado, texto }: { estado: EstadoFondeo; texto: string }) 
     ),
   };
   return (
-    <li className="flex items-center gap-3 rounded-xl border-2 border-ink bg-white px-4 py-3 text-sm text-ink/80">
+    <li className="flex items-center gap-3 rounded-xl border border-line bg-white px-4 py-3 text-sm text-ink/80">
       {iconos[estado]}
       {texto}
     </li>

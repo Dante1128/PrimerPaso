@@ -60,7 +60,7 @@ export default function Notificaciones() {
         type="button"
         onClick={alternar}
         aria-label={sinLeer ? `Avisos: ${sinLeer} sin leer` : "Avisos"}
-        className="relative grid h-9 w-9 place-items-center rounded-full border-2 border-ink bg-white text-ink transition hover:bg-cream"
+        className="relative grid h-9 w-9 place-items-center rounded-full border border-line bg-white text-ink transition hover:bg-cream"
       >
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
           <path
@@ -72,14 +72,14 @@ export default function Notificaciones() {
           />
         </svg>
         {sinLeer > 0 && (
-          <span className="absolute -right-1.5 -top-1.5 grid h-5 min-w-5 place-items-center rounded-full border-2 border-ink bg-coral px-1 text-[10px] font-bold text-white">
+          <span className="absolute -right-1.5 -top-1.5 grid h-5 min-w-5 place-items-center rounded-full bg-coral px-1 text-[10px] font-bold text-white">
             {sinLeer}
           </span>
         )}
       </button>
 
       {abierto && (
-        <div className="absolute right-0 z-20 mt-2 w-80 max-w-[calc(100vw-2rem)] rounded-2xl border-2 border-ink bg-white p-2 nb-shadow">
+        <div className="absolute right-0 z-20 mt-2 w-80 max-w-[calc(100vw-2rem)] rounded-2xl bg-white p-2 nb-shadow-lg">
           <p className="px-2 py-1.5 text-xs font-bold uppercase tracking-wide text-ink/50">Avisos</p>
           {lista.length === 0 ? (
             <p className="px-2 py-4 text-sm text-ink/60">Todavía no tienes avisos.</p>

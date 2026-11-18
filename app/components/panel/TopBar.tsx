@@ -23,7 +23,7 @@ export default function TopBar({
   }
 
   return (
-    <header className="border-b-2 border-ink bg-white">
+    <header className="border-b border-line bg-white">
       <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-3 sm:px-6">
         <Link href="/">
           <Logo />
@@ -39,7 +39,7 @@ export default function TopBar({
           </div>
           <button
             onClick={salir}
-            className="rounded-full border-2 border-ink px-4 py-1.5 text-sm font-semibold text-ink/70 transition hover:border-rose-300 hover:text-coral"
+            className="rounded-full border border-line px-4 py-1.5 text-sm font-semibold text-ink/70 transition hover:border-rose-300 hover:text-coral"
           >
             Salir
           </button>

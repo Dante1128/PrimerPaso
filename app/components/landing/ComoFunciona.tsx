@@ -67,10 +67,10 @@ const pasos = [
 
 export default function ComoFunciona() {
   return (
-    <section id="como-funciona" className="border-y-2 border-ink bg-white py-20">
+    <section id="como-funciona" className="border-y border-line bg-white py-20">
       <div className="mx-auto max-w-6xl px-4 sm:px-6">
         <div className="mx-auto max-w-2xl text-center">
-          <p className="inline-block -rotate-1 border-2 border-ink bg-sun px-3 py-1 text-sm font-bold uppercase tracking-wide text-ink nb-shadow-sm">
+          <p className="inline-block rounded-full bg-sun/15 px-3 py-1 text-sm font-bold uppercase tracking-wide text-sun">
             Cómo funciona
           </p>
           <h2 className="mt-4 text-3xl font-bold text-ink sm:text-4xl">
@@ -86,11 +86,11 @@ export default function ComoFunciona() {
           {pasos.map((p) => (
             <div
               key={p.n}
-              className="h-full rounded-2xl border-2 border-ink bg-cream p-6 nb-shadow nb-press"
+              className="h-full rounded-2xl bg-cream p-6"
             >
               <div className="flex items-center justify-between">
                 <span
-                  className={`grid h-12 w-12 place-items-center rounded-xl border-2 border-ink ${p.color} text-ink nb-shadow-sm`}
+                  className={`grid h-12 w-12 place-items-center rounded-xl ${p.color} text-ink`}
                 >
                   <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
                     {p.icono}

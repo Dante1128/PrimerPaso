@@ -63,7 +63,7 @@ export function RevisionKyc() {
       ) : (
         <ul className="space-y-3">
           {lista.map((k) => (
-            <li key={k.id} className="rounded-xl border-2 border-ink p-4">
+            <li key={k.id} className="rounded-xl border border-line p-4">
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div className="text-sm">
                   <p className="font-semibold text-ink">
@@ -148,7 +148,7 @@ export function RevisionSolicitudes() {
         ) : (
           <ul className="space-y-3">
             {pendientes.map((s) => (
-              <li key={s.id} className="flex flex-wrap items-center justify-between gap-3 rounded-xl border-2 border-ink p-4">
+              <li key={s.id} className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-line p-4">
                 <div className="text-sm">
                   <p className="font-semibold text-ink">
                     {s.student?.full_name} · {usdc(s.amount_usd)} en {s.installments} cuotas

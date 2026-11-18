@@ -15,7 +15,7 @@ export default function Navbar() {
   const [abierto, setAbierto] = useState(false);
 
   return (
-    <header className="sticky top-0 z-40 border-b-2 border-ink bg-cream/90 backdrop-blur">
+    <header className="sticky top-0 z-40 border-b border-line bg-cream/90 backdrop-blur">
       <nav className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3 sm:px-6">
         <Link href="/" aria-label="PrimerPaso, inicio">
           <Logo />
@@ -43,7 +43,7 @@ export default function Navbar() {
           </Link>
           <Link
             href="/registro"
-            className="rounded-xl border-2 border-ink bg-brand px-4 py-2 text-sm font-bold text-white nb-shadow-sm nb-press"
+            className="rounded-xl bg-brand px-4 py-2 text-sm font-bold text-white nb-shadow-sm nb-press"
           >
             Comenzar
           </Link>
@@ -53,7 +53,7 @@ export default function Navbar() {
         <button
           type="button"
           onClick={() => setAbierto((v) => !v)}
-          className="grid h-10 w-10 place-items-center rounded-lg border-2 border-ink bg-white text-ink nb-shadow-sm md:hidden"
+          className="grid h-10 w-10 place-items-center rounded-lg border border-line bg-white text-ink nb-shadow-sm md:hidden"
           aria-label="Abrir menú"
           aria-expanded={abierto}
         >
@@ -79,7 +79,7 @@ export default function Navbar() {
 
       {/* Menú móvil desplegable */}
       {abierto && (
-        <div className="border-t-2 border-ink bg-cream md:hidden">
+        <div className="border-t border-line bg-cream md:hidden">
           <div className="mx-auto flex max-w-6xl flex-col gap-1 px-4 py-3 sm:px-6">
             {enlaces.map((e) => (
               <a
@@ -94,13 +94,13 @@ export default function Navbar() {
             <div className="mt-2 flex gap-2">
               <Link
                 href="/ingresar"
-                className="flex-1 rounded-xl border-2 border-ink bg-white px-4 py-2 text-center text-sm font-bold text-ink nb-shadow-sm"
+                className="flex-1 rounded-xl border border-line bg-white px-4 py-2 text-center text-sm font-bold text-ink nb-shadow-sm"
               >
                 Ingresar
               </Link>
               <Link
                 href="/registro"
-                className="flex-1 rounded-xl border-2 border-ink bg-brand px-4 py-2 text-center text-sm font-bold text-white nb-shadow-sm"
+                className="flex-1 rounded-xl bg-brand px-4 py-2 text-center text-sm font-bold text-white nb-shadow-sm"
               >
                 Comenzar
               </Link>

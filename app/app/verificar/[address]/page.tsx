@@ -45,7 +45,7 @@ export default async function VerificarPage({ params }: { params: Promise<{ addr
           <div className="mt-6 space-y-4">
             <div
               className={`rounded-3xl border p-6 nb-shadow-sm ${
-                perfil.credencial ? "border-emerald-200 bg-gradient-to-br from-emerald-50 to-teal-50" : "border-ink bg-white"
+                perfil.credencial ? "border-emerald-200 bg-gradient-to-br from-emerald-50 to-teal-50" : "border-line bg-white"
               }`}
             >
               {perfil.credencial ? (
@@ -68,13 +68,13 @@ export default async function VerificarPage({ params }: { params: Promise<{ addr
             </div>
 
             <div className="grid gap-4 sm:grid-cols-2">
-              <div className="rounded-2xl border-2 border-ink bg-white p-5">
+              <div className="rounded-2xl bg-white p-5 nb-shadow-sm">
                 <p className="text-xs font-medium uppercase tracking-wide text-ink/50">Puntaje</p>
                 <div className="mt-1">
                   <Puntaje valor={perfil.puntaje} />
                 </div>
               </div>
-              <dl className="space-y-2 rounded-2xl border-2 border-ink bg-white p-5 text-sm">
+              <dl className="space-y-2 rounded-2xl bg-white p-5 text-sm nb-shadow-sm">
                 <div className="flex justify-between"><dt className="text-ink/60">Cuotas a tiempo</dt><dd className="font-semibold text-brandink">{perfil.aTiempo}</dd></div>
                 <div className="flex justify-between"><dt className="text-ink/60">Cuotas con atraso</dt><dd className="font-semibold">{perfil.atrasadas}</dd></div>
                 <div className="flex justify-between"><dt className="text-ink/60">Préstamos pagados</dt><dd className="font-semibold">{perfil.prestamosPagados}</dd></div>

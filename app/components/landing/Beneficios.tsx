@@ -21,10 +21,10 @@ function Check() {
       fill="none"
       className="mt-0.5 shrink-0"
     >
-      <circle cx="12" cy="12" r="10" className="fill-lime" stroke="#141414" strokeWidth="2" />
+      <circle cx="12" cy="12" r="10" className="fill-lime" stroke="#1a2234" strokeWidth="2" />
       <path
         d="M8 12l2.5 2.5L16 9"
-        stroke="#141414"
+        stroke="#1a2234"
         strokeWidth="2.4"
         strokeLinecap="round"
         strokeLinejoin="round"
@@ -38,7 +38,7 @@ export default function Beneficios() {
     <section id="beneficios" className="bg-cream py-20">
       <div className="mx-auto max-w-6xl px-4 sm:px-6">
         <div className="mx-auto max-w-2xl text-center">
-          <p className="inline-block rotate-1 border-2 border-ink bg-azure px-3 py-1 text-sm font-bold uppercase tracking-wide text-ink nb-shadow-sm">
+          <p className="inline-block rounded-full bg-azure/15 px-3 py-1 text-sm font-bold uppercase tracking-wide text-azure">
             Beneficios
           </p>
           <h2 className="mt-4 text-3xl font-bold text-ink sm:text-4xl">
@@ -48,9 +48,9 @@ export default function Beneficios() {
 
         <div className="mt-14 grid gap-6 lg:grid-cols-2">
           {/* Estudiantes */}
-          <div className="rounded-2xl border-2 border-ink bg-white p-8 nb-shadow-lg">
+          <div className="rounded-2xl bg-white p-8 nb-shadow-lg">
             <div className="flex items-center gap-3">
-              <span className="grid h-12 w-12 place-items-center rounded-xl border-2 border-ink bg-brand text-white nb-shadow-sm">
+              <span className="grid h-12 w-12 place-items-center rounded-xl bg-brand text-white">
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
                   <path
                     d="M22 10L12 5 2 10l10 5 10-5zM6 12v5c0 1 2.7 3 6 3s6-2 6-3v-5"
@@ -79,9 +79,9 @@ export default function Beneficios() {
           </div>
 
           {/* Familias garantes */}
-          <div className="rounded-2xl border-2 border-ink bg-white p-8 nb-shadow-lg">
+          <div className="rounded-2xl bg-white p-8 nb-shadow-lg">
             <div className="flex items-center gap-3">
-              <span className="grid h-12 w-12 place-items-center rounded-xl border-2 border-ink bg-azure text-ink nb-shadow-sm">
+              <span className="grid h-12 w-12 place-items-center rounded-xl bg-azure/15 text-azure">
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
                   <path
                     d="M12 21s-7-4.3-7-9a4 4 0 017-2.6A4 4 0 0119 12c0 4.7-7 9-7 9z"
