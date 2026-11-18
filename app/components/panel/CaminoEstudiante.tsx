@@ -1,5 +1,5 @@
 // Camino del estudiante: en qué paso está y qué le toca hacer ahora.
-import { caminoEstudiante, type DatosCamino, type EstadoPaso } from "@/lib/camino";
+import { caminoEstudiante, type DatosCamino, type EstadoPaso } from "@/lib/creditos/camino";
 
 const ESTILO: Record<EstadoPaso, { circulo: string; texto: string; marca?: string }> = {
   hecho: { circulo: "bg-lime", texto: "text-ink", marca: "✓" },

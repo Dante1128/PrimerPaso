@@ -4,7 +4,7 @@
 //  GET (sin parámetros)      → préstamos del usuario (staff: todos).
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { exigirUsuario, manejar, ErrorApi } from "@/lib/api";
-import { puedeVerPrestamo } from "@/lib/prestamos";
+import { puedeVerPrestamo } from "@/lib/creditos/prestamos";
 import { LOAN_ID, aUsdc, cotizarPago, leerPrestamo } from "@/lib/cadena/soroban";
 
 /** Cotización en USDC (número) para el cliente. */

@@ -9,7 +9,7 @@ import DetallePrestamo from "@/components/panel/DetallePrestamo";
 import AvisoKycRechazado from "@/components/panel/AvisoKyc";
 import ConseguirUsdc from "@/components/panel/ConseguirUsdc";
 import CaminoEstudiante from "@/components/panel/CaminoEstudiante";
-import { PARAMETROS_BASE, simular } from "@/lib/calculos";
+import { PARAMETROS_BASE, simular } from "@/lib/creditos/calculos";
 import { duracion } from "@/lib/tiempo";
 import Link from "next/link";
 import TarjetaCredito, { type Credito } from "@/components/panel/TarjetaCredito";

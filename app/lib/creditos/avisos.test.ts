@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { textoAviso } from "@/lib/avisos";
+import { textoAviso } from "@/lib/creditos/avisos";
 
 describe("textos de los avisos", () => {
   it("cada aviso dice qué pasó y qué hacer", () => {

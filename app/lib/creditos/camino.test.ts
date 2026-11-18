@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { caminoEstudiante, type DatosCamino } from "@/lib/camino";
+import { caminoEstudiante, type DatosCamino } from "@/lib/creditos/camino";
 import { duracion, restante } from "@/lib/tiempo";
 
 const base: DatosCamino = { kycStatus: "approved", solicitud: null, tienePrestamoActivo: false, terminoDePagar: false };

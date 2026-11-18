@@ -4,7 +4,7 @@
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { exigirUsuario, manejar, ErrorApi } from "@/lib/api";
 import { pagoSchema } from "@/lib/validation";
-import { puedeVerPrestamo } from "@/lib/prestamos";
+import { puedeVerPrestamo } from "@/lib/creditos/prestamos";
 import { LOAN_ID, aStroops, aUsdc, arg, cotizarPago, prepararParaWallet } from "@/lib/cadena/soroban";
 import { balanceUsdc } from "@/lib/cadena/stellar";
 import { registrarPreparada } from "@/lib/cadena/transacciones";

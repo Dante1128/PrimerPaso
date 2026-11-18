@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { paraContrato, paraEditar } from "@/lib/parametros";
+import { paraContrato, paraEditar } from "@/lib/creditos/parametros";
 
 // Valores reales del contrato desplegado en testnet.
 const CONTRATO = {

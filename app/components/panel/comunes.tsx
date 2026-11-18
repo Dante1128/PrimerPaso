@@ -1,6 +1,6 @@
 // Piezas compartidas por los paneles — estilo "minimal fintech".
 import type { ReactNode } from "react";
-import { fmt } from "@/lib/calculos";
+import { fmt } from "@/lib/creditos/calculos";
 
 export function Tarjeta({
   titulo,

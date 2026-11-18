@@ -4,7 +4,7 @@ import { supabaseAdmin } from "@/lib/supabase/admin";
 import { getSessionUser, errorJson } from "@/lib/auth";
 import { rolSchema } from "@/lib/validation";
 import { limitarAuth } from "@/lib/limite";
-import { aceptarInvitacion } from "@/lib/invitaciones";
+import { aceptarInvitacion } from "@/lib/creditos/invitaciones";
 
 export async function POST(req: Request) {
   const user = await getSessionUser();

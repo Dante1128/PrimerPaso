@@ -1,6 +1,6 @@
 // El simulador debe dar exactamente lo mismo que el contrato `loan`.
 import { describe, expect, it } from "vitest";
-import { PARAMETROS_BASE, simular } from "@/lib/calculos";
+import { PARAMETROS_BASE, simular } from "@/lib/creditos/calculos";
 
 /** Suma montos en la unidad mínima de USDC para no arrastrar errores de float. */
 const enUnidades = (montos: number[]) => montos.reduce((a, m) => a + Math.round(m * 1e7), 0);

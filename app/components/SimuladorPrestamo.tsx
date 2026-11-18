@@ -3,7 +3,7 @@
 // Arranca en el ejemplo de referencia: 1.000 USDC en 10 cuotas.
 
 import { useEffect, useMemo, useState } from "react";
-import { PARAMETROS_BASE, fmt, simular, type Parametros } from "@/lib/calculos";
+import { PARAMETROS_BASE, fmt, simular, type Parametros } from "@/lib/creditos/calculos";
 
 /** Lee los parámetros vigentes (públicos) una sola vez. */
 export function useParametros(): Parametros {

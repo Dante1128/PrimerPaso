@@ -5,7 +5,7 @@ import { supabaseAdmin } from "@/lib/supabase/admin";
 import { exigirUsuario, manejar, ErrorApi, auditar, periodoSegundos } from "@/lib/api";
 import { solicitudSchema } from "@/lib/validation";
 import type { Enums, Tables } from "@/lib/database.types";
-import { posicionDeSolicitud } from "@/lib/prestamos";
+import { posicionDeSolicitud } from "@/lib/creditos/prestamos";
 import { leerPosicion } from "@/lib/cadena/soroban";
 
 const CAMPOS =

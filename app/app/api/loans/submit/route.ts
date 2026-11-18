@@ -2,7 +2,7 @@
 // wallet. La caché la actualiza el indexador en segundo plano.
 import { exigirUsuario, manejar, ErrorApi, auditar, linkTx } from "@/lib/api";
 import { pasoPrestamoSchema } from "@/lib/validation";
-import { solicitudParaActuar } from "@/lib/prestamos";
+import { solicitudParaActuar } from "@/lib/creditos/prestamos";
 import { LOAN_ID, validarXdr } from "@/lib/cadena/soroban";
 import { enviarYEsperar } from "@/lib/cadena/stellar";
 import { sincronizarEnSegundoPlano } from "@/lib/cadena/indexer";

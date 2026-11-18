@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api } from "@/lib/cliente";
 import { fecha } from "@/components/panel/comunes";
-import { textoAviso } from "@/lib/avisos";
+import { textoAviso } from "@/lib/creditos/avisos";
 
 type Notificacion = {
   id: string;
