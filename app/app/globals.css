@@ -1,30 +1,31 @@
 @import "tailwindcss";
 
 /* ============================================================
-   PrimerPaso — Sistema de diseño NEO-BRUTALISTA (tema claro)
-   Fondo crema + retícula de puntos, contornos negros gruesos,
-   sombras planas duras, acentos vibrantes y tipografía bold.
-   Sin modo oscuro.
+   PrimerPaso — Sistema de diseño "minimal fintech" (tema claro)
+   Fondo gris muy claro, tarjetas redondeadas, bordes sutiles y
+   sombras suaves — estilo wallet app. Sin modo oscuro.
    ============================================================ */
 
 :root {
-  --cream: #fbf3e4;
-  --ink: #141414;
+  --cream: #f7f8fb;
+  --ink: #1a2234;
+  --line: #e4e7ec;
   --background: var(--cream);
   --foreground: var(--ink);
 }
 
 @theme {
-  /* Colores de marca / acentos (vibrantes, sobre crema) */
-  --color-cream: #fbf3e4;
-  --color-ink: #141414;
-  --color-brand: #0fb5a1; /* teal (ahorro/crecimiento) */
-  --color-brandink: #0b7d70; /* teal oscuro para texto */
-  --color-sun: #ffd23f; /* amarillo */
-  --color-coral: #ff6b5e; /* coral/rojo */
-  --color-azure: #4ea8ff; /* celeste */
-  --color-grape: #b98cff; /* violeta */
-  --color-lime: #a3e635; /* lima */
+  /* Colores de marca / acentos (suaves, sobre gris claro) */
+  --color-cream: #f7f8fb;
+  --color-ink: #1a2234;
+  --color-line: #e4e7ec;
+  --color-brand: #0ea5a0; /* teal (ahorro/crecimiento) */
+  --color-brandink: #0b7a72; /* teal oscuro para texto */
+  --color-sun: #f2b84b; /* ámbar (pendiente/mora) */
+  --color-coral: #f0685c; /* rojo suave (error/rechazo) */
+  --color-azure: #4e9eef; /* celeste (info) */
+  --color-grape: #a386e0; /* violeta */
+  --color-lime: #4fb87a; /* verde (éxito/pagado) */
 
   --color-background: var(--cream);
   --color-foreground: var(--ink);
@@ -33,7 +34,7 @@
   --font-mono: var(--font-geist-mono);
   --font-display: var(--font-space);
 
-  --radius-nb: 0.9rem;
+  --radius-nb: 1.1rem;
 }
 
 html {
@@ -55,49 +56,52 @@ h3 {
   letter-spacing: -0.01em;
 }
 
-/* Retícula de puntos sobre crema. */
+/* Retícula de puntos: textura heredada del estilo anterior, ya no se aplica
+   por defecto en ninguna pantalla (queda disponible por si hace falta). */
 .bg-dots {
-  background-image: radial-gradient(rgba(20, 20, 20, 0.12) 1.4px, transparent 1.4px);
+  background-image: radial-gradient(rgba(26, 34, 52, 0.08) 1.4px, transparent 1.4px);
   background-size: 22px 22px;
 }
 
-/* ---- Utilidades neo-brutalistas ---- */
+/* ---- Utilidades de tarjetas y sombras (estilo wallet app) ---- */
 
-/* Sombra plana dura (offset sólido, sin blur). */
+/* Sombras suaves, escalonadas por intensidad. */
 .nb-shadow {
-  box-shadow: 4px 4px 0 0 var(--ink);
+  box-shadow:
+    0 1px 2px rgba(16, 24, 40, 0.06),
+    0 4px 10px rgba(16, 24, 40, 0.07);
 }
 .nb-shadow-lg {
-  box-shadow: 6px 6px 0 0 var(--ink);
+  box-shadow:
+    0 2px 4px rgba(16, 24, 40, 0.07),
+    0 12px 24px rgba(16, 24, 40, 0.1);
 }
 .nb-shadow-sm {
-  box-shadow: 3px 3px 0 0 var(--ink);
+  box-shadow: 0 1px 2px rgba(16, 24, 40, 0.06);
 }
 
-/* Tarjeta base: borde negro grueso + sombra dura. */
+/* Tarjeta base: borde sutil + sombra suave. */
 .nb-card {
-  border: 2px solid var(--ink);
+  border: 1px solid var(--line);
   border-radius: var(--radius-nb);
   background: #ffffff;
-  box-shadow: 6px 6px 0 0 var(--ink);
+  box-shadow:
+    0 1px 2px rgba(16, 24, 40, 0.06),
+    0 4px 10px rgba(16, 24, 40, 0.07);
 }
 
-/* Borde negro grueso reutilizable. */
+/* Borde sutil reutilizable. */
 .nb-border {
-  border: 2px solid var(--ink);
+  border: 1px solid var(--line);
 }
 
-/* Efecto "presionar": el elemento se hunde sobre su sombra. */
+/* Efecto "presionar": una leve reducción de escala, no un offset duro. */
 .nb-press {
   transition:
     transform 0.08s ease,
-    box-shadow 0.08s ease;
-}
-.nb-press:hover {
-  transform: translate(-1px, -1px);
-  box-shadow: 5px 5px 0 0 var(--ink);
+    opacity 0.08s ease;
 }
 .nb-press:active {
-  transform: translate(3px, 3px);
-  box-shadow: 1px 1px 0 0 var(--ink);
+  transform: scale(0.98);
+  opacity: 0.92;
 }

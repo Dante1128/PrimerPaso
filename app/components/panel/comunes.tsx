@@ -1,4 +1,4 @@
-// Piezas compartidas por los paneles — estilo NEO-BRUTALISTA.
+// Piezas compartidas por los paneles — estilo "minimal fintech".
 import type { ReactNode } from "react";
 import { fmt } from "@/lib/calculos";
 
@@ -52,29 +52,29 @@ export const usdc = (n: number | string | null | undefined, dec = 2) => `${fmt(N
 
 const ESTADOS: Record<string, { txt: string; clase: string }> = {
   // préstamos
-  active: { txt: "Activo", clase: "bg-brand/20" },
-  repaid: { txt: "Pagado", clase: "bg-lime/30" },
-  liquidated: { txt: "Cobrado de la garantía", clase: "bg-black/10" },
-  defaulted: { txt: "En default", clase: "bg-coral/25" },
+  active: { txt: "Activo", clase: "bg-brand/10 text-brandink" },
+  repaid: { txt: "Pagado", clase: "bg-lime/10 text-lime" },
+  liquidated: { txt: "Cobrado de la garantía", clase: "bg-ink/5 text-ink/60" },
+  defaulted: { txt: "En default", clase: "bg-coral/10 text-coral" },
   // solicitudes
-  submitted: { txt: "En revisión", clase: "bg-sun/40" },
-  approved: { txt: "Aprobada", clase: "bg-brand/20" },
-  rejected: { txt: "Rechazada", clase: "bg-coral/25" },
-  opened: { txt: "Préstamo abierto", clase: "bg-lime/30" },
-  cancelled: { txt: "Cancelada", clase: "bg-black/10" },
-  draft: { txt: "Borrador", clase: "bg-black/10" },
+  submitted: { txt: "En revisión", clase: "bg-sun/15 text-sun" },
+  approved: { txt: "Aprobada", clase: "bg-brand/10 text-brandink" },
+  rejected: { txt: "Rechazada", clase: "bg-coral/10 text-coral" },
+  opened: { txt: "Préstamo abierto", clase: "bg-lime/10 text-lime" },
+  cancelled: { txt: "Cancelada", clase: "bg-ink/5 text-ink/60" },
+  draft: { txt: "Borrador", clase: "bg-ink/5 text-ink/60" },
   // KYC y cuotas
-  pending: { txt: "Pendiente", clase: "bg-sun/40" },
-  paid: { txt: "Pagada", clase: "bg-lime/30" },
-  late: { txt: "Pagada con atraso", clase: "bg-sun/50" },
-  accepted: { txt: "Aceptada", clase: "bg-lime/30" },
-  mora: { txt: "En mora", clase: "bg-coral/25" },
+  pending: { txt: "Pendiente", clase: "bg-sun/15 text-sun" },
+  paid: { txt: "Pagada", clase: "bg-lime/10 text-lime" },
+  late: { txt: "Pagada con atraso", clase: "bg-sun/15 text-sun" },
+  accepted: { txt: "Aceptada", clase: "bg-lime/10 text-lime" },
+  mora: { txt: "En mora", clase: "bg-coral/10 text-coral" },
 };
 
 export function Estado({ status }: { status: string }) {
-  const e = ESTADOS[status] ?? { txt: status, clase: "bg-black/10" };
+  const e = ESTADOS[status] ?? { txt: status, clase: "bg-ink/5 text-ink/60" };
   return (
-    <span className={`inline-block rounded-full border-2 border-ink px-2.5 py-0.5 text-xs font-bold text-ink ${e.clase}`}>
+    <span className={`inline-block rounded-full px-2.5 py-0.5 text-xs font-semibold ${e.clase}`}>
       {e.txt}
     </span>
   );
@@ -97,15 +97,15 @@ export function LinkTx({ hash, texto }: { hash?: string | null; texto?: string }
 export function Barra({ pct, color = "bg-brand" }: { pct: number; color?: string }) {
   const v = Math.max(0, Math.min(100, pct));
   return (
-    <div className="h-3.5 w-full overflow-hidden rounded-full border-2 border-ink bg-white">
-      <div className={`h-full ${color} transition-all`} style={{ width: `${v}%` }} />
+    <div className="h-2.5 w-full overflow-hidden rounded-full bg-ink/5">
+      <div className={`h-full ${color} rounded-full transition-all`} style={{ width: `${v}%` }} />
     </div>
   );
 }
 
 export function Vacio({ children }: { children: ReactNode }) {
   return (
-    <p className="rounded-xl border-2 border-dashed border-ink/40 px-4 py-6 text-center text-sm font-medium text-ink/60">
+    <p className="rounded-xl border border-dashed border-line px-4 py-6 text-center text-sm font-medium text-ink/60">
       {children}
     </p>
   );

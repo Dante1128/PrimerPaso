@@ -1,4 +1,4 @@
-// Primitivos de interfaz reutilizables — estilo NEO-BRUTALISTA (tema claro).
+// Primitivos de interfaz reutilizables — estilo "minimal fintech" (tema claro).
 import { ReactNode } from "react";
 
 export function Campo({
@@ -18,7 +18,7 @@ export function Campo({
     <div>
       <label
         htmlFor={htmlFor}
-        className="mb-1.5 block text-sm font-bold text-ink"
+        className="mb-1.5 block text-sm font-semibold text-ink"
       >
         {label}
       </label>
@@ -30,7 +30,7 @@ export function Campo({
 }
 
 export const inputClase =
-  "w-full rounded-xl border-2 border-ink bg-white px-3 py-2.5 font-medium text-ink placeholder:text-ink/40 outline-none transition focus:-translate-x-0.5 focus:-translate-y-0.5 focus:shadow-[3px_3px_0_0_#141414] disabled:bg-black/5 disabled:text-ink/40";
+  "w-full rounded-xl border border-line bg-white px-3 py-2.5 font-medium text-ink placeholder:text-ink/40 outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/20 disabled:bg-black/5 disabled:text-ink/40";
 
 export function Boton({
   children,
@@ -41,12 +41,12 @@ export function Boton({
   variant?: "primary" | "secondary" | "ghost" | "sun" | "coral";
 } & React.ButtonHTMLAttributes<HTMLButtonElement>) {
   const base =
-    "inline-flex items-center justify-center gap-2 rounded-xl px-5 py-2.5 text-sm font-bold transition disabled:cursor-not-allowed disabled:opacity-60";
+    "inline-flex items-center justify-center gap-2 rounded-2xl px-5 py-2.5 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-60";
   const estilos = {
-    primary: "border-2 border-ink bg-brand text-white nb-shadow nb-press",
-    secondary: "border-2 border-ink bg-white text-ink nb-shadow nb-press",
-    sun: "border-2 border-ink bg-sun text-ink nb-shadow nb-press",
-    coral: "border-2 border-ink bg-coral text-white nb-shadow nb-press",
+    primary: "bg-brand text-white nb-shadow-sm nb-press hover:bg-brandink",
+    secondary: "border border-line bg-white text-ink nb-shadow-sm nb-press hover:bg-cream",
+    sun: "bg-sun/90 text-ink nb-shadow-sm nb-press",
+    coral: "bg-coral text-white nb-shadow-sm nb-press",
     ghost: "text-ink/70 hover:text-ink underline-offset-4 hover:underline",
   } as const;
   return (
@@ -64,13 +64,13 @@ export function Alerta({
   children: ReactNode;
 }) {
   const estilos = {
-    info: "bg-azure/20 text-ink",
-    error: "bg-coral/20 text-ink",
-    success: "bg-lime/25 text-ink",
+    info: "bg-azure/10 text-azure",
+    error: "bg-coral/10 text-coral",
+    success: "bg-lime/10 text-lime",
   } as const;
   return (
     <div
-      className={`rounded-xl border-2 border-ink px-4 py-3 text-sm font-medium nb-shadow-sm ${estilos[tipo]}`}
+      className={`rounded-xl px-4 py-3 text-sm font-medium ${estilos[tipo]}`}
       role={tipo === "error" ? "alert" : undefined}
     >
       {children}
