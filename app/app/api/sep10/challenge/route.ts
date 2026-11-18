@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { buildChallenge } from "@/lib/sep10";
+import { buildChallenge, HOME_DOMAIN } from "@/lib/sep10";
 import { NETWORK_PASSPHRASE } from "@/lib/stellar";
 
 export async function GET(req: Request) {
@@ -18,6 +18,7 @@ export async function GET(req: Request) {
     return NextResponse.json({
       challenge,
       network_passphrase: NETWORK_PASSPHRASE,
+      home_domain: HOME_DOMAIN,
     });
   } catch (e) {
     const err = e as { message?: string };

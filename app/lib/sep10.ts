@@ -10,7 +10,7 @@ import "server-only";
 import { WebAuth } from "@stellar/stellar-sdk";
 import { NETWORK_PASSPHRASE, sep10ServerKeypair } from "@/lib/stellar";
 
-const HOME_DOMAIN = process.env.SEP10_HOME_DOMAIN ?? "localhost:3000";
+export const HOME_DOMAIN = process.env.SEP10_HOME_DOMAIN ?? "localhost:3000";
 const WEB_AUTH_DOMAIN = HOME_DOMAIN;
 
 /** Construye el challenge SEP-10 (XDR base64) para una cuenta cliente. */

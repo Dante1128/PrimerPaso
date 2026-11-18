@@ -1,25 +1,21 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { usePollar } from "@pollar/react";
 import Logo from "@/components/Logo";
-import BotonGoogle from "@/components/BotonGoogle";
-import Turnstile, { CAPTCHA_ACTIVO } from "@/components/Turnstile";
 import { Campo, inputClase, Boton, Alerta, Spinner } from "@/components/ui";
-import { conectarFreighter, firmarXdr } from "@/lib/wallet";
 import { ES_TESTNET, fondearPrueba, type PasoFondeo as PasoDelFondeo } from "@/lib/cliente";
 
-type Paso = "cuenta" | "email" | "rol" | "universidad" | "identidad" | "wallet" | "fondeo";
+type Paso = "cuenta" | "rol" | "universidad" | "identidad" | "fondeo";
 type Rol = "student" | "guarantor";
 
 const ETAPAS: { id: Paso; txt: string; soloEstudiante?: boolean }[] = [
-  { id: "cuenta", txt: "Cuenta" },
-  { id: "email", txt: "Email" },
+  { id: "cuenta", txt: "Entrar" },
   { id: "rol", txt: "Rol" },
   { id: "universidad", txt: "Universidad", soloEstudiante: true },
   { id: "identidad", txt: "Identidad" },
-  { id: "wallet", txt: "Wallet" },
   { id: "fondeo", txt: "Fondeo" },
 ];
 
@@ -37,7 +33,6 @@ async function api(url: string, body?: unknown, method = "POST") {
 export default function RegistroWizard() {
   const router = useRouter();
   const [paso, setPaso] = useState<Paso>("cuenta");
-  const [email, setEmail] = useState("");
   const [rol, setRol] = useState<Rol>("student");
   const [cargandoInicial, setCargandoInicial] = useState(true);
 
@@ -79,15 +74,7 @@ export default function RegistroWizard() {
         <Stepper etapas={etapas} paso={paso} />
 
         <div className="mt-6 rounded-3xl border-2 border-ink bg-white p-6 nb-shadow-sm sm:p-8">
-          {paso === "cuenta" && (
-            <PasoCuenta
-              onNext={(e) => {
-                setEmail(e);
-                setPaso("email");
-              }}
-            />
-          )}
-          {paso === "email" && <PasoEmail email={email} onNext={() => setPaso("rol")} />}
+          {paso === "cuenta" && <PasoCuenta onNext={() => setPaso("rol")} />}
           {paso === "rol" && (
             <PasoRol
               onNext={(r) => {
@@ -97,8 +84,7 @@ export default function RegistroWizard() {
             />
           )}
           {paso === "universidad" && <PasoUniversidad onNext={() => setPaso("identidad")} />}
-          {paso === "identidad" && <PasoKyc onNext={() => setPaso("wallet")} />}
-          {paso === "wallet" && <PasoWallet onNext={() => setPaso("fondeo")} />}
+          {paso === "identidad" && <PasoKyc onNext={() => setPaso("fondeo")} />}
           {paso === "fondeo" && <PasoFondeo onDone={() => router.replace("/panel")} />}
         </div>
       </div>
@@ -126,127 +112,69 @@ function Stepper({ etapas, paso }: { etapas: typeof ETAPAS; paso: Paso }) {
 }
 
 /* -------------------- Cuenta -------------------- */
-function PasoCuenta({ onNext }: { onNext: (email: string) => void }) {
-  const [form, setForm] = useState({ fullName: "", email: "", password: "" });
+/**
+ * Login social con Pollar: crea la wallet automáticamente y, apenas está
+ * lista, la vincula con un challenge SEP-10 (lo firma Pollar). Esa misma
+ * verificación abre la sesión — es registro e ingreso a la vez, según si la
+ * wallet ya existía.
+ */
+function PasoCuenta({ onNext }: { onNext: () => void }) {
+  const { isAuthenticated, verified, wallet, hasWallet, createWallet, login, getClient } = usePollar();
   const [error, setError] = useState("");
-  const [cargando, setCargando] = useState(false);
-  const [captcha, setCaptcha] = useState("");
-  const [intento, setIntento] = useState(0);
-  const set = (k: keyof typeof form, v: string) => setForm((f) => ({ ...f, [k]: v }));
+  const vinculando = useRef(false);
 
-  async function enviar(e: React.FormEvent) {
-    e.preventDefault();
-    setError("");
-    setCargando(true);
-    try {
-      const d = await api("/api/auth/register", { ...form, captchaToken: captcha });
-      onNext(d.email);
-    } catch (err) {
-      setError((err as Error).message);
-      setCaptcha("");
-      setIntento((n) => n + 1);
-    } finally {
-      setCargando(false);
-    }
-  }
+  useEffect(() => {
+    if (!isAuthenticated || !verified || vinculando.current) return;
+
+    (async () => {
+      try {
+        let w = wallet;
+        if (!w && !hasWallet) w = await createWallet();
+        if (!w) return; // la wallet todavía se está creando
+
+        vinculando.current = true;
+        setError("");
+
+        const { challenge, home_domain } = await api(`/api/sep10/challenge?account=${w.address}`, undefined, "GET");
+        const firma = await getClient().stellar.sep10.sign({
+          challengeXdr: challenge,
+          homeDomains: home_domain,
+          webAuthDomain: home_domain,
+        });
+        if (firma.status !== "signed") throw new Error("No se pudo firmar con tu wallet");
+
+        const perfil = getClient().getUserProfile();
+        const fullName = perfil ? `${perfil.first_name} ${perfil.last_name}`.trim() : undefined;
+        await api("/api/sep10/token", { signedXdr: firma.signedXdr, fullName: fullName || undefined });
+        onNext();
+      } catch (err) {
+        setError((err as Error).message);
+        vinculando.current = false;
+      }
+    })();
+  }, [isAuthenticated, verified, wallet, hasWallet, createWallet, getClient, onNext]);
 
   return (
-    <form onSubmit={enviar} className="space-y-4">
-      <h1 className="text-xl font-bold text-ink">Crea tu cuenta</h1>
-      <p className="text-sm text-ink/60">Te enviaremos un código a tu email para verificarlo.</p>
-
-      <BotonGoogle texto="Registrarme con Google" />
-
-      <Campo label="Nombre completo" htmlFor="fullName">
-        <input id="fullName" className={inputClase} value={form.fullName} onChange={(e) => set("fullName", e.target.value)} required />
-      </Campo>
-      <Campo label="Email" htmlFor="email">
-        <input id="email" type="email" className={inputClase} value={form.email} onChange={(e) => set("email", e.target.value)} required />
-      </Campo>
-      <Campo label="Contraseña" htmlFor="password" hint="Mínimo 8 caracteres">
-        <input id="password" type="password" className={inputClase} value={form.password} onChange={(e) => set("password", e.target.value)} required minLength={8} />
-      </Campo>
-
-      <Turnstile key={intento} onToken={setCaptcha} />
-
-      {error && <Alerta tipo="error">{error}</Alerta>}
-
-      <Boton type="submit" disabled={cargando || (CAPTCHA_ACTIVO && !captcha)} className="w-full">
-        {cargando && <Spinner />} Crear cuenta
-      </Boton>
-      <p className="text-center text-sm text-ink/60">
-        ¿Ya tienes cuenta?{" "}
-        <Link href="/ingresar" className="font-semibold text-brandink">
-          Ingresar
-        </Link>
-      </p>
-    </form>
-  );
-}
-
-/* -------------------- Código por email -------------------- */
-function PasoEmail({ email, onNext }: { email: string; onNext: () => void }) {
-  const [code, setCode] = useState("");
-  const [error, setError] = useState("");
-  const [aviso, setAviso] = useState("");
-  const [cargando, setCargando] = useState(false);
-
-  async function verificar(e: React.FormEvent) {
-    e.preventDefault();
-    setError("");
-    setCargando(true);
-    try {
-      await api("/api/auth/verify-email", { email, code });
-      onNext();
-    } catch (err) {
-      setError((err as Error).message);
-    } finally {
-      setCargando(false);
-    }
-  }
-
-  async function reenviar() {
-    setError("");
-    setAviso("");
-    try {
-      await api("/api/auth/verify-email", { email, resend: true });
-      setAviso("Te enviamos un código nuevo.");
-    } catch (err) {
-      setError((err as Error).message);
-    }
-  }
-
-  return (
-    <form onSubmit={verificar} className="space-y-4">
-      <h1 className="text-xl font-bold text-ink">Verifica tu email</h1>
+    <div className="space-y-4">
+      <h1 className="text-xl font-bold text-ink">Entra a PrimerPaso</h1>
       <p className="text-sm text-ink/60">
-        Ingresa el código que enviamos a <strong className="text-ink/80">{email}</strong>.
+        Inicia sesión con Google: te creamos una wallet automáticamente, sin instalar nada ni guardar contraseñas.
       </p>
 
-      <Campo label="Código de verificación" htmlFor="code">
-        <input
-          id="code"
-          inputMode="numeric"
-          autoComplete="one-time-code"
-          maxLength={8}
-          className={`${inputClase} text-center text-2xl tracking-[0.5em]`}
-          value={code}
-          onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))}
-          placeholder="••••••"
-          required
-        />
-      </Campo>
+      {isAuthenticated && (
+        <p className="flex items-center gap-2 text-sm text-ink/70">
+          <Spinner className="h-4 w-4" /> Preparando tu wallet…
+        </p>
+      )}
 
       {error && <Alerta tipo="error">{error}</Alerta>}
-      {aviso && <Alerta tipo="success">{aviso}</Alerta>}
 
-      <Boton type="submit" disabled={cargando} className="w-full">
-        {cargando && <Spinner />} Verificar
-      </Boton>
-      <button type="button" onClick={reenviar} className="w-full text-center text-sm font-semibold text-brandink">
-        Reenviar código
-      </button>
-    </form>
+      {!isAuthenticated && (
+        <Boton onClick={() => login({ provider: "google" })} className="w-full">
+          Continuar con Google
+        </Boton>
+      )}
+    </div>
   );
 }
 
@@ -468,95 +396,21 @@ function SubidaArchivo({ label, archivo, onFile }: { label: string; archivo: Fil
   );
 }
 
-/* -------------------- Wallet (SEP-10) -------------------- */
-function PasoWallet({ onNext }: { onNext: () => void }) {
-  const [address, setAddress] = useState<string | null>(null);
-  const [error, setError] = useState("");
-  const [cargando, setCargando] = useState(false);
-
-  async function conectar() {
-    setError("");
-    setCargando(true);
-    try {
-      const addr = await conectarFreighter();
-      const { challenge } = await api(`/api/sep10/challenge?account=${addr}`, undefined, "GET");
-      const signed = await firmarXdr(challenge, addr);
-      const d = await api("/api/sep10/token", { signedXdr: signed });
-      setAddress(d.address);
-    } catch (err) {
-      setError((err as Error).message);
-    } finally {
-      setCargando(false);
-    }
-  }
-
-  return (
-    <div className="space-y-4">
-      <h1 className="text-xl font-bold text-ink">Conecta tu wallet</h1>
-      <p className="text-sm text-ink/60">
-        Una <strong className="text-ink/80">wallet</strong> es tu billetera digital: ahí recibes el préstamo y desde ahí
-        pagas. Usamos <strong className="text-ink/80">Freighter</strong>, que es gratis.
-      </p>
-
-      {address ? (
-        <>
-          <Alerta tipo="success">
-            Wallet vinculada: <span className="font-mono">{address.slice(0, 6)}…{address.slice(-6)}</span>
-          </Alerta>
-          <Boton onClick={onNext} className="w-full">
-            Continuar
-          </Boton>
-        </>
-      ) : (
-        <>
-          <ol className="space-y-2 text-sm text-ink/80">
-            <li className="rounded-xl border-2 border-ink bg-cream px-4 py-3">
-              <strong>1.</strong> Instala Freighter en tu navegador:{" "}
-              <a href="https://www.freighter.app/" target="_blank" rel="noreferrer" className="font-semibold text-brandink underline">
-                freighter.app
-              </a>
-            </li>
-            <li className="rounded-xl border-2 border-ink bg-cream px-4 py-3">
-              <strong>2.</strong> Crea tu wallet y guarda tus 12 palabras en un lugar seguro: son la única forma de recuperarla.
-            </li>
-            {ES_TESTNET && (
-              <li className="rounded-xl border-2 border-ink bg-cream px-4 py-3">
-                <strong>3.</strong> En Freighter, cambia la red a <strong>Testnet</strong> (la red de pruebas).
-              </li>
-            )}
-          </ol>
-          {error && <Alerta tipo="error">{error}</Alerta>}
-          <Boton onClick={conectar} disabled={cargando} className="w-full">
-            {cargando && <Spinner />} Ya lo hice: conectar mi wallet
-          </Boton>
-          <p className="text-center text-xs text-ink/50">
-            Freighter te pedirá firmar un mensaje para comprobar que la wallet es tuya. No mueve dinero.
-          </p>
-        </>
-      )}
-    </div>
-  );
-}
-
 /* -------------------- Fondeo en Testnet -------------------- */
 type EstadoFondeo = "pendiente" | "haciendo" | "ok" | "error";
 
 function PasoFondeo({ onDone }: { onDone: () => void }) {
+  const { getClient } = usePollar();
   const [xlm, setXlm] = useState<EstadoFondeo>("pendiente");
   const [trust, setTrust] = useState<EstadoFondeo>("pendiente");
   const [usdc, setUsdc] = useState<EstadoFondeo>("pendiente");
   const [error, setError] = useState("");
-  const [address, setAddress] = useState("");
-
-  useEffect(() => {
-    api("/api/auth/me", undefined, "GET").then(({ user }) => user?.wallet && setAddress(user.wallet));
-  }, []);
 
   async function fondear() {
     setError("");
     const setters: Record<PasoDelFondeo, (e: EstadoFondeo) => void> = { xlm: setXlm, trust: setTrust, usdc: setUsdc };
     try {
-      await fondearPrueba(address, (paso, estado) => setters[paso](estado));
+      await fondearPrueba(getClient(), (paso, estado) => setters[paso](estado));
     } catch (err) {
       setError((err as Error).message);
       setXlm((s) => (s === "haciendo" ? "error" : s));
@@ -577,14 +431,14 @@ function PasoFondeo({ onDone }: { onDone: () => void }) {
 
       <ul className="space-y-2">
         <ItemFondeo estado={xlm} texto="Activar tu cuenta en la red" />
-        <ItemFondeo estado={trust} texto="Habilitar USDC en tu wallet (Freighter te pedirá aprobar)" />
+        <ItemFondeo estado={trust} texto="Habilitar USDC en tu wallet (te pedirá aprobar)" />
         <ItemFondeo estado={usdc} texto="Recibir 1.500 USDC de prueba" />
       </ul>
 
       {error && <Alerta tipo="error">{error}</Alerta>}
 
       <div className="flex gap-2">
-        <Boton onClick={fondear} variant="secondary" className="flex-1" disabled={ocupado || !address}>
+        <Boton onClick={fondear} variant="secondary" className="flex-1" disabled={ocupado}>
           {ocupado && <Spinner />} {xlm === "pendiente" ? "Conseguir dinero de prueba" : "Reintentar"}
         </Boton>
         <Boton onClick={onDone} className="flex-1">
