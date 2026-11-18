@@ -50,6 +50,43 @@ export function Dato({
 
 export const usdc = (n: number | string | null | undefined, dec = 2) => `${fmt(Number(n ?? 0), dec)} USDC`;
 
+/**
+ * Tarjeta de saldo, al estilo de una app de wallet: el número protagonista
+ * de la pantalla. Va primero en el panel, antes que cualquier otra sección.
+ */
+export function SaldoHero({
+  saldo,
+  puntaje,
+  children,
+}: {
+  /** USDC en la wallet; null mientras carga. */
+  saldo: number | null;
+  /** Puntaje crediticio (300-850), opcional. */
+  puntaje?: number | null;
+  /** Acciones rápidas o aviso corto, debajo del saldo. */
+  children?: ReactNode;
+}) {
+  return (
+    <section className="rounded-3xl bg-gradient-to-br from-brand to-brandink p-6 text-white nb-shadow-lg sm:p-8">
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <p className="text-sm font-medium text-white/75">Tu saldo</p>
+          <p className="mt-1 text-4xl font-bold tracking-tight sm:text-5xl">
+            {saldo === null ? "…" : usdc(saldo, 2)}
+          </p>
+        </div>
+        {puntaje != null && (
+          <div className="shrink-0 rounded-2xl bg-white/15 px-4 py-2 text-right">
+            <p className="text-[11px] font-medium uppercase tracking-wide text-white/70">Puntaje</p>
+            <p className="text-xl font-bold">{puntaje}</p>
+          </div>
+        )}
+      </div>
+      {children && <div className="mt-5">{children}</div>}
+    </section>
+  );
+}
+
 const ESTADOS: Record<string, { txt: string; clase: string }> = {
   // préstamos
   active: { txt: "Activo", clase: "bg-brand/10 text-brandink" },

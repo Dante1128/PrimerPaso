@@ -13,7 +13,7 @@ import { PARAMETROS_BASE, simular } from "@/lib/calculos";
 import { duracion } from "@/lib/tiempo";
 import Link from "next/link";
 import TarjetaCredito, { type Credito } from "@/components/panel/TarjetaCredito";
-import { Estado, PROPOSITOS, Tarjeta, fecha, usdc } from "@/components/panel/comunes";
+import { Estado, PROPOSITOS, SaldoHero, Tarjeta, fecha, usdc } from "@/components/panel/comunes";
 import type { Usuario } from "@/lib/auth";
 
 export type Solicitud = {
@@ -78,6 +78,9 @@ export default function PanelEstudiante({ user }: { user: Usuario }) {
   return (
     <div className="space-y-6">
       <Encabezado user={user} />
+
+      <SaldoHero saldo={credito?.saldoUsdc ?? null} puntaje={credito?.perfil.puntaje} />
+
       {user.kycStatus === "rejected" && <AvisoKycRechazado motivo={user.kycMotivo} />}
 
       <CaminoEstudiante

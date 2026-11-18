@@ -1,6 +1,6 @@
-// Puntaje, historial y credencial on-chain del usuario, más su saldo USDC.
+// Puntaje, historial y credencial on-chain del usuario.
 import Link from "next/link";
-import { Tarjeta, fecha, usdc } from "@/components/panel/comunes";
+import { Tarjeta, fecha } from "@/components/panel/comunes";
 
 export type Credito = {
   saldoUsdc: number;
@@ -71,10 +71,6 @@ export default function TarjetaCredito({ credito, wallet }: { credito: Credito |
             <div className="flex justify-between">
               <dt className="text-ink/60">Liquidaciones</dt>
               <dd className={`font-semibold ${p.defaults ? "text-coral" : "text-ink/80"}`}>{p.defaults}</dd>
-            </div>
-            <div className="flex justify-between border-t border-line pt-1.5">
-              <dt className="text-ink/60">Saldo en tu wallet</dt>
-              <dd className="font-semibold text-ink">{usdc(credito?.saldoUsdc)}</dd>
             </div>
           </dl>
           <div>

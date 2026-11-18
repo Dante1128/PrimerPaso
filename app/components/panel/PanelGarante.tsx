@@ -5,7 +5,7 @@ import { api } from "@/lib/cliente";
 import { Alerta, Boton, Spinner, inputClase } from "@/components/ui";
 import DetallePrestamo from "@/components/panel/DetallePrestamo";
 import { SolicitudEnCurso, type Solicitud } from "@/components/panel/PanelEstudiante";
-import { Estado, PROPOSITOS, Tarjeta, Vacio, usdc } from "@/components/panel/comunes";
+import { Estado, PROPOSITOS, SaldoHero, Tarjeta, Vacio, usdc } from "@/components/panel/comunes";
 import type { Usuario } from "@/lib/auth";
 import AvisoKycRechazado from "@/components/panel/AvisoKyc";
 
@@ -47,15 +47,14 @@ export default function PanelGarante({ user }: { user: Usuario }) {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-bold text-ink">Hola, {user.fullName?.split(" ")[0] ?? "garante"}</h1>
-          <p className="mt-1 text-sm text-ink/60">
-            Respaldas a estudiantes bloqueando USDC. Tu garantía vuelve a ti a medida que pagan.
-          </p>
-        </div>
-        {saldo !== null && <span className="rounded-full bg-cream px-3 py-1 text-sm text-ink/70">Saldo: {usdc(saldo)}</span>}
+      <div>
+        <h1 className="text-2xl font-bold text-ink">Hola, {user.fullName?.split(" ")[0] ?? "garante"}</h1>
+        <p className="mt-1 text-sm text-ink/60">
+          Respaldas a estudiantes bloqueando USDC. Tu garantía vuelve a ti a medida que pagan.
+        </p>
       </div>
+
+      <SaldoHero saldo={saldo} />
 
       {user.kycStatus === "rejected" && <AvisoKycRechazado motivo={user.kycMotivo} />}
 
