@@ -6,7 +6,7 @@ import { Alerta, Boton, Spinner, inputClase } from "@/components/ui";
 import DetallePrestamo from "@/components/panel/DetallePrestamo";
 import { SolicitudEnCurso, type Solicitud } from "@/components/panel/PanelEstudiante";
 import { Estado, PROPOSITOS, SaldoHero, Tarjeta, Vacio, usdc } from "@/components/panel/comunes";
-import type { Usuario } from "@/lib/auth";
+import type { Usuario } from "@/lib/seguridad/auth";
 import AvisoKycRechazado from "@/components/panel/AvisoKyc";
 
 type Prestamo = { id: string; onchain_loan_id: number; status: string; principal: number; depositor_address: string };

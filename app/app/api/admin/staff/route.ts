@@ -5,7 +5,7 @@
 // Un admin no puede quitarse su rol ni desactivarse: solo se gestionan operadores.
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { exigirUsuario, manejar, ErrorApi, auditar } from "@/lib/api";
-import { estadoStaffSchema, invitarStaffSchema } from "@/lib/validation";
+import { estadoStaffSchema, invitarStaffSchema } from "@/lib/seguridad/validation";
 
 /** Desactivar = ban de Supabase: no puede ingresar ni renovar su sesión. */
 const BAN_INDEFINIDO = "876000h";

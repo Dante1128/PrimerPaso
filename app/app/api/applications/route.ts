@@ -3,7 +3,7 @@
 //  POST → el estudiante crea una solicitud (queda "submitted").
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { exigirUsuario, manejar, ErrorApi, auditar, periodoSegundos } from "@/lib/api";
-import { solicitudSchema } from "@/lib/validation";
+import { solicitudSchema } from "@/lib/seguridad/validation";
 import type { Enums, Tables } from "@/lib/database.types";
 import { posicionDeSolicitud } from "@/lib/creditos/prestamos";
 import { leerPosicion } from "@/lib/cadena/soroban";

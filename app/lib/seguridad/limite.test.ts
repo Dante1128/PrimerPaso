@@ -9,7 +9,7 @@ const rpc = vi.fn(async (_f: string, a: { p_key: string; p_max: number }) => {
 });
 vi.mock("@/lib/supabase/admin", () => ({ supabaseAdmin: () => ({ rpc }) }));
 
-const { limitarAuth, MENSAJE_LIMITE } = await import("@/lib/limite");
+const { limitarAuth, MENSAJE_LIMITE } = await import("@/lib/seguridad/limite");
 const peticion = (ip: string) => new Request("http://x/api/auth/login", { headers: { "x-forwarded-for": `${ip}, 10.0.0.1` } });
 
 beforeEach(() => {

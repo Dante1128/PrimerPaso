@@ -2,9 +2,9 @@
 //  GET → platform_settings (público: lo usa el simulador) + get_params y pool en vivo.
 //  PUT → solo admin: actualiza el contrato con set_params y luego la tabla.
 import { supabaseAdmin } from "@/lib/supabase/admin";
-import { getSessionUser } from "@/lib/auth";
+import { getSessionUser } from "@/lib/seguridad/auth";
 import { exigirUsuario, manejar, ErrorApi, auditar, linkTx } from "@/lib/api";
-import { parametrosSchema } from "@/lib/validation";
+import { parametrosSchema } from "@/lib/seguridad/validation";
 import { LOAN_ID, aStroops, aUsdc, adminKeypair, ejecutarComoServidor, leerParams, poolDisponible } from "@/lib/cadena/soroban";
 import { sincronizarEnSegundoPlano } from "@/lib/cadena/indexer";
 import { nativeToScVal, xdr } from "@stellar/stellar-sdk";

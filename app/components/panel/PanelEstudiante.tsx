@@ -14,7 +14,7 @@ import { duracion } from "@/lib/tiempo";
 import Link from "next/link";
 import TarjetaCredito, { type Credito } from "@/components/panel/TarjetaCredito";
 import { Estado, PROPOSITOS, SaldoHero, Tarjeta, fecha, usdc } from "@/components/panel/comunes";
-import type { Usuario } from "@/lib/auth";
+import type { Usuario } from "@/lib/seguridad/auth";
 
 export type Solicitud = {
   id: string;

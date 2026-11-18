@@ -3,7 +3,7 @@
 import "server-only";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { ErrorApi } from "@/lib/api";
-import type { Usuario } from "@/lib/auth";
+import type { Usuario } from "@/lib/seguridad/auth";
 import type { Tables } from "@/lib/database.types";
 
 /** Wallet principal de un perfil. */

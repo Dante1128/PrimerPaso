@@ -3,7 +3,7 @@
 // Puede pagar el estudiante o su garante.
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { exigirUsuario, manejar, ErrorApi } from "@/lib/api";
-import { pagoSchema } from "@/lib/validation";
+import { pagoSchema } from "@/lib/seguridad/validation";
 import { puedeVerPrestamo } from "@/lib/creditos/prestamos";
 import { LOAN_ID, aStroops, aUsdc, arg, cotizarPago, prepararParaWallet } from "@/lib/cadena/soroban";
 import { balanceUsdc } from "@/lib/cadena/stellar";

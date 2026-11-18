@@ -1,8 +1,8 @@
 // Invitaciones de garante: el estudiante invita por email y comparte el
 // código; el garante lo usa al registrarse (POST /api/auth/role).
 import { supabaseAdmin } from "@/lib/supabase/admin";
-import { getSessionUser, errorJson } from "@/lib/auth";
-import { invitacionSchema } from "@/lib/validation";
+import { getSessionUser, errorJson } from "@/lib/seguridad/auth";
+import { invitacionSchema } from "@/lib/seguridad/validation";
 
 export async function GET() {
   const user = await getSessionUser();

@@ -1,10 +1,10 @@
 // Ingreso con email y contraseña.
 import { supabaseServidor } from "@/lib/supabase/server";
-import { errorJson } from "@/lib/auth";
-import { loginSchema } from "@/lib/validation";
-import { verificarCaptcha } from "@/lib/turnstile";
-import { ipDe } from "@/lib/peticion";
-import { limitarAuth } from "@/lib/limite";
+import { errorJson } from "@/lib/seguridad/auth";
+import { loginSchema } from "@/lib/seguridad/validation";
+import { verificarCaptcha } from "@/lib/seguridad/turnstile";
+import { ipDe } from "@/lib/seguridad/peticion";
+import { limitarAuth } from "@/lib/seguridad/limite";
 import { auditarIngresoStaff } from "@/lib/api";
 
 export async function POST(req: Request) {

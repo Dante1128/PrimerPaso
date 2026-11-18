@@ -3,8 +3,8 @@
 // "pending" hasta que un operator la revise.
 import { createHash } from "crypto";
 import { supabaseAdmin } from "@/lib/supabase/admin";
-import { getSessionUser, errorJson } from "@/lib/auth";
-import { kycSchema } from "@/lib/validation";
+import { getSessionUser, errorJson } from "@/lib/seguridad/auth";
+import { kycSchema } from "@/lib/seguridad/validation";
 
 const MAX_BYTES = 5 * 1024 * 1024;
 const TIPOS = new Set(["image/jpeg", "image/png", "image/webp", "application/pdf"]);

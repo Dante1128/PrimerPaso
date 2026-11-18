@@ -5,7 +5,7 @@
 import { NextResponse } from "next/server";
 import type { EmailOtpType } from "@supabase/supabase-js";
 import { supabaseServidor } from "@/lib/supabase/server";
-import { getSessionUser, pasoPendiente } from "@/lib/auth";
+import { getSessionUser, pasoPendiente } from "@/lib/seguridad/auth";
 
 export async function GET(req: Request) {
   const url = new URL(req.url);

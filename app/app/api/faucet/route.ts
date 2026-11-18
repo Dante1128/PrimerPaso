@@ -3,7 +3,7 @@
 //  - "trustline": devuelve el XDR de changeTrust al USDC para firmar con la wallet.
 //  - "submit":    envía la trustline ya firmada.
 //  - "usdc":      el emisor envía USDC de prueba (requiere trustline).
-import { getSessionUser, errorJson } from "@/lib/auth";
+import { getSessionUser, errorJson } from "@/lib/seguridad/auth";
 import {
   fundWithFriendbot,
   tieneTrustlineUsdc,

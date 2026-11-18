@@ -6,7 +6,7 @@ import {
   registroSchema,
   solicitudSchema,
   verificarCodigoSchema,
-} from "@/lib/validation";
+} from "@/lib/seguridad/validation";
 
 describe("validación de entradas", () => {
   it("normaliza el email (espacios y mayúsculas)", () => {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { evaluarSesionStaff, leerSesionDelToken } from "@/lib/politica-staff";
+import { evaluarSesionStaff, leerSesionDelToken } from "@/lib/seguridad/politica-staff";
 
 const AHORA = 1_800_000_000;
 const hace = (horas: number) => AHORA - horas * 3600;

@@ -1,11 +1,11 @@
 // Ingreso sin contraseña: envía un código de 6 dígitos al email.
 // Se verifica con POST /api/auth/verify-email.
 import { supabaseServidor } from "@/lib/supabase/server";
-import { errorJson } from "@/lib/auth";
-import { pedirCodigoSchema } from "@/lib/validation";
-import { verificarCaptcha } from "@/lib/turnstile";
-import { ipDe } from "@/lib/peticion";
-import { limitarAuth } from "@/lib/limite";
+import { errorJson } from "@/lib/seguridad/auth";
+import { pedirCodigoSchema } from "@/lib/seguridad/validation";
+import { verificarCaptcha } from "@/lib/seguridad/turnstile";
+import { ipDe } from "@/lib/seguridad/peticion";
+import { limitarAuth } from "@/lib/seguridad/limite";
 
 export async function POST(req: Request) {
   const body = await req.json().catch(() => null);

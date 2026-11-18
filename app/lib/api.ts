@@ -2,7 +2,7 @@
 import "server-only";
 import { connection } from "next/server";
 import { supabaseServidor } from "@/lib/supabase/server";
-import { getSessionUser, revisarSesionStaff, type Rol, type Usuario } from "@/lib/auth";
+import { getSessionUser, revisarSesionStaff, type Rol, type Usuario } from "@/lib/seguridad/auth";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import type { Json } from "@/lib/database.types";
 

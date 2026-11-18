@@ -1,4 +1,4 @@
-import { getSessionUser, pasoPendiente } from "@/lib/auth";
+import { getSessionUser, pasoPendiente } from "@/lib/seguridad/auth";
 
 export async function GET() {
   const user = await getSessionUser();

@@ -2,11 +2,11 @@
 // También sirve para reenviar el código ({ email, resend: true }).
 import { supabaseServidor } from "@/lib/supabase/server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
-import { errorJson } from "@/lib/auth";
-import { limitarAuth } from "@/lib/limite";
+import { errorJson } from "@/lib/seguridad/auth";
+import { limitarAuth } from "@/lib/seguridad/limite";
 import { auditarIngresoStaff } from "@/lib/api";
-import { ipDe } from "@/lib/peticion";
-import { pedirCodigoSchema, verificarCodigoSchema } from "@/lib/validation";
+import { ipDe } from "@/lib/seguridad/peticion";
+import { pedirCodigoSchema, verificarCodigoSchema } from "@/lib/seguridad/validation";
 
 export async function POST(req: Request) {
   const body = await req.json().catch(() => ({}));

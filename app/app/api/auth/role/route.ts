@@ -1,9 +1,9 @@
 // Elige el rol en el registro: estudiante o garante, una sola vez. Los roles
 // de staff (operator, admin) solo los asigna un administrador.
 import { supabaseAdmin } from "@/lib/supabase/admin";
-import { getSessionUser, errorJson } from "@/lib/auth";
-import { rolSchema } from "@/lib/validation";
-import { limitarAuth } from "@/lib/limite";
+import { getSessionUser, errorJson } from "@/lib/seguridad/auth";
+import { rolSchema } from "@/lib/seguridad/validation";
+import { limitarAuth } from "@/lib/seguridad/limite";
 import { aceptarInvitacion } from "@/lib/creditos/invitaciones";
 
 export async function POST(req: Request) {

@@ -1,7 +1,7 @@
 // Datos universitarios del estudiante (student_profiles).
 import { supabaseAdmin } from "@/lib/supabase/admin";
-import { getSessionUser, errorJson } from "@/lib/auth";
-import { universidadSchema } from "@/lib/validation";
+import { getSessionUser, errorJson } from "@/lib/seguridad/auth";
+import { universidadSchema } from "@/lib/seguridad/validation";
 
 export async function POST(req: Request) {
   const user = await getSessionUser();

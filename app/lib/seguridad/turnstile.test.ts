@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { verificarCaptcha } from "@/lib/turnstile";
+import { verificarCaptcha } from "@/lib/seguridad/turnstile";
 
 const respuesta = (success: boolean) => vi.fn(async () => new Response(JSON.stringify({ success })));
 

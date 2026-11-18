@@ -4,7 +4,7 @@
 //    embebida) — la wallet YA viene verificada por SEP-10, así que abre
 //    sesión (o crea la cuenta la primera vez) usándola como identidad.
 import { supabaseAdmin } from "@/lib/supabase/admin";
-import { getSessionUser, abrirSesionPorWallet, errorJson } from "@/lib/auth";
+import { getSessionUser, abrirSesionPorWallet, errorJson } from "@/lib/seguridad/auth";
 import { verifyChallenge } from "@/lib/cadena/sep10";
 
 export async function POST(req: Request) {

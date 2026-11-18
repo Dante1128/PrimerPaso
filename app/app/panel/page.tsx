@@ -1,8 +1,8 @@
 import { redirect } from "next/navigation";
 import { connection } from "next/server";
-import { getSessionUser, pasoPendiente, revisarSesionStaff } from "@/lib/auth";
+import { getSessionUser, pasoPendiente, revisarSesionStaff } from "@/lib/seguridad/auth";
 import { supabaseServidor } from "@/lib/supabase/server";
-import { exigeMfaStaff } from "@/lib/politica-staff";
+import { exigeMfaStaff } from "@/lib/seguridad/politica-staff";
 import { AvisoMfaTestnet, VerificacionMfa } from "@/components/panel/MfaStaff";
 import TopBar from "@/components/panel/TopBar";
 import PanelEstudiante from "@/components/panel/PanelEstudiante";

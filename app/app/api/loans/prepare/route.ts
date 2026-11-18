@@ -4,7 +4,7 @@
 //                  PrimerPaso co-firma en el servidor (la solicitud ya fue
 //                  aprobada por un operador). La treasury desembolsa monto − 1%.
 import { exigirUsuario, manejar, ErrorApi, periodoSegundos } from "@/lib/api";
-import { pasoPrestamoSchema } from "@/lib/validation";
+import { pasoPrestamoSchema } from "@/lib/seguridad/validation";
 import { solicitudParaActuar, posicionDeSolicitud } from "@/lib/creditos/prestamos";
 import { LOAN_ID, aStroops, arg, leerPosicion, operatorKeypair, prepararParaWallet } from "@/lib/cadena/soroban";
 import { tieneTrustlineUsdc, balanceUsdc } from "@/lib/cadena/stellar";

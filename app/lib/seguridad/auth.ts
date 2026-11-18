@@ -8,7 +8,7 @@ import { createHash } from "node:crypto";
 import { supabaseServidor } from "@/lib/supabase/server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import type { Enums, Tables } from "@/lib/database.types";
-import { evaluarSesionStaff, exigeMfaStaff, leerSesionDelToken, type SesionAuth } from "@/lib/politica-staff";
+import { evaluarSesionStaff, exigeMfaStaff, leerSesionDelToken, type SesionAuth } from "@/lib/seguridad/politica-staff";
 
 export type Rol = Enums<"user_role">;
 

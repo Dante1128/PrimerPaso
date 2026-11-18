@@ -3,7 +3,7 @@
 //  POST → aprobar o rechazar.
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { exigirUsuario, manejar, ErrorApi, auditar, notificar } from "@/lib/api";
-import { revisionSchema } from "@/lib/validation";
+import { revisionSchema } from "@/lib/seguridad/validation";
 import type { Enums } from "@/lib/database.types";
 
 export const GET = manejar(async (req: Request) => {

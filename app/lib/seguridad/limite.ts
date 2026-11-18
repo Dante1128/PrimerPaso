@@ -4,7 +4,7 @@
 //   AUTH_RATE_LIMIT_MAX=10    intentos por minuto
 import "server-only";
 import { supabaseAdmin } from "@/lib/supabase/admin";
-import { ipDe } from "@/lib/peticion";
+import { ipDe } from "@/lib/seguridad/peticion";
 
 export const MENSAJE_LIMITE = "Demasiados intentos. Espera un minuto e intenta de nuevo.";
 const VENTANA_SEGUNDOS = 60;
