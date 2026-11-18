@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { usePollar } from "@pollar/react";
 import { api, firmarYEnviar, useRecargarTrasIndexar } from "@/lib/cliente";
 import { Alerta, Boton, Spinner } from "@/components/ui";
 import { Barra, Dato, Estado, LinkTx, Tarjeta, fecha, usdc } from "@/components/panel/comunes";
@@ -54,7 +55,8 @@ const TIPO_GARANTIA: Record<string, string> = {
   withdraw: "Retirada",
 };
 
-export default function DetallePrestamo({ loanId, wallet, onCambio }: { loanId: number; wallet: string; onCambio?: () => void }) {
+export default function DetallePrestamo({ loanId, onCambio }: { loanId: number; onCambio?: () => void }) {
+  const { getClient } = usePollar();
   const [d, setD] = useState<Detalle | null>(null);
   const [error, setError] = useState("");
   const [pagando, setPagando] = useState(false);
@@ -75,7 +77,7 @@ export default function DetallePrestamo({ loanId, wallet, onCambio }: { loanId: 
     setOk(null);
     setPagando(true);
     try {
-      const r = await firmarYEnviar(wallet, "/api/payments/prepare", "/api/payments/submit", { loanId });
+      const r = await firmarYEnviar(getClient(), "/api/payments/prepare", "/api/payments/submit", { loanId });
       setOk({ link: r.link as string | undefined });
       void recargarTras(r.hash, async () => {
         await cargar();
@@ -157,7 +159,7 @@ export default function DetallePrestamo({ loanId, wallet, onCambio }: { loanId: 
                 )}
               </div>
               <Boton onClick={pagar} disabled={pagando || actualizando}>
-                {pagando && <Spinner />} Pagar con Freighter
+                {pagando && <Spinner />} Pagar cuota
               </Boton>
             </div>
           </div>

@@ -1,27 +1,27 @@
 "use client";
 // Si el saldo no alcanza para la garantía, ofrece USDC de prueba (solo testnet).
 import { useState } from "react";
+import { usePollar } from "@pollar/react";
 import { ES_TESTNET, fondearPrueba, type PasoFondeo } from "@/lib/cliente";
 import { Alerta, Boton, Spinner } from "@/components/ui";
 import { usdc } from "@/components/panel/comunes";
 
 const PASOS: Record<PasoFondeo, string> = {
   xlm: "Activando tu cuenta en la red…",
-  trust: "Habilitando USDC: aprueba en Freighter…",
+  trust: "Habilitando USDC: aprueba en tu wallet…",
   usdc: "Enviando 1.500 USDC de prueba…",
 };
 
 export default function ConseguirUsdc({
-  wallet,
   saldo,
   necesario,
   onListo,
 }: {
-  wallet: string;
   saldo: number;
   necesario: number;
   onListo: () => void;
 }) {
+  const { getClient } = usePollar();
   const [paso, setPaso] = useState<PasoFondeo | null>(null);
   const [error, setError] = useState("");
 
@@ -30,7 +30,7 @@ export default function ConseguirUsdc({
   async function conseguir() {
     setError("");
     try {
-      await fondearPrueba(wallet, (p, estado) => setPaso(estado === "haciendo" ? p : null));
+      await fondearPrueba(getClient(), (p, estado) => setPaso(estado === "haciendo" ? p : null));
       onListo();
     } catch (e) {
       setError((e as Error).message);

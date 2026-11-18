@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { usePollar } from "@pollar/react";
 import { api, copiar, firmarYEnviar, useRecargarTrasIndexar } from "@/lib/cliente";
 import { Alerta, Boton, Campo, Spinner, inputClase } from "@/components/ui";
 import SimuladorPrestamo from "@/components/SimuladorPrestamo";
@@ -100,10 +101,10 @@ export default function PanelEstudiante({ user }: { user: Usuario }) {
       </div>
 
       {activos.map((p) => (
-        <DetallePrestamo key={p.id} loanId={p.onchain_loan_id} wallet={user.wallet!} onCambio={cargar} />
+        <DetallePrestamo key={p.id} loanId={p.onchain_loan_id} onCambio={cargar} />
       ))}
 
-      {activos.length === 0 && enCurso && <SolicitudEnCurso s={enCurso} wallet={user.wallet!} onCambio={cargar} saldo={credito?.saldoUsdc ?? null} periodo={periodo} />}
+      {activos.length === 0 && enCurso && <SolicitudEnCurso s={enCurso} onCambio={cargar} saldo={credito?.saldoUsdc ?? null} periodo={periodo} />}
 
       {activos.length === 0 && !enCurso && (
         <NuevaSolicitud kycStatus={user.kycStatus} rechazada={ultimaRechazada} onCreada={cargar} />
@@ -234,14 +235,12 @@ function NuevaSolicitud({
 /* -------- Solicitud en revisión / aprobada (depósito y firma) -------- */
 export function SolicitudEnCurso({
   s,
-  wallet,
   onCambio,
   soloDeposito,
   saldo,
   periodo,
 }: {
   s: Solicitud;
-  wallet: string;
   onCambio: () => void;
   soloDeposito?: boolean;
   /** USDC en la wallet de quien mira (null si aún no cargó). */
@@ -249,6 +248,7 @@ export function SolicitudEnCurso({
   /** Duración de cada cuota en segundos. */
   periodo?: number | null;
 }) {
+  const { getClient } = usePollar();
   const [cargando, setCargando] = useState<"" | "deposit" | "open">("");
   const [error, setError] = useState("");
   const [link, setLink] = useState("");
@@ -259,7 +259,7 @@ export function SolicitudEnCurso({
     setLink("");
     setCargando(step);
     try {
-      const r = await firmarYEnviar(wallet, "/api/loans/prepare", "/api/loans/submit", { applicationId: s.id, step });
+      const r = await firmarYEnviar(getClient(), "/api/loans/prepare", "/api/loans/submit", { applicationId: s.id, step });
       setLink(String(r.link ?? ""));
       void recargarTras(r.hash, onCambio);
     } catch (e) {
@@ -304,12 +304,12 @@ export function SolicitudEnCurso({
           >
             {!s.garantiaDepositada && (
               <Boton onClick={() => paso("deposit")} disabled={!!cargando || actualizando}>
-                {cargando === "deposit" && <Spinner />} Bloquear con Freighter
+                {cargando === "deposit" && <Spinner />} Bloquear garantía
               </Boton>
             )}
           </Paso>
           {!s.garantiaDepositada && saldo != null && (
-            <ConseguirUsdc wallet={wallet} saldo={saldo} necesario={Number(s.collateral_amount)} onListo={onCambio} />
+            <ConseguirUsdc saldo={saldo} necesario={Number(s.collateral_amount)} onListo={onCambio} />
           )}
           {!soloDeposito && (
             <Paso

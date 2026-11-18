@@ -62,7 +62,7 @@ export default function PanelGarante({ user }: { user: Usuario }) {
       <VincularEstudiante onListo={cargar} />
 
       {porDepositar.map((s) => (
-        <SolicitudEnCurso key={s.id} s={s} wallet={user.wallet!} onCambio={cargar} soloDeposito saldo={saldo} />
+        <SolicitudEnCurso key={s.id} s={s} onCambio={cargar} soloDeposito saldo={saldo} />
       ))}
 
       {enRevision.length > 0 && (
@@ -85,7 +85,7 @@ export default function PanelGarante({ user }: { user: Usuario }) {
       )}
 
       {activos.map((p) => (
-        <DetallePrestamo key={p.id} loanId={p.onchain_loan_id} wallet={user.wallet!} onCambio={cargar} />
+        <DetallePrestamo key={p.id} loanId={p.onchain_loan_id} onCambio={cargar} />
       ))}
 
       {cerrados.length > 0 && (

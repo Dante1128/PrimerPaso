@@ -1,7 +1,19 @@
 "use client";
-// Helpers del navegador: llamadas a la API y flujo de firma con la wallet.
+// Helpers del navegador: llamadas a la API y flujo de firma con la wallet
+// (la crea y gestiona Pollar; firmamos XDRs que construye nuestro servidor).
 import { useCallback, useState } from "react";
-import { conectarFreighter, firmarXdr } from "@/lib/wallet";
+import type { PollarClient } from "@pollar/core";
+
+/** Lo único que necesitamos del cliente de Pollar para firmar. */
+export type Firmante = Pick<PollarClient, "signTx">;
+
+async function firmar(client: Firmante, xdr: string): Promise<string> {
+  const firma = await client.signTx(xdr);
+  if (firma.status !== "signed") {
+    throw new Error(firma.status === "error" ? firma.message ?? "No se pudo firmar la transacción" : "Falta aprobar la firma en tu wallet");
+  }
+  return firma.signedXdr;
+}
 
 export async function api<T = Record<string, unknown>>(url: string, body?: unknown, method?: string): Promise<T> {
   const res = await fetch(url, {
@@ -15,22 +27,15 @@ export async function api<T = Record<string, unknown>>(url: string, body?: unkno
   return data as T;
 }
 
-/**
- * Prepara una transacción en el servidor, la firma con Freighter y la envía.
- * Verifica que Freighter esté en la misma cuenta vinculada al usuario.
- */
+/** Prepara una transacción en el servidor, la firma con la wallet de Pollar y la envía. */
 export async function firmarYEnviar(
-  wallet: string,
+  client: Firmante,
   prepararUrl: string,
   enviarUrl: string,
   body: Record<string, unknown>,
 ): Promise<{ hash?: string; link?: string } & Record<string, unknown>> {
-  const actual = await conectarFreighter();
-  if (actual !== wallet) {
-    throw new Error(`En Freighter elige la cuenta ${wallet.slice(0, 6)}…${wallet.slice(-6)} (la vinculada a tu perfil).`);
-  }
   const { xdr } = await api<{ xdr: string }>(prepararUrl, body);
-  const signedXdr = await firmarXdr(xdr, wallet);
+  const signedXdr = await firmar(client, xdr);
   return api(enviarUrl, { ...body, signedXdr });
 }
 
@@ -74,10 +79,10 @@ export type PasoFondeo = "xlm" | "trust" | "usdc";
 
 /**
  * Deja la wallet lista con USDC de prueba (solo testnet): activa la cuenta,
- * habilita el USDC (lo aprueba el usuario en Freighter) y envía 1.500 USDC.
+ * habilita el USDC (lo aprueba el usuario en su wallet) y envía 1.500 USDC.
  * Cada paso se puede repetir sin problema.
  */
-export async function fondearPrueba(wallet: string, alAvanzar?: (paso: PasoFondeo, estado: "haciendo" | "ok") => void) {
+export async function fondearPrueba(client: Firmante, alAvanzar?: (paso: PasoFondeo, estado: "haciendo" | "ok") => void) {
   alAvanzar?.("xlm", "haciendo");
   await api("/api/faucet", { action: "airdrop" });
   alAvanzar?.("xlm", "ok");
@@ -85,7 +90,7 @@ export async function fondearPrueba(wallet: string, alAvanzar?: (paso: PasoFonde
   alAvanzar?.("trust", "haciendo");
   const t = await api<{ yaExiste?: boolean; xdr?: string }>("/api/faucet", { action: "trustline" });
   if (!t.yaExiste && t.xdr) {
-    const firmado = await firmarXdr(t.xdr, wallet);
+    const firmado = await firmar(client, t.xdr);
     await api("/api/faucet", { action: "submit", xdr: firmado });
   }
   alAvanzar?.("trust", "ok");
