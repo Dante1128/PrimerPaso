@@ -4,7 +4,7 @@
 //   PATCH activa o desactiva un operador { id, activo }
 // Un admin no puede quitarse su rol ni desactivarse: solo se gestionan operadores.
 import { supabaseAdmin } from "@/lib/supabase/admin";
-import { exigirUsuario, manejar, ErrorApi, auditar } from "@/lib/api";
+import { exigirUsuario, manejar, ErrorApi, auditar } from "@/lib/comun/api";
 import { estadoStaffSchema, invitarStaffSchema } from "@/lib/seguridad/validation";
 
 /** Desactivar = ban de Supabase: no puede ingresar ni renovar su sesión. */

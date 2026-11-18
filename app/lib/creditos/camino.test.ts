@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { caminoEstudiante, type DatosCamino } from "@/lib/creditos/camino";
-import { duracion, restante } from "@/lib/tiempo";
+import { duracion, restante } from "@/lib/comun/tiempo";
 
 const base: DatosCamino = { kycStatus: "approved", solicitud: null, tienePrestamoActivo: false, terminoDePagar: false };
 const estados = (d: Partial<DatosCamino>) => caminoEstudiante({ ...base, ...d }).pasos.map((p) => p.estado);

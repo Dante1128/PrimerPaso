@@ -2,7 +2,7 @@
 //  GET  → solicitudes (por defecto "pending") con enlaces firmados a los documentos (10 min).
 //  POST → aprobar o rechazar.
 import { supabaseAdmin } from "@/lib/supabase/admin";
-import { exigirUsuario, manejar, ErrorApi, auditar, notificar } from "@/lib/api";
+import { exigirUsuario, manejar, ErrorApi, auditar, notificar } from "@/lib/comun/api";
 import { revisionSchema } from "@/lib/seguridad/validation";
 import type { Enums } from "@/lib/database.types";
 

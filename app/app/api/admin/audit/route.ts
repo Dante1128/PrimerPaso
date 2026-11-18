@@ -1,6 +1,6 @@
 // Auditoría para el admin: las últimas 50 acciones registradas.
 import { supabaseAdmin } from "@/lib/supabase/admin";
-import { exigirUsuario, manejar } from "@/lib/api";
+import { exigirUsuario, manejar } from "@/lib/comun/api";
 
 export const GET = manejar(async () => {
   await exigirUsuario(["admin"]);

@@ -1,7 +1,7 @@
 // El operador aprueba o rechaza una solicitud. Para aprobar, el KYC del
 // estudiante debe estar aprobado y el pool debe tener liquidez.
 import { supabaseAdmin } from "@/lib/supabase/admin";
-import { exigirUsuario, manejar, ErrorApi, auditar, notificar } from "@/lib/api";
+import { exigirUsuario, manejar, ErrorApi, auditar, notificar } from "@/lib/comun/api";
 import { revisionSchema } from "@/lib/seguridad/validation";
 import { aStroops, poolDisponible } from "@/lib/cadena/soroban";
 

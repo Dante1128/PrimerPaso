@@ -3,7 +3,7 @@
 //  PUT → solo admin: actualiza el contrato con set_params y luego la tabla.
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { getSessionUser } from "@/lib/seguridad/auth";
-import { exigirUsuario, manejar, ErrorApi, auditar, linkTx } from "@/lib/api";
+import { exigirUsuario, manejar, ErrorApi, auditar, linkTx } from "@/lib/comun/api";
 import { parametrosSchema } from "@/lib/seguridad/validation";
 import { LOAN_ID, aStroops, aUsdc, adminKeypair, ejecutarComoServidor, leerParams, poolDisponible } from "@/lib/cadena/soroban";
 import { sincronizarEnSegundoPlano } from "@/lib/cadena/indexer";

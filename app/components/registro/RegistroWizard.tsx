@@ -6,7 +6,7 @@ import Link from "next/link";
 import { usePollar } from "@pollar/react";
 import Logo from "@/components/Logo";
 import { Campo, inputClase, Boton, Alerta, Spinner } from "@/components/ui";
-import { ES_TESTNET, fondearPrueba, type PasoFondeo as PasoDelFondeo } from "@/lib/cliente";
+import { ES_TESTNET, fondearPrueba, type PasoFondeo as PasoDelFondeo } from "@/lib/comun/cliente";
 
 type Paso = "cuenta" | "rol" | "universidad" | "identidad" | "fondeo";
 type Rol = "student" | "guarantor";

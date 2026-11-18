@@ -1,6 +1,6 @@
 // Notificaciones del usuario: GET las últimas 20, PATCH las marca como leídas.
 import { supabaseAdmin } from "@/lib/supabase/admin";
-import { exigirUsuario, manejar, ErrorApi } from "@/lib/api";
+import { exigirUsuario, manejar, ErrorApi } from "@/lib/comun/api";
 
 export const GET = manejar(async () => {
   const user = await exigirUsuario();

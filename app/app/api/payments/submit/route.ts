@@ -1,5 +1,5 @@
 // Envía el pago ya firmado con la wallet; la caché se actualiza en segundo plano.
-import { exigirUsuario, manejar, ErrorApi, auditar, linkTx } from "@/lib/api";
+import { exigirUsuario, manejar, ErrorApi, auditar, linkTx } from "@/lib/comun/api";
 import { pagoSchema } from "@/lib/seguridad/validation";
 import { LOAN_ID, validarXdr } from "@/lib/cadena/soroban";
 import { enviarYEsperar } from "@/lib/cadena/stellar";

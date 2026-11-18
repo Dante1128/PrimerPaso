@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { api } from "@/lib/cliente";
+import { api } from "@/lib/comun/cliente";
 import { Alerta, Boton, Spinner, inputClase } from "@/components/ui";
 import DetallePrestamo from "@/components/panel/DetallePrestamo";
 import { SolicitudEnCurso, type Solicitud } from "@/components/panel/PanelEstudiante";

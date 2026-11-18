@@ -2,7 +2,7 @@
 //  GET  → estudiante: las suyas · garante: las que respalda · staff: todas (?status=)
 //  POST → el estudiante crea una solicitud (queda "submitted").
 import { supabaseAdmin } from "@/lib/supabase/admin";
-import { exigirUsuario, manejar, ErrorApi, auditar, periodoSegundos } from "@/lib/api";
+import { exigirUsuario, manejar, ErrorApi, auditar, periodoSegundos } from "@/lib/comun/api";
 import { solicitudSchema } from "@/lib/seguridad/validation";
 import type { Enums, Tables } from "@/lib/database.types";
 import { posicionDeSolicitud } from "@/lib/creditos/prestamos";

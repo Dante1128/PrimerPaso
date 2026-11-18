@@ -1,6 +1,6 @@
 // Envía a la red la transacción de un paso del préstamo, ya firmada con la
 // wallet. La caché la actualiza el indexador en segundo plano.
-import { exigirUsuario, manejar, ErrorApi, auditar, linkTx } from "@/lib/api";
+import { exigirUsuario, manejar, ErrorApi, auditar, linkTx } from "@/lib/comun/api";
 import { pasoPrestamoSchema } from "@/lib/seguridad/validation";
 import { solicitudParaActuar } from "@/lib/creditos/prestamos";
 import { LOAN_ID, validarXdr } from "@/lib/cadena/soroban";

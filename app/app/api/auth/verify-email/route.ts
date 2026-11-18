@@ -4,7 +4,7 @@ import { supabaseServidor } from "@/lib/supabase/server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { errorJson } from "@/lib/seguridad/auth";
 import { limitarAuth } from "@/lib/seguridad/limite";
-import { auditarIngresoStaff } from "@/lib/api";
+import { auditarIngresoStaff } from "@/lib/comun/api";
 import { ipDe } from "@/lib/seguridad/peticion";
 import { pedirCodigoSchema, verificarCodigoSchema } from "@/lib/seguridad/validation";
 

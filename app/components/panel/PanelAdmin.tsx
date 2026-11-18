@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { api, useRecargarTrasIndexar } from "@/lib/cliente";
+import { api, useRecargarTrasIndexar } from "@/lib/comun/cliente";
 import { paraContrato, paraEditar } from "@/lib/creditos/parametros";
 import { Alerta, Boton, Campo, Spinner, inputClase } from "@/components/ui";
 import { RevisionKyc, RevisionSolicitudes } from "@/components/panel/PanelOperador";

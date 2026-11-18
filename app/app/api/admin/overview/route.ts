@@ -1,5 +1,5 @@
 import { supabaseAdmin } from "@/lib/supabase/admin";
-import { exigirUsuario, manejar } from "@/lib/api";
+import { exigirUsuario, manejar } from "@/lib/comun/api";
 import { LOAN_ID, aUsdc, poolDisponible } from "@/lib/cadena/soroban";
 import { balanceUsdc } from "@/lib/cadena/stellar";
 

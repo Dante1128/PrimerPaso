@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { usePollar } from "@pollar/react";
-import { api, copiar, firmarYEnviar, useRecargarTrasIndexar } from "@/lib/cliente";
+import { api, copiar, firmarYEnviar, useRecargarTrasIndexar } from "@/lib/comun/cliente";
 import { Alerta, Boton, Campo, Spinner, inputClase } from "@/components/ui";
 import SimuladorPrestamo from "@/components/SimuladorPrestamo";
 import DetallePrestamo from "@/components/panel/DetallePrestamo";
@@ -10,7 +10,7 @@ import AvisoKycRechazado from "@/components/panel/AvisoKyc";
 import ConseguirUsdc from "@/components/panel/ConseguirUsdc";
 import CaminoEstudiante from "@/components/panel/CaminoEstudiante";
 import { PARAMETROS_BASE, simular } from "@/lib/creditos/calculos";
-import { duracion } from "@/lib/tiempo";
+import { duracion } from "@/lib/comun/tiempo";
 import Link from "next/link";
 import TarjetaCredito, { type Credito } from "@/components/panel/TarjetaCredito";
 import { Estado, PROPOSITOS, SaldoHero, Tarjeta, fecha, usdc } from "@/components/panel/comunes";

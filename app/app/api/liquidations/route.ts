@@ -4,7 +4,7 @@
 //         capital + interés + recargo y el remanente vuelve al depositante.
 import { z } from "zod";
 import { supabaseAdmin } from "@/lib/supabase/admin";
-import { exigirUsuario, manejar, ErrorApi, auditar, notificar, linkTx } from "@/lib/api";
+import { exigirUsuario, manejar, ErrorApi, auditar, notificar, linkTx } from "@/lib/comun/api";
 import { LOAN_ID, aUsdc, arg, cotizarPago, ejecutarComoServidor, operatorKeypair } from "@/lib/cadena/soroban";
 import { sincronizarEnSegundoPlano } from "@/lib/cadena/indexer";
 

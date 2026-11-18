@@ -1,6 +1,6 @@
 // Perfil crediticio propio (puntaje, historial y credencial) desde la cadena,
 // más el saldo USDC de la wallet.
-import { exigirUsuario, manejar, ErrorApi } from "@/lib/api";
+import { exigirUsuario, manejar, ErrorApi } from "@/lib/comun/api";
 import { perfilCrediticio } from "@/lib/cadena/credito";
 import { balanceUsdc } from "@/lib/cadena/stellar";
 import { aUsdc } from "@/lib/cadena/soroban";

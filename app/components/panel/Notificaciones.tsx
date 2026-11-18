@@ -1,7 +1,7 @@
 "use client";
 // Campana de avisos: qué pasó con tu identidad, tu solicitud o tu préstamo, y qué hacer.
 import { useCallback, useEffect, useRef, useState } from "react";
-import { api } from "@/lib/cliente";
+import { api } from "@/lib/comun/cliente";
 import { fecha } from "@/components/panel/comunes";
 import { textoAviso } from "@/lib/creditos/avisos";
 

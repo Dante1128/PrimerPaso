@@ -1,6 +1,6 @@
 import "server-only";
 import { TransactionBuilder } from "@stellar/stellar-sdk";
-import { ErrorApi } from "@/lib/api";
+import { ErrorApi } from "@/lib/comun/api";
 import { NETWORK_PASSPHRASE } from "@/lib/cadena/stellar";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import type { Json } from "@/lib/database.types";

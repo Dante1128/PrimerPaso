@@ -1,7 +1,7 @@
 // ¿Ya está indexada esta transacción? El panel lo consulta después de un
 // pago, desembolso, liquidación o cambio de parámetros para recargar los
 // datos cuando la caché esté al día. Si aún no lo está, empuja el indexador.
-import { exigirUsuario, manejar, ErrorApi } from "@/lib/api";
+import { exigirUsuario, manejar, ErrorApi } from "@/lib/comun/api";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { sincronizarEnSegundoPlano } from "@/lib/cadena/indexer";
 

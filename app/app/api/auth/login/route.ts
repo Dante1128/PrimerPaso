@@ -5,7 +5,7 @@ import { loginSchema } from "@/lib/seguridad/validation";
 import { verificarCaptcha } from "@/lib/seguridad/turnstile";
 import { ipDe } from "@/lib/seguridad/peticion";
 import { limitarAuth } from "@/lib/seguridad/limite";
-import { auditarIngresoStaff } from "@/lib/api";
+import { auditarIngresoStaff } from "@/lib/comun/api";
 
 export async function POST(req: Request) {
   const body = await req.json().catch(() => null);

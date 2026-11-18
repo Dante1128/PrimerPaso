@@ -2,7 +2,7 @@
 // depósito de garantía → apertura) y de los pagos.
 import "server-only";
 import { supabaseAdmin } from "@/lib/supabase/admin";
-import { ErrorApi } from "@/lib/api";
+import { ErrorApi } from "@/lib/comun/api";
 import type { Usuario } from "@/lib/seguridad/auth";
 import type { Tables } from "@/lib/database.types";
 

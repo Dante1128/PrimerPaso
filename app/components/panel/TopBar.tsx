@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Logo from "@/components/Logo";
-import { cortarDir } from "@/lib/format";
+import { cortarDir } from "@/lib/comun/format";
 import Notificaciones from "@/components/panel/Notificaciones";
 
 export default function TopBar({

@@ -1,6 +1,6 @@
 // El garante (ya registrado) se vincula a un estudiante con su código.
 import { z } from "zod";
-import { exigirUsuario, manejar, ErrorApi, auditar } from "@/lib/api";
+import { exigirUsuario, manejar, ErrorApi, auditar } from "@/lib/comun/api";
 import { aceptarInvitacion } from "@/lib/creditos/invitaciones";
 
 export const POST = manejar(async (req: Request) => {

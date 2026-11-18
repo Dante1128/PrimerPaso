@@ -2,10 +2,10 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { usePollar } from "@pollar/react";
-import { api, firmarYEnviar, useRecargarTrasIndexar } from "@/lib/cliente";
+import { api, firmarYEnviar, useRecargarTrasIndexar } from "@/lib/comun/cliente";
 import { Alerta, Boton, Spinner } from "@/components/ui";
 import { Barra, Dato, Estado, LinkTx, Tarjeta, fecha, usdc } from "@/components/panel/comunes";
-import { restante } from "@/lib/tiempo";
+import { restante } from "@/lib/comun/tiempo";
 
 type Cotizacion = {
   interes: number;

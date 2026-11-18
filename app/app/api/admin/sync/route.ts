@@ -1,5 +1,5 @@
 // Corre el indexador a pedido desde el panel del admin.
-import { exigirUsuario, manejar } from "@/lib/api";
+import { exigirUsuario, manejar } from "@/lib/comun/api";
 import { sincronizar } from "@/lib/cadena/indexer";
 
 export const POST = manejar(async () => {
