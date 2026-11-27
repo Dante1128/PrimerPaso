@@ -1,6 +1,9 @@
+"use client";
 // Piezas compartidas por los paneles — estilo "minimal fintech".
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { fmt } from "@/lib/creditos/calculos";
+import { copiar } from "@/lib/comun/cliente";
+import { cortarDir } from "@/lib/comun/format";
 
 /** Esqueleto de carga del panel: la silueta del dashboard, no un spinner suelto. */
 export function EsqueletoPanel() {
@@ -92,12 +95,15 @@ export function IconoMovimiento({ tipo }: { tipo: keyof typeof ICONOS_MOVIMIENTO
 export function SaldoHero({
   saldo,
   puntaje,
+  wallet,
   children,
 }: {
   /** USDC en la wallet; null mientras carga. */
   saldo: number | null;
   /** Puntaje crediticio (300-850), opcional. */
   puntaje?: number | null;
+  /** Dirección de la wallet, para poder copiarla (recibir fondos). */
+  wallet?: string | null;
   /** Acciones rápidas o aviso corto, debajo del saldo. */
   children?: ReactNode;
 }) {
@@ -109,6 +115,7 @@ export function SaldoHero({
           <p className="mt-1 break-all text-3xl font-bold tracking-tight sm:text-5xl">
             {saldo === null ? "…" : usdc(saldo, 2)}
           </p>
+          {wallet && <CopiarWallet wallet={wallet} />}
         </div>
         {puntaje != null && (
           <div className="shrink-0 rounded-2xl bg-white/15 px-4 py-2 text-right">
@@ -119,6 +126,27 @@ export function SaldoHero({
       </div>
       {children && <div className="mt-5">{children}</div>}
     </section>
+  );
+}
+
+/** Chip para copiar la dirección de la wallet (recibir fondos a esa cuenta). */
+function CopiarWallet({ wallet }: { wallet: string }) {
+  const [copiado, setCopiado] = useState(false);
+  return (
+    <button
+      type="button"
+      onClick={async () => {
+        setCopiado(await copiar(wallet));
+        setTimeout(() => setCopiado(false), 2000);
+      }}
+      className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-white/15 px-3 py-1 text-xs font-semibold text-white/90 transition hover:bg-white/25"
+    >
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <rect x="9" y="9" width="12" height="12" rx="2" stroke="currentColor" strokeWidth="2" />
+        <path d="M5 15H4a1 1 0 01-1-1V4a1 1 0 011-1h10a1 1 0 011 1v1" stroke="currentColor" strokeWidth="2" />
+      </svg>
+      {copiado ? "Copiada" : cortarDir(wallet)}
+    </button>
   );
 }
 

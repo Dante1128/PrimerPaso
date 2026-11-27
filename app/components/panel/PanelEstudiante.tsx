@@ -79,7 +79,7 @@ export default function PanelEstudiante({ user }: { user: Usuario }) {
     <div className="space-y-6">
       <Encabezado user={user} />
 
-      <SaldoHero saldo={credito?.saldoUsdc ?? null} puntaje={credito?.perfil.puntaje} />
+      <SaldoHero saldo={credito?.saldoUsdc ?? null} puntaje={credito?.perfil.puntaje} wallet={user.wallet} />
 
       {user.kycStatus === "rejected" && <AvisoKycRechazado motivo={user.kycMotivo} />}
 

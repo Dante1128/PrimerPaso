@@ -54,7 +54,7 @@ export default function PanelGarante({ user }: { user: Usuario }) {
         </p>
       </div>
 
-      <SaldoHero saldo={saldo} />
+      <SaldoHero saldo={saldo} wallet={user.wallet} />
 
       {user.kycStatus === "rejected" && <AvisoKycRechazado motivo={user.kycMotivo} />}
 
