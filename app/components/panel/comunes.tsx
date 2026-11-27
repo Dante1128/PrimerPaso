@@ -68,10 +68,10 @@ export function SaldoHero({
 }) {
   return (
     <section className="rounded-3xl bg-gradient-to-br from-brand to-brandink p-6 text-white nb-shadow-lg sm:p-8">
-      <div className="flex items-start justify-between gap-4">
-        <div>
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div className="min-w-0">
           <p className="text-sm font-medium text-white/75">Tu saldo</p>
-          <p className="mt-1 text-4xl font-bold tracking-tight sm:text-5xl">
+          <p className="mt-1 break-all text-3xl font-bold tracking-tight sm:text-5xl">
             {saldo === null ? "…" : usdc(saldo, 2)}
           </p>
         </div>
