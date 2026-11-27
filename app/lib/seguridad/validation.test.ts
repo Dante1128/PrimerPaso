@@ -19,6 +19,16 @@ describe("validación de entradas", () => {
     expect(registroSchema.safeParse({ fullName: "Ana Rojas", email: "a@b.co", password: "suficiente" }).success).toBe(true);
   });
 
+  it("rechaza el dominio reservado de los emails sintéticos de Pollar (no se puede pre-registrar la cuenta de una wallet ajena)", () => {
+    expect(
+      registroSchema.safeParse({
+        fullName: "Atacante",
+        email: "pollar-abc123@wallet.primerpaso.local",
+        password: "suficiente",
+      }).success,
+    ).toBe(false);
+  });
+
   it("el código de ingreso tiene 6 a 8 dígitos", () => {
     expect(verificarCodigoSchema.safeParse({ email: "a@b.co", code: "12345" }).success).toBe(false);
     expect(verificarCodigoSchema.safeParse({ email: "a@b.co", code: "123456" }).success).toBe(true);

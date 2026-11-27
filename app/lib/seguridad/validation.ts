@@ -1,7 +1,17 @@
 // Esquemas de validación (zod) para el registro y la autenticación.
 import { z } from "zod";
 
-const email = z.string().trim().toLowerCase().email("Email inválido");
+// "wallet.primerpaso.local" es el dominio reservado para los emails sintéticos
+// que genera el login de Pollar (ver emailDeWallet en lib/seguridad/auth.ts).
+// Si alguien pudiera registrar ese email a mano, podría "pre-robar" la cuenta
+// que le va a tocar a una wallet ajena antes de que su dueño entre con Pollar
+// por primera vez — por eso ningún registro humano puede usarlo.
+const email = z
+  .string()
+  .trim()
+  .toLowerCase()
+  .email("Email inválido")
+  .refine((e) => !e.endsWith("@wallet.primerpaso.local"), "Email inválido");
 
 /** Creación de cuenta. */
 export const registroSchema = z.object({
