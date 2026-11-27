@@ -50,6 +50,27 @@ export function Dato({
 
 export const usdc = (n: number | string | null | undefined, dec = 2) => `${fmt(Number(n ?? 0), dec)} USDC`;
 
+const ICONOS_MOVIMIENTO = {
+  entra: { clase: "bg-lime/15 text-lime", path: "M12 19V5m0 0l-6 6m6-6l6 6" },
+  sale: { clase: "bg-brand/15 text-brandink", path: "M12 5v14m0 0l-6-6m6 6l6-6" },
+  alerta: {
+    clase: "bg-coral/15 text-coral",
+    path: "M12 9v4m0 4h.01M10.3 3.9l-8 14A1.5 1.5 0 003.6 20h16.8a1.5 1.5 0 001.3-2.1l-8-14a1.5 1.5 0 00-2.6 0z",
+  },
+} as const;
+
+/** Icono redondo para un ítem de movimiento: dinero que entra, que sale, o una alerta. */
+export function IconoMovimiento({ tipo }: { tipo: keyof typeof ICONOS_MOVIMIENTO }) {
+  const { clase, path } = ICONOS_MOVIMIENTO[tipo];
+  return (
+    <span className={`grid h-9 w-9 shrink-0 place-items-center rounded-full ${clase}`}>
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <path d={path} stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    </span>
+  );
+}
+
 /**
  * Tarjeta de saldo, al estilo de una app de wallet: el número protagonista
  * de la pantalla. Va primero en el panel, antes que cualquier otra sección.

@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { usePollar } from "@pollar/react";
 import { api, firmarYEnviar, useRecargarTrasIndexar } from "@/lib/comun/cliente";
 import { Alerta, Boton, Spinner } from "@/components/comun/ui";
-import { Barra, Dato, Estado, LinkTx, Tarjeta, fecha, usdc } from "@/components/panel/comunes";
+import { Barra, Dato, Estado, IconoMovimiento, LinkTx, Tarjeta, fecha, usdc } from "@/components/panel/comunes";
 import { restante } from "@/lib/comun/tiempo";
 
 type Cotizacion = {
@@ -45,6 +45,14 @@ type Detalle = {
   cuotas: { id: string; number: number; due_at: string; principal_due: number; interest_due: number; status: string; paid_at: string | null }[];
   pagos: { id: string; principal: number; interest: number; on_time: boolean | null; tx_hash: string; created_at: string }[];
   garantia: { id: string; type: string; amount: number; tx_hash: string; created_at: string }[];
+};
+
+const ICONO_GARANTIA: Record<string, "entra" | "sale" | "alerta"> = {
+  deposit: "sale",
+  release: "entra",
+  liquidation: "alerta",
+  return: "entra",
+  withdraw: "sale",
 };
 
 const TIPO_GARANTIA: Record<string, string> = {
@@ -216,8 +224,9 @@ export default function DetallePrestamo({ loanId, onCambio }: { loanId: number; 
           ) : (
             <ul className="divide-y divide-ink/10 text-sm">
               {d.pagos.map((x) => (
-                <li key={x.id} className="flex items-center justify-between gap-3 py-2">
-                  <div>
+                <li key={x.id} className="flex items-center gap-3 py-2">
+                  <IconoMovimiento tipo="sale" />
+                  <div className="flex-1">
                     <p className="font-medium text-ink">
                       {usdc(Number(x.principal) + Number(x.interest))}{" "}
                       <span className="text-xs font-normal text-ink/50">
@@ -238,8 +247,9 @@ export default function DetallePrestamo({ loanId, onCambio }: { loanId: number; 
         <Tarjeta titulo="Movimientos de la garantía">
           <ul className="divide-y divide-ink/10 text-sm">
             {d.garantia.map((g) => (
-              <li key={g.id} className="flex items-center justify-between gap-3 py-2">
-                <div>
+              <li key={g.id} className="flex items-center gap-3 py-2">
+                <IconoMovimiento tipo={ICONO_GARANTIA[g.type] ?? "sale"} />
+                <div className="flex-1">
                   <p className="font-medium text-ink">
                     {TIPO_GARANTIA[g.type] ?? g.type} · {usdc(g.amount)}
                   </p>
@@ -249,8 +259,9 @@ export default function DetallePrestamo({ loanId, onCambio }: { loanId: number; 
               </li>
             ))}
             {p.opened_tx_hash && (
-              <li className="flex items-center justify-between gap-3 py-2">
-                <p className="text-ink/70">Apertura del préstamo · {fecha(p.opened_at)}</p>
+              <li className="flex items-center gap-3 py-2">
+                <IconoMovimiento tipo="entra" />
+                <p className="flex-1 text-ink/70">Apertura del préstamo · {fecha(p.opened_at)}</p>
                 <LinkTx hash={p.opened_tx_hash} />
               </li>
             )}
