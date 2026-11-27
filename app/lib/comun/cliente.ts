@@ -10,7 +10,15 @@ export type Firmante = Pick<PollarClient, "signTx">;
 async function firmar(client: Firmante, xdr: string): Promise<string> {
   const firma = await client.signTx(xdr);
   if (firma.status !== "signed") {
-    throw new Error(firma.status === "error" ? firma.message ?? "No se pudo firmar la transacción" : "Falta aprobar la firma en tu wallet");
+    // Útil mientras validamos la firma de invocaciones Soroban (no solo
+    // pagos simples) con la wallet de Pollar: si falla, queda el detalle.
+    if (firma.status === "error") console.error("[Pollar] signTx falló:", firma);
+    const detalle = firma.status === "error" ? (firma.details ?? firma.code) : undefined;
+    const mensaje =
+      firma.status === "error"
+        ? (firma.message ?? "No se pudo firmar la transacción") + (detalle ? ` (${detalle})` : "")
+        : "Falta aprobar la firma en tu wallet";
+    throw new Error(mensaje);
   }
   return firma.signedXdr;
 }
