@@ -5,7 +5,7 @@ import { api } from "@/lib/comun/cliente";
 import { Alerta, Boton, Spinner, inputClase } from "@/components/comun/ui";
 import DetallePrestamo from "@/components/panel/DetallePrestamo";
 import { SolicitudEnCurso, type Solicitud } from "@/components/panel/PanelEstudiante";
-import { Estado, PROPOSITOS, SaldoHero, Tarjeta, Vacio, usdc } from "@/components/panel/comunes";
+import { Estado, EsqueletoPanel, PROPOSITOS, SaldoHero, Tarjeta, Vacio, usdc } from "@/components/panel/comunes";
 import type { Usuario } from "@/lib/seguridad/auth";
 import AvisoKycRechazado from "@/components/panel/AvisoKyc";
 
@@ -38,7 +38,7 @@ export default function PanelGarante({ user }: { user: Usuario }) {
     cargar();
   }, [cargar]);
 
-  if (!solicitudes) return error ? <Alerta tipo="error">{error}</Alerta> : <Spinner className="h-6 w-6 text-ink/40" />;
+  if (!solicitudes) return error ? <Alerta tipo="error">{error}</Alerta> : <EsqueletoPanel />;
 
   const porDepositar = solicitudes.filter((s) => s.status === "approved");
   const activos = prestamos.filter((p) => p.status === "active");

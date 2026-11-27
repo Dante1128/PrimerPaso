@@ -2,6 +2,20 @@
 import type { ReactNode } from "react";
 import { fmt } from "@/lib/creditos/calculos";
 
+/** Esqueleto de carga del panel: la silueta del dashboard, no un spinner suelto. */
+export function EsqueletoPanel() {
+  return (
+    <div className="animate-pulse space-y-6" aria-busy="true" aria-label="Cargando">
+      <div className="h-7 w-48 rounded-lg bg-ink/10" />
+      <div className="h-36 rounded-3xl bg-ink/10 sm:h-40" />
+      <div className="grid gap-4 lg:grid-cols-3">
+        <div className="h-40 rounded-2xl bg-ink/10 lg:col-span-2" />
+        <div className="h-40 rounded-2xl bg-ink/10" />
+      </div>
+    </div>
+  );
+}
+
 export function Tarjeta({
   titulo,
   accion,

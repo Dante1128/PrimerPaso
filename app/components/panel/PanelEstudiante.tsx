@@ -13,7 +13,7 @@ import { PARAMETROS_BASE, simular } from "@/lib/creditos/calculos";
 import { duracion } from "@/lib/comun/tiempo";
 import Link from "next/link";
 import TarjetaCredito, { type Credito } from "@/components/panel/TarjetaCredito";
-import { Estado, PROPOSITOS, SaldoHero, Tarjeta, fecha, usdc } from "@/components/panel/comunes";
+import { Estado, EsqueletoPanel, PROPOSITOS, SaldoHero, Tarjeta, fecha, usdc } from "@/components/panel/comunes";
 import type { Usuario } from "@/lib/seguridad/auth";
 
 export type Solicitud = {
@@ -65,7 +65,7 @@ export default function PanelEstudiante({ user }: { user: Usuario }) {
   }, [cargar]);
 
   if (!solicitudes) {
-    return error ? <Alerta tipo="error">{error}</Alerta> : <Spinner className="h-6 w-6 text-ink/40" />;
+    return error ? <Alerta tipo="error">{error}</Alerta> : <EsqueletoPanel />;
   }
 
   const activos = prestamos.filter((p) => p.status === "active");
